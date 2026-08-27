@@ -204,6 +204,15 @@ class TestOllamaBackend(unittest.TestCase):
         backend = self.llm.OllamaBackend("m", base_url="http://localhost:11434/v1")
         self.assertEqual(backend.base_url, "http://localhost:11434")
 
+    def test_reasoning_overhead_is_zero_on_the_native_backend(self):
+        """It drives the prose budget: reasoning in its own field needs no allowance, so a
+        rambling draft is cut off at roughly twice target instead of six times it."""
+        from redthread.pipeline import _prose_budget
+        self.assertEqual(self.backend().reasoning_overhead, 0)
+        self.assertEqual(self.llm.OpenAICompatBackend("m").reasoning_overhead, 4000)
+        self.assertLess(_prose_budget(900, self.backend()),
+                        _prose_budget(900, self.llm.OpenAICompatBackend("m")))
+
     def test_all_local_uses_the_native_backend_with_thinking_off(self):
         models = self.llm.Models.all_local("qwen3:8b")
         for role in (models.writer, models.critic, models.extractor):

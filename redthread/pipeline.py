@@ -155,16 +155,21 @@ class Config:
     """Write a scene whose predecessor is not committed. Off by default — see `write_scene`."""
 
 
-def _prose_budget(words: int) -> int:
+def _prose_budget(words: int, backend=None) -> int:
     """Output budget for a call that must return a whole scene.
 
-    Three tokens per word for the prose, plus a flat 4000 of headroom for reasoning. The headroom
-    is the part that was missing: a thinking model spends tokens before it writes anything, and a
-    budget sized for the prose alone gets truncated. A real run had repair fail in twelve seconds
-    on an 897-word scene because the reply was cut off and the truncation guard — correctly —
-    rejected it, which read as "the model would not do it".
+    Two tokens per word plus a small margin, and then whatever the backend needs for inline
+    reasoning. Both halves came from real failures pulling in opposite directions: repair failed
+    in twelve seconds on an 897-word scene because the budget covered the prose but not the
+    reasoning that preceded it, and a draft ran to 5702 words against a 900-word target because a
+    budget loose enough for reasoning is also loose enough to ramble — a minute of generation
+    spent on a scene that was going to be rejected anyway.
+
+    Asking the backend closes the gap: where reasoning is switched off, or returned in its own
+    field, the overhead is zero and the budget can be tight.
     """
-    return min(32000, words * 3 + 4000)
+    overhead = getattr(backend, "reasoning_overhead", 4000) if backend is not None else 4000
+    return min(32000, words * 2 + 800 + overhead)
 
 
 def _score(violations: list[Violation]) -> tuple[int, int, int]:
@@ -237,7 +242,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         try:
             reply = models.writer.complete(
                 brief, system=WRITER_SYSTEM,
-                max_tokens=_prose_budget(spec.word_target),
+                max_tokens=_prose_budget(spec.word_target, models.writer),
                 temperature=config.temperature)
         except LLMError as exc:
             result.notes.append(f"draft failed: {exc}")
@@ -380,7 +385,7 @@ def _repair(scene: Scene, violations: list[Violation], models: Models,
     prompt = REPAIR_PROMPT.format(problems="\n".join(lines), text=scene.text)
     try:
         reply = models.writer.complete(prompt, system=WRITER_SYSTEM,
-                                       max_tokens=_prose_budget(scene.word_count()),
+                                       max_tokens=_prose_budget(scene.word_count(), models.writer),
                                        temperature=0.6)
     except LLMError:
         return None
@@ -405,7 +410,7 @@ def _expand(scene: Scene, spec: SceneSpec, models: Models) -> str | None:
     try:
         reply = models.writer.complete(
             prompt, system=WRITER_SYSTEM,
-            max_tokens=_prose_budget(spec.word_target), temperature=0.8)
+            max_tokens=_prose_budget(spec.word_target, models.writer), temperature=0.8)
     except LLMError:
         return None
     text = strip_reasoning(reply.text)

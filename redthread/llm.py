@@ -48,6 +48,16 @@ class Reply:
 class Backend:
     name = "base"
 
+    reasoning_overhead = 4000
+    """Tokens to add to a whole-scene output budget to leave room for inline reasoning.
+
+    A whole-scene call must return the entire scene or the truncation guard rejects it, so the
+    budget has to cover any reasoning the model emits *before* the prose. Where reasoning is
+    switched off or returned in its own field this is zero and the budget can be tight — which
+    matters, because a loose budget also lets a rambling draft run six times past its target, and
+    that costs a minute of generation before any check gets to reject it.
+    """
+
     def complete(self, prompt: str, *, system: str = "", max_tokens: int = 4096,
                  temperature: float = 1.0, stop: list[str] | None = None,
                  json_mode: bool = False) -> Reply:
@@ -199,6 +209,12 @@ class OllamaBackend(Backend):
         self.timeout = timeout
         self.retries = retries
         self.keep_alive = keep_alive
+
+    @property
+    def reasoning_overhead(self) -> int:
+        # Reasoning arrives in `message.thinking`, never inline, so the prose budget needs no
+        # allowance for it whether thinking is on or off.
+        return 0
 
     def complete(self, prompt: str, *, system: str = "", max_tokens: int = 4096,
                  temperature: float = 1.0, stop: list[str] | None = None,
