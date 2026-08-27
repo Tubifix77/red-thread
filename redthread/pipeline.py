@@ -88,6 +88,89 @@ REMEDIES = {
     "slop": "Replace the flagged phrasing with something plainer.",
 }
 
+# Violation kinds whose remedy is deletion of the offending sentence. For these, when the quote
+# locates in the text, no model is needed at all: the sentence is spliced out in code. That is
+# the cheapest possible repair and — for narrator-gloss, which lives in self-contained sentences
+# like "And she knew that no one else would ever see it." — usually the correct one.
+DELETE_KINDS = {"thematic_gloss", "tell_thematic_gloss"}
+
+SENTENCE_PROMPT = """One sentence in a novel scene must be rewritten.
+
+Problem with it: {detail}
+How to fix it: {remedy}
+
+It sits in this context:
+
+  …{before}
+  >>> {sentence}
+  {after}…
+
+Write the replacement sentence only. No quotation marks around it, no commentary, no restating
+the context sentences. Match the voice of the context. One sentence, two at most."""
+
+
+def _surgical(scene: Scene, violations: list[Violation], models: Models,
+              notes: list[str]) -> str | None:
+    """Sentence-local repair: splice out or rewrite only the offending sentences.
+
+    This is what ConWriter's repair actually is — "revising only the conflict-bearing
+    sentences" — and what the whole-scene REPAIR_PROMPT merely asked for. The difference
+    matters on small local models: asked to return a full scene minus one flaw, an 8B
+    regenerates the flaw or drifts elsewhere, and five consecutive whole-scene repairs on a
+    real run changed nothing. Asked for one replacement sentence between two context
+    sentences, the same model manages fine — and for DELETE_KINDS no model is needed at all.
+
+    Returns the repaired text, or None when no violation's quote locates in the scene.
+    """
+    rank = {Severity.BLOCKER: 0, Severity.MAJOR: 1, Severity.MINOR: 2}
+    spans: list[tuple[int, int, Violation]] = []
+    for v in sorted(violations, key=lambda v: rank[v.severity]):
+        if not v.quote:
+            continue
+        located = checks.locate_quote(scene.text, v.quote)
+        if located is None:
+            continue
+        lo, hi = checks.sentence_covering(scene.text, located)
+        # Skip a span already claimed by an earlier violation: two edits to one sentence
+        # cannot both be applied, and the first is the more severe by sort order.
+        if any(not (hi <= s_lo or lo >= s_hi) for s_lo, s_hi, _ in spans):
+            continue
+        spans.append((lo, hi, v))
+
+    if not spans:
+        return None
+
+    text = scene.text
+    for lo, hi, v in sorted(spans, key=lambda s: s[0], reverse=True):
+        original = text[lo:hi].strip()
+        if v.kind in DELETE_KINDS:
+            replacement = ""
+            notes.append(f"surgical: deleted the {v.kind} sentence (no model call)")
+        else:
+            before = text[max(0, lo - 160):lo].strip()[-140:]
+            after = text[hi:hi + 160].strip()[:140]
+            prompt = SENTENCE_PROMPT.format(
+                detail=v.detail[:220], remedy=REMEDIES.get(v.kind, "Rewrite it."),
+                before=before, sentence=original, after=after)
+            try:
+                reply = models.writer.complete(prompt, max_tokens=300, temperature=0.6)
+            except LLMError:
+                continue
+            replacement = strip_reasoning(reply.text).strip().strip('"').strip()
+            # A replacement three times the original has ignored the instruction; an empty one
+            # is a deletion the kind did not ask for.
+            if not replacement or len(replacement.split()) > 3 * max(4, len(original.split())):
+                continue
+            notes.append(f"surgical: rewrote the {v.kind} sentence")
+        gap = " " if replacement else ""
+        text = (text[:lo].rstrip() + gap + replacement + gap
+                + text[hi:].lstrip()) if replacement else (
+                text[:lo].rstrip() + " " + text[hi:].lstrip())
+
+    text = text.strip()
+    return text if text != scene.text.strip() else None
+
+
 EXPAND_PROMPT = """This scene is {actual} words. Its target is {target} words, so it is short by
 about {short}. A short scene almost always means beats were skipped or summarised.
 
@@ -296,8 +379,14 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             repaired = _expand(scene, spec, models)
             action = "expand"
         else:
-            repaired = _repair(scene, fixable, models, config)
-            action = "repair"
+            # Surgical first: violations whose quotes locate in the text get their sentences
+            # spliced out or rewritten individually. Whole-scene repair is the fallback for
+            # violations with no usable location.
+            repaired = _surgical(scene, fixable, models, result.notes)
+            action = "surgical"
+            if repaired is None:
+                repaired = _repair(scene, fixable, models, config)
+                action = "repair"
 
         if repaired is None:
             result.notes.append(f"{action} call failed; keeping previous draft")

@@ -32,6 +32,99 @@ def sentences(text: str) -> list[str]:
     return [s.strip() for s in _SENTENCE_SPLIT.split(text.strip()) if s.strip()]
 
 
+_SENTENCE_SPAN = re.compile(r"[^.!?…]*[.!?…]+[\"'”’)]*", re.S)
+
+
+def sentence_spans(text: str) -> list[tuple[int, int]]:
+    """(start, end) character spans of sentences, covering the text in order.
+
+    Span-aware so a repair can splice a single sentence out of a scene by offset instead of
+    asking a model to reproduce the whole scene minus one line — which is the step small local
+    models reliably fumble. Trailing text without terminal punctuation is one final span.
+    """
+    spans: list[tuple[int, int]] = []
+    pos = 0
+    for m in _SENTENCE_SPAN.finditer(text):
+        if m.group().strip():
+            spans.append((m.start(), m.end()))
+        pos = m.end()
+    if text[pos:].strip():
+        spans.append((pos, len(text)))
+    return spans
+
+
+def normalise_quote(text: str) -> str:
+    """Normalisation for locating a (possibly sloppily copied) quote inside a scene.
+
+    Every replacement here is one-character-to-one-character, deliberately: `_denormalise_index`
+    maps a normalised index back to a raw offset by walking both strings in step, and an n:1
+    substitution (like "..." to one space) would desynchronise the walk. Whitespace collapse is
+    the one n:1 rule, and the walk reproduces it exactly.
+    """
+    text = text.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'")
+    text = text.replace("…", " ")
+    return re.sub(r"\s+", " ", text).strip().lower()
+
+
+def locate_quote(text: str, quote: str) -> tuple[int, int] | None:
+    """Character span in `text` where `quote` occurs, tolerant of whitespace and curly quotes.
+
+    Falls back to the quote's first eight words, because verifier quotes are often clipped at a
+    fixed length mid-word. Returns None when the quote simply is not in the text — which, from a
+    model-judge, means the evidence was invented and the finding should not be trusted.
+    """
+    if not quote or not quote.strip():
+        return None
+    hay = normalise_quote(text)
+    full = normalise_quote(quote)
+    clipped = " ".join(full.split()[:8])
+    # The full quote may be short and exact — a forbidden phrase like "the truth" is nine
+    # characters and trustworthy by construction. The *clipped* fallback keeps a higher floor,
+    # because matching eight words of a judge's paraphrase against the text by accident is the
+    # thing this function exists to refuse.
+    for needle, floor in ((full, 6), (clipped, 12)):
+        if len(needle) < floor:
+            continue
+        idx = hay.find(needle)
+        if idx < 0:
+            continue
+        # Map the normalised index back to the raw text by walking both strings together.
+        raw_idx = _denormalise_index(text, idx)
+        raw_end = _denormalise_index(text, idx + len(needle))
+        if raw_idx is not None and raw_end is not None:
+            return (raw_idx, raw_end)
+    return None
+
+
+def _denormalise_index(raw: str, norm_index: int) -> int | None:
+    count = 0
+    previous_space = True
+    for i, ch in enumerate(raw):
+        mapped = ch.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'")
+        if mapped in "…":
+            mapped = " "
+        is_space = mapped.isspace()
+        if is_space and previous_space:
+            continue
+        if count == norm_index:
+            return i
+        count += 1
+        previous_space = is_space
+    return len(raw) if count == norm_index else None
+
+
+def sentence_covering(text: str, span: tuple[int, int]) -> tuple[int, int]:
+    """The full sentence span(s) containing a located quote."""
+    start, end = span
+    lo, hi = start, end
+    for s_start, s_end in sentence_spans(text):
+        if s_start <= start < s_end:
+            lo = s_start
+        if s_start < end <= s_end:
+            hi = s_end
+    return (lo, hi)
+
+
 def words(text: str) -> list[str]:
     return re.findall(r"[a-z']+", text.lower())
 

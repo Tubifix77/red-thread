@@ -19,6 +19,7 @@ ROLES = {
     "auditing a scene from a novel": "tells",
     "Before reading what happens next": "forecast",
     "Fix ONLY the problems listed": "repair",
+    "One sentence in a novel scene must be rewritten": "surgical",
 }
 
 
@@ -78,6 +79,7 @@ class ScriptedBackend(Backend):
             "tells": NO_TELLS,
             "forecast": json.dumps({"prediction": "no idea", "closeness": 0.2}),
             "repair": "",
+            "surgical": "She put the notebook away and said nothing about it.",
             "draft": "",
         }
         self.defaults.update(defaults or {})

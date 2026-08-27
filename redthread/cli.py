@@ -164,10 +164,21 @@ def _build_models(args):
         # field instead of inline. --openai-compat is the escape hatch for vLLM, LM Studio and
         # llama.cpp, which lose both.
         native = not getattr(args, "openai_compat", False)
-        if args.all_local:
-            return Models.all_local(name, args.base_url, native=native), name, name
-        return (Models.local_writer(name, args.base_url, args.critic, native=native),
-                name, args.critic)
+
+        # A second local model for the critic and extractor roles. They want different things
+        # from the writer: careful reading and reliable structure rather than a good ear, and a
+        # critic that cannot repair what it flags stalls the whole loop.
+        critic_name = getattr(args, "local_critic", None)
+        if critic_name:
+            try:
+                critic_name = resolve(critic_name, args.base_url)
+            except OllamaUnavailable as exc:
+                raise SystemExit(f"{exc}")
+        return (Models.local(name, critic_name, args.base_url, native=native),
+                name, critic_name or name)
+
+    if getattr(args, "hosted", None) is None and not getattr(args, "writer", None):
+        raise SystemExit("give --local MODEL (see: python -m redthread models .)")
     return Models.anthropic(args.writer, args.critic), args.writer, args.critic
 
 
@@ -289,13 +300,21 @@ def cmd_bench(args) -> int:
         (blockers, majors, minors), scene, found = best
         serious = [v for v in found if v.severity is not Severity.MINOR]
         worst = serious[0].kind if serious else (found[0].kind if found else "clean")
+        # A reply under 40% of target is not a draft with a length problem — it is not a draft.
+        # Without this floor an 11-word reply won a real bench: one length major beats one style
+        # major plus minors on violation count, which is the wrong lesson to teach.
+        usable = scene.word_count() >= spec.word_target * 0.4
+        label = worst if usable else "UNUSABLE (empty or truncated reply)"
         print(f"  {name:<30} {scene.word_count():>7} {blockers:>3} {majors:>3} {minors:>3}"
-              f"  {worst}")
-        rows.append((name, blockers, majors, minors))
+              f"  {label}")
+        rows.append((name, not usable, blockers, majors, minors))
 
     if rows:
-        rows.sort(key=lambda r: (r[1], r[2], r[3]))
-        print(f"\n  Best adherence: {rows[0][0]}")
+        rows.sort(key=lambda r: (r[1], r[2], r[3], r[4]))
+        if rows[0][1]:
+            print("\n  No model produced a usable draft.")
+        else:
+            print(f"\n  Best adherence: {rows[0][0]}")
     print(f"\n  Drafts written to {out_dir}")
     print("  This scores adherence only. Read the drafts — a compliant model that writes")
     print("  lifelessly is the wrong choice and no check here will tell you that.\n")
@@ -406,7 +425,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--writer", default="claude-opus-5")
     p.add_argument("--critic", default="claude-sonnet-5")
     p.add_argument("--local", metavar="MODEL", help="plan with a local model")
-    p.add_argument("--all-local", metavar="MODEL", help="local model for every role")
+    p.add_argument("--all-local", metavar="MODEL",
+                   help="alias for --local (kept for older invocations)")
+    p.add_argument("--local-critic", metavar="MODEL",
+                   help="a second local model for the critic and extractor roles; defaults to "
+                        "the writer model")
     p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
     p.add_argument("--openai-compat", action="store_true",
                    help="use the OpenAI-compatible endpoint instead of Ollama's native API "
@@ -437,7 +460,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--critic", default="claude-sonnet-5")
     p.add_argument("--local", metavar="MODEL",
                    help="local model for prose, hosted critic (the hybrid)")
-    p.add_argument("--all-local", metavar="MODEL", help="local model for every role")
+    p.add_argument("--all-local", metavar="MODEL",
+                   help="alias for --local (kept for older invocations)")
+    p.add_argument("--local-critic", metavar="MODEL",
+                   help="a second local model for the critic and extractor roles; defaults to "
+                        "the writer model")
     p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
     p.add_argument("--openai-compat", action="store_true",
                    help="use the OpenAI-compatible endpoint instead of Ollama's native API "

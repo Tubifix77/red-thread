@@ -9,6 +9,7 @@ to prevent.
 
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -34,7 +35,7 @@ def build_project(root: Path, scenes: int = 2) -> Project:
                    states=["dormant", "planted", "complicated", "paid_off"],
                    concealment="a secret", payoff="a payoff"),
         ],
-        style=StyleContract(samples=["A short sentence."]),
+        style=StyleContract(samples=["A short sentence."], forbidden_phrases=["the truth"]),
     )
     plan = []
     targets = {1: "planted", 2: "complicated", 3: "paid_off"}
@@ -310,9 +311,14 @@ class TestCandidateSelection(PipelineCase):
 
 class TestRepair(PipelineCase):
     def test_repair_fixes_a_major_and_commits(self):
+        """Quoteless majors (a missed thread obligation has no offending span) still go through
+        whole-scene repair; quote-bearing ones now route to the surgical path instead."""
         models, backend = fakes.scripted_models()
-        backend.queue("draft", fakes.prose_with_somatic_tics())
-        backend.queue("repair", fakes.clean_prose())
+        backend.queue("draft", fakes.clean_prose())
+        # First verify: the obligation is missed. After the repair: met. Queued in call order —
+        # the queue is consumed before the role's default.
+        backend.queue("threads", fakes.threads_one_missed(0), fakes.threads_all_met())
+        backend.queue("repair", fakes.clean_prose(905))
 
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=2))
@@ -337,9 +343,12 @@ class TestRepair(PipelineCase):
     def test_a_bad_attempt_does_not_abandon_the_repair_budget(self):
         """`break` on the first non-improving attempt made max_repairs=2 behave as 1."""
         models, backend = fakes.scripted_models()
-        backend.queue("draft", fakes.prose_with_somatic_tics())
-        backend.queue("repair", fakes.prose_with_heading())   # worse, discarded
-        backend.queue("repair", fakes.clean_prose())          # good, should be reached
+        backend.queue("draft", fakes.clean_prose())
+        backend.queue("threads", fakes.threads_one_missed(0),   # initial verify: missed
+                      fakes.threads_one_missed(0),              # after the bad attempt: still
+                      fakes.threads_all_met())                  # after the good one: met
+        backend.queue("repair", fakes.prose_with_heading(900))  # worse, discarded
+        backend.queue("repair", fakes.clean_prose(905))         # good, should be reached
 
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=2))
@@ -370,8 +379,8 @@ class TestRepair(PipelineCase):
 
     def test_truncated_repair_is_rejected(self):
         """A 'repair' that returns a third of the scene has rewritten, not repaired."""
-        models, backend = fakes.scripted_models()
-        backend.queue("draft", fakes.prose_with_somatic_tics())
+        models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
+        backend.queue("draft", fakes.clean_prose())
         backend.queue("repair", "She wrote it down.")
 
         result = write_scene(self.project, self.project.spec_at(1), models,
@@ -464,3 +473,132 @@ class TestSeamIsFedForward(PipelineCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSurgicalRepair(PipelineCase):
+    """Sentence-local repair: what ConWriter's 'revise only the conflict-bearing sentences'
+    actually means. Whole-scene repair on a small local model changed nothing across five
+    attempts on a real run; splicing one sentence is a task the same model can do — and for
+    delete-remedy kinds, code does it with no model at all."""
+
+    GLOSSY = (" And in that moment, she understood everything the founders had hidden from "
+              "the town for sixty years.")
+
+    def test_deterministic_gloss_is_deleted_without_a_model_call(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(900) + self.GLOSSY)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+        self.assertNotIn("in that moment", result.scene.text)
+        self.assertEqual(backend.count("repair"), 0, "no whole-scene repair should have run")
+        self.assertEqual(backend.count("surgical"), 0, "deletion needs no model call")
+        self.assertTrue(any("deleted the thematic_gloss sentence" in n for n in result.notes),
+                        result.notes)
+
+    def test_quote_bearing_violation_takes_the_surgical_path(self):
+        """A forbidden phrase carries its own quote and locates exactly."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(880)
+                      + " She finally saw the truth of the whole arrangement laid out plain.")
+        backend.queue("surgical",
+                      "She saw the shape of the arrangement laid out plain on the bench.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertEqual(backend.count("surgical"), 1)
+        self.assertEqual(backend.count("repair"), 0)
+        self.assertNotIn("the truth", result.scene.text.lower())
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+
+    def test_unusable_surgical_reply_is_skipped_not_spliced(self):
+        """A replacement three times the original has ignored the instruction."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(880)
+                      + " She finally saw the truth of the whole arrangement laid out plain.")
+        backend.queue("surgical", "word " * 200)
+        backend.queue("repair", fakes.clean_prose(900))
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertNotIn("word word word", result.scene.text)
+
+    def test_quoteless_violations_fall_back_to_whole_scene_repair(self):
+        models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
+        backend.queue("draft", fakes.clean_prose(900))
+        backend.queue("repair", fakes.clean_prose(905))
+
+        write_scene(self.project, self.project.spec_at(1), models,
+                    Config(candidates=1, max_repairs=1))
+
+        self.assertEqual(backend.count("surgical"), 0)
+        self.assertEqual(backend.count("repair"), 1)
+
+
+class TestJudgeEvidence(PipelineCase):
+    """A local judge sometimes 'quotes' a paraphrase of its own reasoning rather than the
+    scene. Evidence that does not locate in the text is not actionable."""
+
+    def test_probe_finding_with_fabricated_quote_is_dropped(self):
+        finding = json.dumps({"findings": [{
+            "tell": "thematic_gloss", "present": True, "severity": "major",
+            "quote": "The narration explicitly states the theme of institutional decay",
+            "why": "states the theme"}]})
+        models, backend = fakes.scripted_models({"tells": finding})
+        backend.queue("draft", fakes.clean_prose(900))
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=0))
+
+        self.assertTrue(result.committed,
+                        f"a hallucinated judgement held the scene back: "
+                        f"{[str(v) for v in result.violations]}")
+
+    def test_probe_finding_with_real_quote_is_kept(self):
+        text = fakes.clean_prose(900) + " That was what it meant to keep a town alive."
+        finding = json.dumps({"findings": [{
+            "tell": "thematic_gloss", "present": True, "severity": "major",
+            "quote": "what it meant to keep a town alive",
+            "why": "states the theme"}]})
+        models, backend = fakes.scripted_models({"tells": finding})
+        backend.queue("draft", text)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=0))
+
+        self.assertFalse(result.committed)
+        self.assertIn("tell_thematic_gloss", {v.kind for v in result.violations})
+
+    def test_prohibition_without_locatable_quote_is_major_not_blocker(self):
+        models, backend = fakes.scripted_models({
+            "threads": fakes.threads_one_prohibition_violated(0)})
+        backend.queue("draft", fakes.clean_prose(900))
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=0))
+
+        kinds = {(v.kind, v.severity.value) for v in result.violations}
+        self.assertIn(("thread_prohibition", "major"), kinds)
+        self.assertNotIn(("thread_prohibition", "blocker"), kinds)
+
+    def test_prohibition_with_locatable_quote_stays_a_blocker(self):
+        text = fakes.clean_prose(880) + " She told him everything about the founders' figure."
+        prohibition = json.dumps({
+            "requirements": [{"n": i, "verdict": "met"} for i in range(12)],
+            "prohibitions": [{"n": 0, "violated": True,
+                              "quote": "She told him everything about the founders' figure"}]
+            + [{"n": i, "violated": False} for i in range(1, 12)]})
+        models, backend = fakes.scripted_models({"threads": prohibition})
+        backend.queue("draft", text)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=0))
+
+        self.assertIn(("thread_prohibition", "blocker"),
+                      {(v.kind, v.severity.value) for v in result.violations})

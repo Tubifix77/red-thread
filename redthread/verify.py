@@ -13,6 +13,7 @@ purpose-built rerankers for exactly this reason (docs/RESEARCH.md section 1).
 
 from __future__ import annotations
 
+from . import checks as _checks
 from .ledger import Ledger
 from .llm import LLMError, Models, parse_json
 from .models import (Fact, FactKind, Scene, SceneSpec, Severity, StorySpec, Thread,
@@ -277,11 +278,18 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
             tid, text = forbidden[int(row.get("n", -1))]
         except (ValueError, TypeError, IndexError):
             continue
-        # A broken Forbid — a premature reveal especially — cannot be committed. Once the reader
-        # knows, no later scene can un-know it.
+        # A broken Forbid — a premature reveal especially — cannot be committed: once the reader
+        # knows, no later scene can un-know it. But a BLOCKER stops the whole run, so it demands
+        # real evidence — a judge quote that actually appears in the scene. Without one it is
+        # still taken seriously, as a MAJOR, which triggers repair instead of halting the book on
+        # a judgement that cannot be checked.
+        quote = str(row.get("quote", ""))[:200]
+        evidenced = bool(quote) and _checks.locate_quote(scene.text, quote) is not None
         out.append(Violation(
-            "thread_prohibition", Severity.BLOCKER,
-            f"violated: {text}", "llm:check_threads", str(row.get("quote", ""))[:200]))
+            "thread_prohibition",
+            Severity.BLOCKER if evidenced else Severity.MAJOR,
+            f"violated: {text}" + ("" if evidenced else " (judge gave no locatable quote)"),
+            "llm:check_threads", quote if evidenced else ""))
     return out
 
 
@@ -345,12 +353,23 @@ def probe_tells(scene: Scene, models: Models) -> list[Violation]:
         if not isinstance(row, dict) or not row.get("present"):
             continue
         tell = str(row.get("tell", "unknown"))
+        quote = str(row.get("quote", ""))[:240]
+        # Evidence check. A judge — a local one especially — will sometimes flag a tell and
+        # "quote" a paraphrase of its own reasoning rather than the scene ("The narration
+        # explicitly states the theme of…"). If the quoted words are not in the text, the
+        # evidence was invented and the finding is not actionable: drop it entirely rather than
+        # let a hallucinated judgement burn a repair round or hold a scene back.
+        if quote and _checks.locate_quote(scene.text, quote) is None:
+            continue
         severity = (Severity.MAJOR if str(row.get("severity", "minor")).lower() == "major"
                     else Severity.MINOR)
+        if not quote:
+            # A claim with no evidence at all is worth logging, not repairing against.
+            severity = Severity.MINOR
         out.append(Violation(
             f"tell_{tell}", severity,
             f"{_TELL_LABELS.get(tell, tell)}: {row.get('why', '')}",
-            "llm:probe_tells", str(row.get("quote", ""))[:240]))
+            "llm:probe_tells", quote))
     return out
 
 

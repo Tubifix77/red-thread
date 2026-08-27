@@ -181,32 +181,27 @@ python -m redthread audit runs/glitch
 python -m redthread brief runs/glitch --scene 4
 ```
 
-Then, with `ANTHROPIC_API_KEY` set:
+### Running it
 
-```bash
-python -m redthread write runs/glitch --scene 1
-```
-
-### Running local
-
-See what Ollama actually has, and which models plausibly fit your card:
+Everything runs against local models through Ollama. See what you have, and what fits your card:
 
 ```bash
 python -m redthread models runs/glitch --vram 10
 ```
 
-Local prose with a hosted critic — the hybrid this project expects to want:
-
 ```bash
 python -m redthread write runs/glitch --local qwen3:8b
 ```
 
-The roles are split deliberately. Prose generation is forgiving and dominates token spend, so it
-is the natural place for a local model. Extraction, contradiction judgement and the anti-tell
-probes need reliable JSON and careful reading, and they fail *silently* — a malformed extraction
-does not error, it just quietly stops protecting continuity. `--all-local` puts every role on the
-local model if you want to run with no API at all; that is the configuration most likely to
-degrade without telling you.
+The roles are split, and they want different things. Prose generation is forgiving and dominates
+the token spend. Extraction, contradiction judgement and the anti-tell probes need careful reading
+and reliable structure, and they fail *silently* — a malformed extraction does not error, it just
+quietly stops protecting continuity. `--local-critic MODEL` puts those roles on a second model.
+
+**On VRAM, from measurement rather than theory:** two models alternating does not work on a 10GB
+card. An 8B writer beside a 14B critic put the critic at 7.8 of 9.5 GB on the GPU — 18% spilled to
+CPU — and evicted the writer between every call. Pick one model that fits entirely, and use
+`bench` to choose it.
 
 Model names are resolved against what is installed before any generation starts, so a typo fails
 in a second rather than after a 400-token draft. Reasoning blocks from thinking models (`<think>…`)

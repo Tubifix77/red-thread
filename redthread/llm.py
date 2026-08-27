@@ -318,6 +318,28 @@ class Models:
         return cls(writer, AnthropicBackend(critic_model), AnthropicBackend(critic_model))
 
     @classmethod
+    def local(cls, writer_model: str, critic_model: str | None = None,
+              base_url: str = "http://localhost:11434/v1", native: bool = True,
+              think_writer: bool | str = False) -> "Models":
+        """Every role on local models, with the roles allowed to differ.
+
+        This is the configuration the project targets. The two roles want different things and
+        there is no reason a single local model has to serve both: prose generation is forgiving
+        and rewards a model with a better ear, while the critic and extractor need careful reading
+        and reliable structure, and a weak one there cannot repair what it flags. On a 10GB card
+        an 8B writer beside a 12–14B critic fits comfortably in sequence.
+        """
+        writer = (OllamaBackend(writer_model, base_url, think=think_writer) if native
+                  else OpenAICompatBackend(writer_model, base_url))
+        if not critic_model or critic_model == writer_model:
+            structured = (OllamaBackend(writer_model, base_url, think=False) if native
+                          else writer)
+        else:
+            structured = (OllamaBackend(critic_model, base_url, think=False) if native
+                          else OpenAICompatBackend(critic_model, base_url))
+        return cls(writer, structured, structured)
+
+    @classmethod
     def all_local(cls, model: str, base_url: str = "http://localhost:11434/v1",
                   native: bool = True, think_writer: bool | str = False) -> "Models":
         """Every role on one local model.
