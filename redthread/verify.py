@@ -87,7 +87,8 @@ def extract_facts(scene: Scene, story: StorySpec, models: Models,
     """
     prompt = EXTRACT_PROMPT.format(index=scene.index, title=story.title,
                                    text=_clip(scene.text, 2500), json_only=JSON_ONLY)
-    reply = models.extractor.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
+    reply = models.extractor.complete(prompt, max_tokens=STRUCTURED_BUDGET,
+                                      temperature=0.0, json_mode=True)
     data = parse_json(reply.text)
     rows = data.get("facts", []) if isinstance(data, dict) else data
 
@@ -152,7 +153,8 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
         f"{i}. EARLIER {old.as_line()}\n   NEW     {new.as_line()}"
         for i, (old, new) in enumerate(pairs))
     prompt = CONFLICT_PROMPT.format(pairs=rendered, json_only=JSON_ONLY)
-    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
+    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET,
+                                   temperature=0.0, json_mode=True)
 
     try:
         data = parse_json(reply.text)
@@ -239,7 +241,8 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
         required="\n".join(f"{i}. {text}" for i, (_, text) in enumerate(required)) or "(none)",
         forbidden="\n".join(f"{i}. {text}" for i, (_, text) in enumerate(forbidden)) or "(none)",
         text=_clip(scene.text, 2500), json_only=JSON_ONLY)
-    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
+    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET,
+                                   temperature=0.0, json_mode=True)
 
     try:
         data = parse_json(reply.text)
@@ -325,7 +328,8 @@ def probe_tells(scene: Scene, models: Models) -> list[Violation]:
     the StoryScope data, and the cheap layer only catches the phrasings, not the move.
     """
     prompt = TELLS_PROMPT.format(text=_clip(scene.text, 2500), json_only=JSON_ONLY)
-    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
+    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET,
+                                   temperature=0.0, json_mode=True)
     try:
         data = parse_json(reply.text)
     except LLMError:
@@ -385,7 +389,8 @@ def probe_forecast(scene: Scene, story_so_far: str, models: Models,
     prompt = FORECAST_PROMPT.format(context=_clip(story_so_far, 1200),
                                     next_scene=_clip(scene.text, 700),
                                     json_only=JSON_ONLY)
-    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
+    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET,
+                                   temperature=0.0, json_mode=True)
     try:
         data = parse_json(reply.text)
     except LLMError:

@@ -280,17 +280,32 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         candidate.facts = facts
         new_violations = det_violations + llm_violations
 
-        # Only accept the repair if it actually improved things. A repair that trades one
-        # blocker for another is not progress, and accepting it is how oscillation starts.
-        if _score(new_violations) >= _score(result.violations):
-            result.notes.append("repair did not improve the scene; reverted")
-            progress.stage(f"{action} {result.repairs}", "no improvement · reverted")
-            break
+        # Acceptance is not a plain score comparison, and getting that wrong deadlocked a real
+        # run. An expansion that reaches the target length while introducing a different major
+        # scores no better on the tuple, so it was reverted — leaving a permanently short scene
+        # that no later repair could rescue, because the repair prompt may not change length.
+        #
+        # So an expansion that actually resolved the length problem is accepted regardless of the
+        # tuple: length is the one violation repair cannot address, and trading it for a
+        # repairable one is progress even when the count is unchanged.
+        improved = _score(new_violations) < _score(result.violations)
+        fixed_length = (action == "expand"
+                        and any(v.kind == "length" for v in result.violations)
+                        and not any(v.kind == "length" for v in new_violations))
+
+        if not (improved or fixed_length):
+            # Do not abandon the budget on one bad attempt: `break` here made max_repairs=2
+            # behave as 1. Keep the better version and try again.
+            result.notes.append(f"{action} attempt {result.repairs} did not improve; discarded")
+            progress.stage(f"{action} {result.repairs}", "no improvement · discarded")
+            continue
+
         scene, result.scene = candidate, candidate
         result.violations = new_violations
         blockers, majors, minors = _score(new_violations)
         progress.stage(f"{action} {result.repairs}",
-                       f"{candidate.word_count()}w · {blockers}B/{majors}M/{minors}m")
+                       f"{candidate.word_count()}w · {blockers}B/{majors}M/{minors}m"
+                       + ("  (length resolved)" if fixed_length and not improved else ""))
 
     # ---------------------------------------------------------------- commit gate
     scene.violations = result.violations

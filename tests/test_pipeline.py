@@ -320,7 +320,7 @@ class TestRepair(PipelineCase):
         self.assertEqual(result.repairs, 1)
         self.assertTrue(result.committed, f"held back by: {[str(v) for v in result.violations]}")
 
-    def test_repair_that_does_not_improve_is_reverted(self):
+    def test_repair_that_does_not_improve_is_discarded(self):
         """A repair trading one problem for another is not progress, and accepting it is how
         repair loops start oscillating."""
         models, backend = fakes.scripted_models()
@@ -330,8 +330,43 @@ class TestRepair(PipelineCase):
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=2))
 
-        self.assertIn("repair did not improve the scene; reverted", result.notes)
-        self.assertEqual(result.blockers(), [])
+        self.assertTrue(any("did not improve; discarded" in n for n in result.notes),
+                        result.notes)
+        self.assertEqual(result.blockers(), [], "the worse version must not be kept")
+
+    def test_a_bad_attempt_does_not_abandon_the_repair_budget(self):
+        """`break` on the first non-improving attempt made max_repairs=2 behave as 1."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.prose_with_somatic_tics())
+        backend.queue("repair", fakes.prose_with_heading())   # worse, discarded
+        backend.queue("repair", fakes.clean_prose())          # good, should be reached
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertEqual(backend.count("repair"), 2, "the second attempt was never made")
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+
+    def test_an_expansion_that_fixes_length_is_kept_even_without_a_better_score(self):
+        """The deadlock this rule exists to break.
+
+        An expansion that reaches the target while introducing a different major scores no better
+        on the tuple. Reverting it leaves a permanently short scene, because the repair prompt is
+        forbidden from changing length — so no later attempt can rescue it.
+        """
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(500))
+        # Right length now, but carries a fresh major of its own.
+        backend.queue("draft", fakes.prose_with_somatic_tics(900))
+        backend.queue("repair", fakes.clean_prose(900))
+
+        spec = self.project.spec_at(1)
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=2))
+
+        self.assertNotIn("length", {v.kind for v in result.violations},
+                         "the expansion should have been kept and length resolved")
+        self.assertGreater(result.scene.word_count(), 700)
 
     def test_truncated_repair_is_rejected(self):
         """A 'repair' that returns a third of the scene has rewritten, not repaired."""

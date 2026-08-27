@@ -160,9 +160,14 @@ def _build_models(args):
             name = resolve(name, args.base_url)
         except OllamaUnavailable as exc:
             raise SystemExit(f"{exc}")
+        # Ollama's native API by default: it takes `think`, and returns any reasoning in its own
+        # field instead of inline. --openai-compat is the escape hatch for vLLM, LM Studio and
+        # llama.cpp, which lose both.
+        native = not getattr(args, "openai_compat", False)
         if args.all_local:
-            return Models.all_local(name, args.base_url), name, name
-        return Models.local_writer(name, args.base_url, args.critic), name, args.critic
+            return Models.all_local(name, args.base_url, native=native), name, name
+        return (Models.local_writer(name, args.base_url, args.critic, native=native),
+                name, args.critic)
     return Models.anthropic(args.writer, args.critic), args.writer, args.critic
 
 
@@ -403,6 +408,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--local", metavar="MODEL", help="plan with a local model")
     p.add_argument("--all-local", metavar="MODEL", help="local model for every role")
     p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
+    p.add_argument("--openai-compat", action="store_true",
+                   help="use the OpenAI-compatible endpoint instead of Ollama's native API "
+                        "(for vLLM, LM Studio, llama.cpp)")
     p.add_argument("--quiet", action="store_true")
     p.set_defaults(func=cmd_plan)
 
@@ -431,6 +439,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="local model for prose, hosted critic (the hybrid)")
     p.add_argument("--all-local", metavar="MODEL", help="local model for every role")
     p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
+    p.add_argument("--openai-compat", action="store_true",
+                   help="use the OpenAI-compatible endpoint instead of Ollama's native API "
+                        "(for vLLM, LM Studio, llama.cpp)")
     p.add_argument("--forecast", action="store_true",
                    help="run the tension probe (one extra call per scene)")
     p.add_argument("--force", action="store_true",
@@ -440,6 +451,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = add_project(sub.add_parser("models", help="list models installed in Ollama"))
     p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
+    p.add_argument("--openai-compat", action="store_true",
+                   help="use the OpenAI-compatible endpoint instead of Ollama's native API "
+                        "(for vLLM, LM Studio, llama.cpp)")
     p.add_argument("--vram", type=float, metavar="GB",
                    help="flag which installed models plausibly fit this much VRAM")
     p.set_defaults(func=cmd_models)
@@ -454,6 +468,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--candidates", type=int, default=1,
                    help="drafts per model; the best-scoring one is reported")
     p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
+    p.add_argument("--openai-compat", action="store_true",
+                   help="use the OpenAI-compatible endpoint instead of Ollama's native API "
+                        "(for vLLM, LM Studio, llama.cpp)")
     p.add_argument("--out", help="where to write the drafts (default <project>/bench)")
     p.add_argument("--timeout", type=int, default=300, metavar="SECONDS",
                    help="give up on a model after this long (default 300, no retries)")

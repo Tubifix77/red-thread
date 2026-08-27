@@ -62,9 +62,25 @@ class TestLength(unittest.TestCase):
         found = checks.check_length(scene("word " * 50), make_spec(word_target=1000))
         self.assertEqual(found[0].severity, Severity.MAJOR)
 
-    def test_long_scene_is_only_minor(self):
-        found = checks.check_length(scene("word " * 2000), make_spec(word_target=1000))
+    def test_modest_overrun_is_only_minor(self):
+        found = checks.check_length(scene("word " * 1300), make_spec(word_target=1000))
         self.assertEqual(found[0].severity, Severity.MINOR)
+        self.assertEqual(found[0].kind, "length")
+
+    def test_runaway_overrun_is_major(self):
+        """A real run produced 5878 words against a 900 target and, because overrun was MINOR,
+        that draft won candidate selection over a correctly-sized one."""
+        found = checks.check_length(scene("word " * 5878), make_spec(word_target=900))
+        self.assertEqual(found[0].kind, "length_runaway")
+        self.assertEqual(found[0].severity, Severity.MAJOR)
+
+    def test_a_runaway_draft_cannot_outscore_a_correct_one(self):
+        spec = make_spec(word_target=900)
+        story = make_story()
+        runaway = checks.run_all(scene("word " * 5878), spec, story)
+        correct = checks.run_all(scene(" ".join(["word"] * 900)), spec, story)
+        majors = lambda vs: sum(1 for v in vs if v.severity is Severity.MAJOR)
+        self.assertGreater(majors(runaway), majors(correct))
 
     def test_within_tolerance_passes(self):
         self.assertEqual(checks.check_length(scene("word " * 1000),

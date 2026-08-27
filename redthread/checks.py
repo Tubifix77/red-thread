@@ -44,18 +44,32 @@ def ngrams(tokens: list[str], n: int) -> list[tuple[str, ...]]:
 # 1. length
 # --------------------------------------------------------------------------------------
 
-def check_length(scene: Scene, spec: SceneSpec, tolerance: float = 0.15) -> list[Violation]:
-    """Under-generation is how a system fakes passing every other check."""
+def check_length(scene: Scene, spec: SceneSpec, tolerance: float = 0.15,
+                 runaway: float = 1.6) -> list[Violation]:
+    """Under-generation is how a system fakes passing every other check.
+
+    Over-generation needed a second threshold. A real run produced 5878 words against a 900-word
+    target and, because overrun was scored MINOR, that draft *won* candidate selection over a
+    correctly-sized one — fewer majors, and the scorer could not see that the scene had run six
+    times past its brief. A modest overrun is a stylistic quibble; an overrun of this size means
+    the model stopped following the brief and kept writing, usually straight through the end of
+    the scene into material later scenes are supposed to cover.
+    """
     n = scene.word_count()
-    lo, hi = spec.word_target * (1 - tolerance), spec.word_target * (1 + tolerance)
+    target = max(1, spec.word_target)
+    lo, hi = target * (1 - tolerance), target * (1 + tolerance)
     if n < lo:
         return [Violation("length", Severity.MAJOR,
-                          f"{n} words, target {spec.word_target} (min {int(lo)}). Short scenes "
-                          f"usually mean beats were skipped.", "check_length")]
+                          f"{n} words, target {target} (min {int(lo)}). Short scenes usually "
+                          f"mean beats were skipped.", "check_length")]
+    if n > target * runaway:
+        return [Violation("length_runaway", Severity.MAJOR,
+                          f"{n} words against a target of {target} — {n / target:.1f}x over. "
+                          f"The scene did not stop where the brief ends, so it has probably "
+                          f"written past its own material.", "check_length")]
     if n > hi:
         return [Violation("length", Severity.MINOR,
-                          f"{n} words, target {spec.word_target} (max {int(hi)}).",
-                          "check_length")]
+                          f"{n} words, target {target} (max {int(hi)}).", "check_length")]
     return []
 
 

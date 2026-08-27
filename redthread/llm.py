@@ -49,7 +49,14 @@ class Backend:
     name = "base"
 
     def complete(self, prompt: str, *, system: str = "", max_tokens: int = 4096,
-                 temperature: float = 1.0, stop: list[str] | None = None) -> Reply:
+                 temperature: float = 1.0, stop: list[str] | None = None,
+                 json_mode: bool = False) -> Reply:
+        """`json_mode` asks the backend to constrain output to valid JSON where it can.
+
+        Advisory, not a contract: backends that cannot do it ignore the flag, and callers
+        must still parse defensively. Where it *is* honoured it removes the parse-failure
+        class outright, which is worth the extra parameter.
+        """
         raise NotImplementedError
 
 
@@ -70,7 +77,8 @@ class AnthropicBackend(Backend):
             raise LLMError("ANTHROPIC_API_KEY is not set")
 
     def complete(self, prompt: str, *, system: str = "", max_tokens: int = 4096,
-                 temperature: float = 1.0, stop: list[str] | None = None) -> Reply:
+                 temperature: float = 1.0, stop: list[str] | None = None,
+                 json_mode: bool = False) -> Reply:
         body: dict = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -117,7 +125,8 @@ class OpenAICompatBackend(Backend):
         self.retries = retries
 
     def complete(self, prompt: str, *, system: str = "", max_tokens: int = 4096,
-                 temperature: float = 1.0, stop: list[str] | None = None) -> Reply:
+                 temperature: float = 1.0, stop: list[str] | None = None,
+                 json_mode: bool = False) -> Reply:
         messages = ([{"role": "system", "content": system}] if system else []) + \
                    [{"role": "user", "content": prompt}]
         body: dict = {
@@ -145,6 +154,86 @@ class OpenAICompatBackend(Backend):
         text = (choices[0].get("message") or {}).get("content", "") or ""
         usage = payload.get("usage") or {}
         return Reply(text, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0),
+                     payload.get("model", self.model))
+
+
+# --------------------------------------------------------------------------------------
+# Ollama, native API
+# --------------------------------------------------------------------------------------
+
+class OllamaBackend(Backend):
+    """Ollama's own `/api/chat`, not its OpenAI-compatible shim.
+
+    Worth a second backend for two reasons, both of which cost this project real debugging time
+    before the API docs were read properly:
+
+    * **`think` is a first-class parameter here**, and reasoning comes back in its own
+      `message.thinking` field rather than inline in the content. That removes the failure mode
+      that silently destroyed fact extraction — `<think>` blocks derailing the JSON — at the
+      source rather than by stripping them afterwards. Setting `think=False` for structured calls
+      also removes the reasoning tokens entirely, which is most of the latency.
+    * **`format="json"` constrains output to valid JSON.** For the structured probes this turns
+      "parse defensively and hope" into a guarantee.
+
+    Ollama's thinking docs describe `think` on `/api/chat` and `/api/generate` and say nothing
+    about the `/v1` endpoint supporting it, which is the practical reason to prefer this one.
+
+    Verified 2026-08-27 (docs.ollama.com/capabilities/thinking, ollama/ollama docs/api.md):
+      POST http://localhost:11434/api/chat
+      body:     model, messages, stream:false, think, format, options{temperature, num_predict}
+      text at:  response["message"]["content"]
+      thinking: response["message"]["thinking"]
+    """
+
+    name = "ollama"
+
+    def __init__(self, model: str, base_url: str = "http://localhost:11434",
+                 think: bool | str | None = False, timeout: int = 600,
+                 retries: int = 2, keep_alive: str | None = "10m") -> None:
+        self.model = model
+        # Tolerate being handed the OpenAI-compatible URL, since that is what every other part
+        # of the CLI passes around.
+        trimmed = base_url.rstrip("/")
+        self.base_url = trimmed[:-3] if trimmed.endswith("/v1") else trimmed
+        self.think = think
+        self.timeout = timeout
+        self.retries = retries
+        self.keep_alive = keep_alive
+
+    def complete(self, prompt: str, *, system: str = "", max_tokens: int = 4096,
+                 temperature: float = 1.0, stop: list[str] | None = None,
+                 json_mode: bool = False) -> Reply:
+        messages = ([{"role": "system", "content": system}] if system else []) + \
+                   [{"role": "user", "content": prompt}]
+        options: dict = {"temperature": temperature, "num_predict": max_tokens}
+        if stop:
+            options["stop"] = stop
+
+        body: dict = {
+            "model": self.model,
+            "messages": messages,
+            "stream": False,
+            "options": options,
+        }
+        if self.think is not None:
+            body["think"] = self.think
+        if json_mode:
+            body["format"] = "json"
+        if self.keep_alive:
+            body["keep_alive"] = self.keep_alive
+
+        request = urllib.request.Request(
+            f"{self.base_url}/api/chat",
+            data=json.dumps(body).encode("utf-8"),
+            headers={"content-type": "application/json"},
+            method="POST",
+        )
+        payload = _send(request, self.timeout, self.retries)
+        message = payload.get("message") or {}
+        text = message.get("content") or ""
+        # `thinking` is deliberately discarded: it is the model's scratchpad, and mixing it into
+        # the text is exactly the bug this backend exists to avoid.
+        return Reply(text, payload.get("prompt_eval_count", 0), payload.get("eval_count", 0),
                      payload.get("model", self.model))
 
 
@@ -192,16 +281,34 @@ class Models:
 
     @classmethod
     def local_writer(cls, writer_model: str, base_url: str = "http://localhost:11434/v1",
-                     critic_model: str = "claude-sonnet-5") -> "Models":
+                     critic_model: str = "claude-sonnet-5", native: bool = True) -> "Models":
         """Local prose, hosted structure. The hybrid this project expects to be the sweet spot
         — though that is reasoning, not a measured result."""
-        return cls(OpenAICompatBackend(writer_model, base_url),
-                   AnthropicBackend(critic_model), AnthropicBackend(critic_model))
+        writer = (OllamaBackend(writer_model, base_url, think=False) if native
+                  else OpenAICompatBackend(writer_model, base_url))
+        return cls(writer, AnthropicBackend(critic_model), AnthropicBackend(critic_model))
 
     @classmethod
-    def all_local(cls, model: str, base_url: str = "http://localhost:11434/v1") -> "Models":
-        backend = OpenAICompatBackend(model, base_url)
-        return cls(backend, backend, backend)
+    def all_local(cls, model: str, base_url: str = "http://localhost:11434/v1",
+                  native: bool = True, think_writer: bool | str = False) -> "Models":
+        """Every role on one local model.
+
+        Uses Ollama's native API by default, with thinking off. Both matter: `think=False`
+        removes the reasoning that silently broke fact extraction and most of the latency with
+        it, and the native endpoint returns any reasoning in its own field rather than inline.
+        Pass `native=False` for a non-Ollama OpenAI-compatible server (vLLM, LM Studio,
+        llama.cpp), which loses those two properties.
+
+        Thinking stays off for the structured roles unconditionally: their output is a fixed
+        schema, and reasoning there buys nothing while costing the whole latency budget.
+        """
+        if not native:
+            backend = OpenAICompatBackend(model, base_url)
+            return cls(backend, backend, backend)
+        structured = OllamaBackend(model, base_url, think=False)
+        writer = (structured if think_writer is False
+                  else OllamaBackend(model, base_url, think=think_writer))
+        return cls(writer, structured, structured)
 
 
 # --------------------------------------------------------------------------------------

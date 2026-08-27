@@ -92,7 +92,8 @@ class ScriptedBackend(Backend):
         return sum(1 for r, _ in self.calls if r == role)
 
     def complete(self, prompt: str, *, system: str = "", max_tokens: int = 4096,
-                 temperature: float = 1.0, stop: list[str] | None = None) -> Reply:
+                 temperature: float = 1.0, stop: list[str] | None = None,
+                 json_mode: bool = False) -> Reply:
         role = classify(prompt)
         self.calls.append((role, prompt))
         queue = self.queues.get(role)

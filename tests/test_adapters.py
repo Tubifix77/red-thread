@@ -97,6 +97,103 @@ class TestParseJson(unittest.TestCase):
             parse_json("I'm sorry, I can't help with that.")
 
 
+class TestOllamaBackend(unittest.TestCase):
+    """Request construction against the documented `/api/chat` shape, with no network call.
+
+    This backend exists because the OpenAI-compatible shim cost real debugging time: `think` is
+    not documented as supported there, and reasoning arrives inline in the content where it
+    silently destroyed fact extraction.
+    """
+
+    def setUp(self):
+        from redthread import llm
+        self.sent = []
+
+        def fake_send(request, timeout, retries):
+            self.sent.append(json.loads(request.data.decode("utf-8")))
+            return {"model": "m", "message": {"role": "assistant",
+                                             "thinking": "reasoning that must not leak",
+                                             "content": "the answer"},
+                    "prompt_eval_count": 11, "eval_count": 22}
+
+        self._original = llm._send
+        llm._send = fake_send
+        self.llm = llm
+
+    def tearDown(self):
+        self.llm._send = self._original
+
+    def backend(self, **kwargs):
+        return self.llm.OllamaBackend("qwen3:8b", **kwargs)
+
+    def test_posts_to_the_native_chat_endpoint(self):
+        self.backend().complete("hello")
+        self.assertEqual(self.sent[0]["model"], "qwen3:8b")
+        self.assertFalse(self.sent[0]["stream"])
+
+    def test_thinking_is_off_by_default(self):
+        self.backend().complete("hello")
+        self.assertIs(self.sent[0]["think"], False)
+
+    def test_thinking_can_be_enabled_or_set_to_an_effort(self):
+        self.backend(think=True).complete("hello")
+        self.backend(think="high").complete("hello")
+        self.assertIs(self.sent[0]["think"], True)
+        self.assertEqual(self.sent[1]["think"], "high")
+
+    def test_think_none_omits_the_field_entirely(self):
+        self.backend(think=None).complete("hello")
+        self.assertNotIn("think", self.sent[0])
+
+    def test_temperature_and_token_limit_go_in_options(self):
+        self.backend().complete("hello", max_tokens=1234, temperature=0.25)
+        options = self.sent[0]["options"]
+        self.assertEqual(options["num_predict"], 1234)
+        self.assertEqual(options["temperature"], 0.25)
+
+    def test_json_mode_sets_the_format_field(self):
+        self.backend().complete("hello", json_mode=True)
+        self.backend().complete("hello")
+        self.assertEqual(self.sent[0]["format"], "json")
+        self.assertNotIn("format", self.sent[1])
+
+    def test_system_prompt_becomes_a_system_message(self):
+        self.backend().complete("hello", system="be terse")
+        roles = [m["role"] for m in self.sent[0]["messages"]]
+        self.assertEqual(roles, ["system", "user"])
+
+    def test_the_thinking_field_is_discarded(self):
+        """The whole point: reasoning must not reach the caller."""
+        reply = self.backend().complete("hello")
+        self.assertEqual(reply.text, "the answer")
+        self.assertNotIn("reasoning that must not leak", reply.text)
+
+    def test_token_counts_are_read_from_the_native_field_names(self):
+        reply = self.backend().complete("hello")
+        self.assertEqual((reply.input_tokens, reply.output_tokens), (11, 22))
+
+    def test_an_openai_style_base_url_is_accepted(self):
+        """Every other part of the CLI passes the /v1 URL around."""
+        backend = self.llm.OllamaBackend("m", base_url="http://localhost:11434/v1")
+        self.assertEqual(backend.base_url, "http://localhost:11434")
+
+    def test_all_local_uses_the_native_backend_with_thinking_off(self):
+        models = self.llm.Models.all_local("qwen3:8b")
+        for role in (models.writer, models.critic, models.extractor):
+            self.assertIsInstance(role, self.llm.OllamaBackend)
+            self.assertIs(role.think, False)
+
+    def test_all_local_can_fall_back_to_openai_compat(self):
+        models = self.llm.Models.all_local("qwen3:8b", native=False)
+        self.assertIsInstance(models.writer, self.llm.OpenAICompatBackend)
+
+    def test_structured_roles_keep_thinking_off_even_when_the_writer_has_it_on(self):
+        models = self.llm.Models.all_local("qwen3:8b", think_writer="high")
+        self.assertEqual(models.writer.think, "high")
+        self.assertIs(models.critic.think, False)
+        self.assertIs(models.extractor.think, False)
+
+
 class TestOllamaDiscovery(unittest.TestCase):
     def test_parses_documented_payload(self):
         models = ollama.parse_tags(TAGS_PAYLOAD)

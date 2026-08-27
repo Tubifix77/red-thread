@@ -94,7 +94,8 @@ class PlannerBackend(ScriptedBackend):
         self.scene_calls = 0
         self.beat_calls = 0
 
-    def complete(self, prompt, *, system="", max_tokens=4096, temperature=1.0, stop=None):
+    def complete(self, prompt, *, system="", max_tokens=4096, temperature=1.0, stop=None,
+                 json_mode=False):
         from redthread.llm import Reply
         # Record here too: the base class only logs calls that fall through to it, and several
         # tests inspect the planner's prompts rather than just its outputs.
@@ -125,7 +126,7 @@ class PlannerBackend(ScriptedBackend):
                      "setting": f"Harbour shed {i}", "time": "04:10"} for i in indices]}))
             return Reply(text, model="scripted")
         return super().complete(prompt, system=system, max_tokens=max_tokens,
-                                temperature=temperature, stop=stop)
+                                temperature=temperature, stop=stop, json_mode=json_mode)
 
 
 def models_with(backend) -> Models:
