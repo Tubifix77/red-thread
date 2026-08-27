@@ -241,6 +241,51 @@ class TestProposeStoryRetries(unittest.TestCase):
             propose_story("A premise.", models_with(backend), attempts=1)
 
 
+class TestSelfConsistency(unittest.TestCase):
+    """Both of these came from a real planner run on a real premise."""
+
+    def test_a_plan_that_breaks_its_own_forbidden_list_is_flagged(self):
+        """The model listed 'sentient' as forbidden and then used it in the premise it wrote."""
+        story = parse_story(json.loads(story_json(
+            premise="Two crews collide on a sentient shipwreck.",
+            style={"pov": "third limited", "tense": "past",
+                   "samples": ["A.", "B.", "C."],
+                   "forbidden_phrases": ["sentient", "xenomorph"], "notes": ""})))
+        problems = story_problems(story)
+        self.assertTrue(any("sentient" in p for p in problems), problems)
+        self.assertTrue(any("spec_self_violation" == v.kind
+                            for v in checks.check_spec_self_consistency([], story)))
+
+    def test_a_slop_character_name_is_flagged(self):
+        """`kael` is on the antislop list, and check_slop exempts cast names by necessity."""
+        story = parse_story(json.loads(story_json(characters=[
+            {"id": "senna", "name": "Senna Kael", "description": "d", "voice": "v"},
+            {"id": "b", "name": "Bern Toft", "description": "d", "voice": "v"},
+            {"id": "c", "name": "Ilse Vahr", "description": "d", "voice": "v"},
+        ])))
+        self.assertTrue(any("Kael" in p for p in story_problems(story)))
+
+    def test_a_clean_story_reports_neither(self):
+        story = parse_story(json.loads(story_json()))
+        self.assertEqual(story_problems(story), [])
+
+    def test_planner_retries_on_a_self_violation(self):
+        bad = story_json(premise="A sentient hull.",
+                         style={"pov": "third limited", "tense": "past",
+                                "samples": ["A.", "B.", "C."],
+                                "forbidden_phrases": ["sentient"], "notes": ""})
+        backend = PlannerBackend(story=[bad, story_json()])
+        propose_story("A premise.", models_with(backend))
+        self.assertEqual(backend.story_calls, 2)
+
+    def test_the_forbidden_list_itself_is_not_counted_as_a_violation(self):
+        """Otherwise every story would self-violate merely by declaring its prohibitions."""
+        story = parse_story(json.loads(story_json(
+            style={"pov": "third limited", "tense": "past", "samples": ["A.", "B.", "C."],
+                   "forbidden_phrases": ["zzzunlikelyword"], "notes": ""})))
+        self.assertEqual(checks.check_spec_self_consistency([], story), [])
+
+
 class TestStructureIsNotTheModelsToBreak(unittest.TestCase):
     """The core guarantee: bad content proposals must not corrupt structure."""
 

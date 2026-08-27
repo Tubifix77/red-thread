@@ -36,6 +36,14 @@ CHUNK = 5
 """Scenes proposed per call. Small enough that the model holds them all in view, large enough
 that adjacent scenes are invented together."""
 
+# The name-like entries from data/slop_phrases.txt — given names and place names measured as
+# over-represented in LLM-generated fiction (sam-paech/antislop-sampler). Told to the planner
+# because `checks.check_slop` exempts character names by necessity: a protagonist called Elara
+# would otherwise trip the check in every scene forever. Cheaper to not choose the name.
+SLOP_NAMES = ("Elara", "Elysia", "Lyra", "Eira", "Eluned", "Elian", "Elias", "Elianore",
+              "Aria", "Eitan", "Kael", "Jaxon", "Numeria", "Eldoria", "Atheria", "Zephyria",
+              "Oakhaven", "Whisperwood", "Ravenswood", "Moonwhisper")
+
 
 # ======================================================================================
 # 1. the story: threads, cast, world, voice
@@ -66,6 +74,15 @@ information; a thread with nothing withheld generates predictable scenes.
 - Every thread declares its PAYOFF: what resolution looks like. Not "it is resolved".
 - Prefer a terminal state that costs something. A thread whose ending is simply a win is the \
 easiest thing to write and the least worth reading.
+
+NAMES: do not use any of these for a character or a place. They are measured as \
+over-represented in machine-written fiction, and a cast drawn from this list marks the book as \
+generated before anyone reads a sentence. Names should suit the setting instead.
+{slop_names}
+
+Anything you put in "forbidden_phrases" binds YOU as well. Do not list a word and then use it in \
+the premise, a thread, or a world rule — every scene brief is built from that text, so a \
+prohibited term sitting there is injected into all of them.
 
 CONSTRAINTS STATED IN THE PREMISE ARE BINDING. If the premise says what the story must avoid — a \
 trope, a comparison, a kind of antagonist — honour it, and put the vocabulary of the thing it must \
@@ -214,6 +231,16 @@ def story_problems(story: StorySpec) -> list[str]:
     if len(story.style.samples) < 2:
         problems.append("Give at least three style samples: new sentences you write in the "
                         "target register, of varied length.")
+
+    # A retry can fix these, and fixing them here is far better than catching them at audit:
+    # every scene brief is built from this text, so a self-violation propagates everywhere.
+    for violation in checks.check_spec_self_consistency([], story):
+        problems.append(
+            f'You listed "{violation.quote}" in forbidden_phrases and then used it in your own '
+            f'premise, threads or world rules. Either stop using it or stop forbidding it.')
+    for violation in checks.check_cast_names([], story):
+        problems.append(
+            f"{violation.detail} Choose a different name that suits the setting.")
     return problems
 
 
@@ -222,7 +249,8 @@ def propose_story(premise: str, models: Models, attempts: int = 3) -> StorySpec:
     extra = ""
     last: StorySpec | None = None
     for _ in range(max(1, attempts)):
-        prompt = STORY_PROMPT.format(premise=premise.strip(), extra=extra, json_only=JSON_ONLY)
+        prompt = STORY_PROMPT.format(premise=premise.strip(), extra=extra,
+                                     slop_names=", ".join(SLOP_NAMES), json_only=JSON_ONLY)
         reply = models.critic.complete(prompt, max_tokens=6000, temperature=0.9)
         data = parse_json(reply.text)
         if not isinstance(data, dict):

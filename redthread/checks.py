@@ -716,6 +716,77 @@ def check_stakes_progression(
     return out
 
 
+def _spec_text(plan: list[SceneSpec], story: StorySpec) -> str:
+    """Everything the plan itself says, as one blob. Excludes the forbidden list itself."""
+    parts = [story.title, story.premise, story.style.notes, *story.world_rules]
+    for c in story.characters:
+        parts += [c.name, c.description, c.voice]
+    for t in story.threads:
+        parts += [t.name, t.concealment, t.payoff]
+    for spec in plan:
+        parts += [spec.summary, spec.setting, spec.time, spec.notes]
+        parts += [b.summary for b in spec.beats]
+        for op in spec.thread_ops.values():
+            parts += op.pre + op.post + op.forbid
+    return " ".join(p for p in parts if p)
+
+
+def check_spec_self_consistency(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
+    """The plan must not violate its own style contract.
+
+    Found by running the planner: asked to name what the premise rules out, a local model
+    correctly listed `['xenomorph', 'creature', 'alien', 'sentient', 'hive mind']` in
+    `forbidden_phrases` — and then described the ship as "sentient" in the premise it wrote two
+    fields earlier. It authored the rule and broke it in the same output.
+
+    This matters more than a stray word. Every scene brief is assembled from this text, so a
+    prohibited term sitting in the premise is injected into all of them, and `check_forbidden`
+    will then dutifully flag the prose for repeating what the brief told it.
+    """
+    if not story.style.forbidden_phrases:
+        return []
+    text = _spec_text(plan, story).lower()
+    out: list[Violation] = []
+    for phrase in story.style.forbidden_phrases:
+        needle = phrase.strip().lower()
+        if not needle:
+            continue
+        hit = (needle in text if " " in needle
+               else re.search(rf"\b{re.escape(needle)}\b", text) is not None)
+        if hit:
+            out.append(Violation(
+                "spec_self_violation", Severity.MAJOR,
+                f'the plan forbids "{phrase}" and then uses it in its own text. Every brief is '
+                f'built from this text, so the prohibited term goes into every scene.',
+                "check_spec_self_consistency", phrase))
+    return out
+
+
+def check_cast_names(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
+    """Character names that are over-represented in machine-written fiction.
+
+    `check_slop` deliberately exempts character names, so a protagonist called Elara or Kael is
+    invisible to it forever — every scene would trip on its own cast otherwise. That exemption
+    has to be paid for here, once, at plan level, while the name can still be changed cheaply.
+
+    A real planner run produced "Senna Kael"; `kael` is on the antislop list.
+    """
+    slop = {p.strip().lower() for p in load_slop() if p.strip() and " " not in p.strip()}
+    if not slop:
+        return []
+    out: list[Violation] = []
+    for character in story.characters:
+        parts = re.findall(r"[A-Za-z']+", character.name)
+        hits = [p for p in parts if p.lower() in slop]
+        if hits:
+            out.append(Violation(
+                "slop_character_name", Severity.MINOR,
+                f'"{character.name}" contains {", ".join(hits)}, which is over-represented in '
+                f'LLM fiction. Rename now — once scenes are committed the name is in the prose.',
+                "check_cast_names", character.name))
+    return out
+
+
 def check_concealment(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
     """Threads with nothing hidden produce predictable scenes.
 
@@ -746,6 +817,8 @@ def audit_plan(plan: list[SceneSpec], story: StorySpec,
     out += check_subplot_independence(plan, story)
     out += check_stakes_progression(plan, story, history)
     out += check_concealment(plan, story)
+    out += check_spec_self_consistency(plan, story)
+    out += check_cast_names(plan, story)
 
     # POV variety: a manuscript entirely in one head is legal but worth surfacing, since
     # StoryScope's homogeneity finding is about the absence of structural variation.
