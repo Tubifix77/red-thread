@@ -235,6 +235,39 @@ holding the *prohibitions* — somatic emotion, the forbidden-phrase list, thema
 into the draft and repair does not reliably remove them. Which is consistent with the bench: word
 targets and adherence, not capability, are where the small models lose.
 
+## Calibrating the judge — the finding that unlocked commits
+
+Every earlier run deadlocked the same way: the repair loop fixed what it was told, and the
+LLM judge found a fresh, well-evidenced MAJOR in every round. The open question was whether the
+judge was right (the prose is inexhaustibly flawed) or unreliable (the gate can never open).
+Answer, by experiment rather than argument — qwen3:8b as judge, temperature 0, three samples per
+fixture:
+
+| Fixture | Expected | Judge said (3 runs) |
+|---|---|---|
+| deliberately glossy text ("In that moment she finally understood…") | flag | flagged, 3/3 ✔ |
+| clean behavioural text | pass | **flagged "The tally sheet had been photocopied so often that the column headings had closed up" as thematic gloss, 3/3** ✘ |
+
+A judge with a hard false-positive floor finds a MAJOR in any scene. As a blocking gate, that
+means nothing ever commits — not because the prose fails, but because the gate is broken. And the
+same run had it flag *"She didn't like the fact that she had to keep a paper notebook"* — plain
+third-limited interiority — as theme-explaining.
+
+**Policy, from the evidence:**
+
+- **The judge's binary judgments are usable.** Its violated-prohibition calls located three real
+  concealment leaks in one scene, and surgical repair fixed all three. "Missed" obligations block.
+- **Its graded and aesthetic judgments are advisory.** Tell findings and "partial" verdicts are
+  recorded as MINOR in `scenes/NNNN.json` for the human, and never block. Blocking power for
+  gloss belongs to the deterministic check, which passes the clean fixture and catches the glossy
+  one.
+- **Evidence is validated before any judgment counts.** A finding whose quote does not locate in
+  the scene text is dropped outright — the judge sometimes "quotes" a paraphrase of its own
+  reasoning.
+
+The first scene ever to commit on a fully local pipeline did so twenty minutes after this policy
+landed: 924 words, zero blockers, zero majors, 14 facts, 34 seconds.
+
 ## Measuring adherence yourself
 
 ```bash

@@ -138,6 +138,13 @@ class Thread:
     payoff: str = ""
     """What resolution looks like. An unpaid thread at manuscript end is an error, not a mood."""
 
+    reveal_scene: int | None = None
+    """First scene allowed to disclose the concealment. Before it, the concealment is enforced
+    as a hard prohibition on every scene touching the thread; from it on, it is not. Without
+    this, the scene whose job is the reveal gets a brief that simultaneously requires and
+    forbids it — a real run deadlocked exactly there, the judge correctly flagging both
+    'missed the reveal' and 'violated the concealment'. None means concealed throughout."""
+
     deadline_scene: int | None = None
     """Latest scene index by which this thread must reach its final state."""
 

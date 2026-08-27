@@ -509,10 +509,14 @@ def check_seam(scene: Scene, previous_tail: str) -> list[Violation]:
         prev = set(ngrams(words(previous_tail), 4))
         new = set(ngrams(words(opening), 4))
         shared = prev & new
-        if shared:
+        # One shared 4-gram is not an echo. A real run flagged a scene for opening with "the
+        # cold storage unit" — the story's central object, named in the previous scene's tail
+        # because the story is about it. Entity names legitimately cross the boundary; an echo
+        # is the *image* restated, which shows up as several shared runs.
+        if len(shared) >= 2:
             echo = " ".join(next(iter(shared)))
             out.append(Violation(
-                "seam_echo", Severity.MAJOR,
+                "seam_echo", Severity.MAJOR if len(shared) >= 3 else Severity.MINOR,
                 f"opening repeats {len(shared)} four-word sequence(s) from the previous "
                 f"scene's ending — it is restating instead of continuing",
                 "check_seam", echo))

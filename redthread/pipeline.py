@@ -170,15 +170,27 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
             # is a deletion the kind did not ask for.
             if not replacement or len(replacement.split()) > 3 * max(4, len(original.split())):
                 continue
-            # Code-verified splice for style leaks: the writer that lifted a sample once will
-            # lift it again in the rewrite — a real run rewrote a leaked sentence and the
-            # replacement still shared four 6-grams with the sample. The checker's own n-gram
-            # test decides, not the model's promise.
+            # Code-verified splices, wherever a deterministic test exists for the kind: the
+            # writer that produced a flaw once tends to reproduce it inside its own "fix". A
+            # real run rewrote a leaked sentence into one still sharing four 6-grams with the
+            # sample, and rewrote gloss into fresh gloss. The checker decides, not the model's
+            # promise; an unfixed replacement falls back to deletion when the length affords
+            # it, else the span is skipped this round.
+            failed_verify = False
             if v.kind == "style_leak" and samples:
                 rep_grams = set(checks.ngrams(checks.words(replacement), 6))
-                if any(rep_grams & set(checks.ngrams(checks.words(sample), 6))
-                       for sample in samples):
-                    notes.append("surgical: style_leak rewrite still leaked; span skipped")
+                failed_verify = any(
+                    rep_grams & set(checks.ngrams(checks.words(sample), 6))
+                    for sample in samples)
+            elif v.kind in DELETE_KINDS:
+                probe = Scene(spec_id=scene.spec_id, index=scene.index, text=replacement)
+                failed_verify = bool(checks.check_thematic_gloss(probe))
+            if failed_verify:
+                if v.kind in DELETE_KINDS and can_delete:
+                    replacement = ""
+                    notes.append(f"surgical: {v.kind} rewrite failed verification; deleted")
+                else:
+                    notes.append(f"surgical: {v.kind} rewrite failed verification; skipped")
                     continue
             notes.append(f"surgical: rewrote the {v.kind} sentence")
         gap = " " if replacement else ""

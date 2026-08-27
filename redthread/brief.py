@@ -78,8 +78,14 @@ def render_thread_ops(spec: SceneSpec, story: StorySpec) -> str:
             lines.append(_fmt_list(op.forbid, "  - "))
         if thread and thread.concealment:
             # Tension is downstream of hidden information (RESEARCH.md section 9). Telling the
-            # writing session what to withhold is as important as telling it what to reveal.
-            lines.append(f"Still concealed from the reader: {thread.concealment}")
+            # writing session what to withhold is as important as telling it what to reveal —
+            # and telling it a reveal-scene to keep concealing is a contradiction it cannot
+            # satisfy, so from reveal_scene on the line flips.
+            if thread.reveal_scene is None or spec.index < thread.reveal_scene:
+                lines.append(f"Still concealed from the reader: {thread.concealment}")
+            elif spec.index == thread.reveal_scene:
+                lines.append(f"THIS is the scene that discloses what was concealed: "
+                             f"{thread.concealment}")
         blocks.append("\n".join(lines))
 
     return "\n\n".join(blocks)

@@ -577,6 +577,38 @@ class TestSurgicalRepair(PipelineCase):
         self.assertIn("photographed the page", result.scene.text)
 
 
+class TestGradedVerdicts(PipelineCase):
+    """Binary judgments from the local judge hold up; graded ones do not. A 'partial' on a
+    fuzzy obligation deadlocked a real run for four repair rounds, exactly like the tell
+    false-positives."""
+
+    def test_partial_verdict_is_advisory(self):
+        partial = json.dumps({
+            "requirements": [{"n": 0, "verdict": "partial", "evidence": "gestured"}]
+            + [{"n": i, "verdict": "met"} for i in range(1, 12)],
+            "prohibitions": [{"n": i, "violated": False} for i in range(12)]})
+        models, backend = fakes.scripted_models({"threads": partial})
+        backend.queue("draft", fakes.clean_prose())
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=0))
+
+        self.assertTrue(result.committed,
+                        f"a graded verdict blocked the commit: "
+                        f"{[str(v) for v in result.violations]}")
+        self.assertIn(("thread_obligation", "minor"),
+                      {(v.kind, v.severity.value) for v in result.violations})
+
+    def test_missed_verdict_still_blocks(self):
+        models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
+        backend.queue("draft", fakes.clean_prose())
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=0))
+
+        self.assertFalse(result.committed)
+
+
 class TestJudgeEvidence(PipelineCase):
     """A local judge sometimes 'quotes' a paraphrase of its own reasoning rather than the
     scene. Evidence that does not locate in the text is not actionable."""

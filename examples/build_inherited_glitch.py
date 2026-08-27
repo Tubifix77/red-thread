@@ -115,6 +115,7 @@ def build_story() -> StorySpec:
                     "Siv holds proof that is unambiguous to her and unreadable to everyone "
                     "else — which is the trap, not the victory."
                 ),
+                reveal_scene=4,
                 deadline_scene=9),
             Thread(
                 id="T-CHOICE", name="Expose it or carry it",

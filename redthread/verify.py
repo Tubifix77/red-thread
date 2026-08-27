@@ -200,6 +200,8 @@ For each requirement, answer:
 - "partial" — gestured at but not actually accomplished
 - "missed"  — did not happen
 
+If you are torn between "met" and "partial", decide it like this: could a reader point at the place where it happens? If yes, it is met. "Partial" is not for imperfect execution, it is for requirements whose substance is genuinely absent.
+
 For each prohibition, answer whether the scene violated it.
 
 Be strict about "met". A scene that mentions a thing has not accomplished it. If a requirement \
@@ -236,7 +238,8 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
             required.append((tid, f"[{label}] the thread must end in the state: {op.to_state}"))
         for item in op.forbid:
             forbidden.append((tid, f"[{label}] {item}"))
-        if thread and thread.concealment:
+        if (thread and thread.concealment
+                and (thread.reveal_scene is None or spec.index < thread.reveal_scene)):
             forbidden.append(
                 (tid, f"[{label}] must NOT reveal to the reader: {thread.concealment}"))
 
@@ -267,8 +270,13 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
             tid, text = required[int(row.get("n", -1))]
         except (ValueError, TypeError, IndexError):
             continue
+        # The calibration lesson, generalised: this judge's BINARY judgments hold up (its
+        # violated-prohibition calls located real leaks that repair then fixed), its GRADED ones
+        # do not (a "partial" on a fuzzy obligation deadlocked a run for four repair rounds the
+        # same way the tell false-positives did). "missed" blocks; "partial" is advisory.
+        severity = Severity.MAJOR if verdict == "missed" else Severity.MINOR
         out.append(Violation(
-            "thread_obligation", Severity.MAJOR,
+            "thread_obligation", severity,
             f"{verdict}: {text}", "llm:check_threads", str(row.get("evidence", ""))[:200]))
 
     for row in (data.get("prohibitions") or []):
