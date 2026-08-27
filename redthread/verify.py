@@ -60,11 +60,12 @@ Rules:
 - Do not record what a character feels or believes unless the prose states it as fact.
 - Do not record anything the scene did not actually establish. Inventing facts here is worse \
 than missing them, because an invented fact becomes a constraint on every later scene.
-- BE SPARING. Record only what a later scene could actually contradict. Atmosphere is not a fact: \
-"the screen was flickering", "the room was cold", "her fingers were calloused" are description, \
-and recording them turns every later scene into an argument with the weather. Ten durable facts \
-are worth more than forty transient ones — everything here constrains the rest of the book and is \
-fed into every later brief.
+- AT MOST 15 FACTS. A hard limit, not a guideline. If you can think of more, you are recording \
+description rather than continuity — keep the fifteen most durable and stop.
+- Atmosphere is not a fact. "the screen was flickering", "the room was cold", "her fingers were \
+calloused" are description, and recording them turns every later scene into an argument with the \
+weather. Everything here constrains the rest of the book and is fed into every later brief, so ten \
+durable facts are worth more than forty transient ones.
 
 SCENE {index} of "{title}":
 ---
@@ -87,7 +88,11 @@ def extract_facts(scene: Scene, story: StorySpec, models: Models,
     """
     prompt = EXTRACT_PROMPT.format(index=scene.index, title=story.title,
                                    text=_clip(scene.text, 2500), json_only=JSON_ONLY)
-    reply = models.extractor.complete(prompt, max_tokens=STRUCTURED_BUDGET,
+    # A tighter budget than the other probes, on purpose. Thirty facts is a small object, and an
+    # unbounded budget does not stop a model that wants to enumerate: one run spent all 8000
+    # tokens listing 258 facts for a 762-word scene and was truncated mid-object. Salvage in
+    # `parse_json` recovers the complete elements either way; the cap keeps the cost bounded.
+    reply = models.extractor.complete(prompt, max_tokens=3000,
                                       temperature=0.0, json_mode=True)
     data = parse_json(reply.text)
     rows = data.get("facts", []) if isinstance(data, dict) else data

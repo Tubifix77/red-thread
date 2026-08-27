@@ -96,6 +96,33 @@ class TestParseJson(unittest.TestCase):
         with self.assertRaises(LLMError):
             parse_json("I'm sorry, I can't help with that.")
 
+    def test_truncated_json_is_salvaged(self):
+        """Not an edge case with local models: a real extraction spent its whole 8000-token
+        budget enumerating 258 facts and was cut off mid-object. Discarding it threw away every
+        complete fact along with the broken tail."""
+        truncated = ('{"facts": [{"subject": "Siv", "predicate": "has", "object": "a notebook", '
+                     '"kind": "detail"}, {"subject": "Otto", "predicate": "is", "object": '
+                     '"maintenance chief", "kind": "state"}, {"subject": "the door", "predi')
+        data = parse_json(truncated)
+        self.assertEqual(len(data["facts"]), 2)
+        self.assertEqual(data["facts"][0]["subject"], "Siv")
+
+    def test_truncated_top_level_array_is_salvaged(self):
+        data = parse_json('[{"a": 1}, {"b": 2}, {"c": ')
+        self.assertEqual(data, [{"a": 1}, {"b": 2}])
+
+    def test_salvage_ignores_brackets_inside_strings(self):
+        """A closing brace inside a fact's text must not be mistaken for structure."""
+        data = parse_json('{"facts": [{"object": "a note reading }] end"}, {"object": "cut')
+        self.assertEqual(data["facts"], [{"object": "a note reading }] end"}])
+
+    def test_a_prefix_ending_inside_a_string_is_not_guessed_at(self):
+        with self.assertRaises(LLMError):
+            parse_json('{"facts": [{"subject": "an unterminated stri')
+
+    def test_complete_json_is_not_touched_by_salvage(self):
+        self.assertEqual(parse_json('{"facts": [{"a": 1}]}'), {"facts": [{"a": 1}]})
+
 
 class TestOllamaBackend(unittest.TestCase):
     """Request construction against the documented `/api/chat` shape, with no network call.

@@ -347,7 +347,54 @@ def parse_json(text: str) -> dict | list:
             return json.loads(candidate)
         except json.JSONDecodeError:
             continue
+
+    # Last resort: the reply may be well-formed JSON that simply ran out of tokens. This is not
+    # an edge case with local models — a real extraction spent its entire 8000-token budget
+    # enumerating facts and was cut off mid-object, and discarding it threw away 250 perfectly
+    # good facts along with the broken tail.
+    salvaged = _salvage_truncated(text)
+    if salvaged is not None:
+        try:
+            return json.loads(salvaged)
+        except json.JSONDecodeError:
+            pass
+
     raise LLMError(f"no parseable JSON in reply: {text[:300]}")
+
+
+def _salvage_truncated(text: str) -> str | None:
+    """Close off JSON that was cut off mid-value, keeping every complete element.
+
+    Trims back to the last structurally complete element and appends the closing brackets the
+    prefix is missing. Bracket counting skips anything inside a string literal, so a `}` in a
+    fact's text does not confuse it; a prefix ending *inside* a string is unsalvageable and
+    returns None rather than guessing.
+    """
+    end = max(text.rfind("}"), text.rfind("]"))
+    if end < 0:
+        return None
+    prefix = text[:end + 1]
+
+    stack: list[str] = []
+    in_string = escaped = False
+    for char in prefix:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+        elif char in "[{":
+            stack.append(char)
+        elif char in "]}" and stack:
+            stack.pop()
+
+    if in_string or not stack:
+        return None
+    return prefix + "".join("]" if opener == "[" else "}" for opener in reversed(stack))
 
 
 # --------------------------------------------------------------------------------------

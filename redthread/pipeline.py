@@ -57,6 +57,37 @@ SCENE:
 
 Return the complete corrected scene as prose, nothing else."""
 
+# What to actually *do* about each kind of violation. The checks are good at saying what is wrong
+# and were saying nothing about the remedy, which left a weak model to infer it — and a real run
+# spent all three repair attempts returning prose that had not changed. A violation with an
+# instruction attached is a task; one without is a complaint.
+REMEDIES = {
+    "style_leak": ("Find the sentence lifted from the style samples and write a different "
+                   "sentence in the same rhythm. The samples show the register to match, not "
+                   "text to reuse."),
+    "brief_leak": ("Replace the sentence that restates the brief with the thing itself: the "
+                   "action, the object, the words spoken."),
+    "tell_thematic_gloss": ("Delete the sentence that names what the scene means. Do not replace "
+                            "it with anything. The scene means it without saying so."),
+    "thematic_gloss": ("Delete the realisation or summary clause. Keep only what a camera could "
+                       "record."),
+    "somatic_emotion": ("Replace the bodily-sensation lines with what the character does, or "
+                        "refuses to do. Keep at most one."),
+    "forbidden_phrase": "Rewrite the phrase. Any wording will do except that one.",
+    "pov_person": ("Convert the narration to the contracted person. Dialogue keeps its own "
+                   "pronouns."),
+    "format": "Delete the heading, label, or commentary. Return prose only.",
+    "seam_echo": ("Rewrite the opening so it continues from the previous scene instead of "
+                  "restating its ending."),
+    "seam_reset": "Replace the opening move; do not start with weather, waking, or a time label.",
+    "thread_obligation": ("This did not happen on the page. Make it happen, concretely, in the "
+                          "smallest number of sentences that will carry it."),
+    "thread_prohibition": "Remove what was revealed. The reader must not learn it in this scene.",
+    "continuity_contradiction": "Change the new detail to match what was established earlier.",
+    "internal_repetition": "Vary the repeated phrasing.",
+    "slop": "Replace the flagged phrasing with something plainer.",
+}
+
 EXPAND_PROMPT = """This scene is {actual} words. Its target is {target} words, so it is short by
 about {short}. A short scene almost always means beats were skipped or summarised.
 
@@ -340,9 +371,12 @@ def _repair(scene: Scene, violations: list[Violation], models: Models,
     """
     lines = []
     for i, v in enumerate(violations, 1):
-        lines.append(f"{i}. [{v.kind}] {v.detail}")
+        lines.append(f"{i}. {v.detail}")
         if v.quote:
-            lines.append(f"   Offending text: \"{v.quote}\"")
+            lines.append(f'   Offending text: "{v.quote}"')
+        remedy = REMEDIES.get(v.kind)
+        if remedy:
+            lines.append(f"   Fix: {remedy}")
     prompt = REPAIR_PROMPT.format(problems="\n".join(lines), text=scene.text)
     try:
         reply = models.writer.complete(prompt, system=WRITER_SYSTEM,
