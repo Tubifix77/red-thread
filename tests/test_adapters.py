@@ -230,6 +230,53 @@ class TestOllamaBackend(unittest.TestCase):
         self.assertIs(models.extractor.think, False)
 
 
+class TestRetryPolicy(unittest.TestCase):
+    """`_send` owns the retry policy, so it is tested against the real thing."""
+
+    def setUp(self):
+        import urllib.request
+
+        from redthread import llm
+        self.llm = llm
+        self.urllib = urllib.request
+        self.real_urlopen = urllib.request.urlopen
+        self.attempts = 0
+
+    def tearDown(self):
+        self.urllib.urlopen = self.real_urlopen
+
+    def _raise(self, exc):
+        def fake(*args, **kwargs):
+            self.attempts += 1
+            raise exc
+        self.urllib.urlopen = fake
+
+    def request(self):
+        return self.urllib.Request("http://localhost:1/x", data=b"{}")
+
+    def test_a_timeout_is_not_retried(self):
+        """A request that missed its budget will miss it again. Retrying turned one slow repair
+        into 28 minutes of wall clock — 600s x 3 attempts — before it failed anyway."""
+        self._raise(TimeoutError("too slow"))
+        with self.assertRaises(self.llm.LLMError) as caught:
+            self.llm._send(self.request(), timeout=1, retries=3)
+        self.assertEqual(self.attempts, 1, "a timeout must not be retried")
+        self.assertIn("timed out", str(caught.exception))
+
+    def test_a_timeout_wrapped_in_a_urlerror_is_also_not_retried(self):
+        self._raise(self.urllib.URLError(TimeoutError("too slow")))
+        with self.assertRaises(self.llm.LLMError):
+            self.llm._send(self.request(), timeout=1, retries=3)
+        self.assertEqual(self.attempts, 1)
+
+    def test_a_connection_error_is_still_retried(self):
+        """Transient connection failures are exactly what retries are for."""
+        self._raise(self.urllib.URLError("connection refused"))
+        with self.assertRaises(self.llm.LLMError):
+            self.llm._send(self.request(), timeout=1, retries=2)
+        self.assertEqual(self.attempts, 3, "should be the initial attempt plus two retries")
+
+
 class TestOllamaDiscovery(unittest.TestCase):
     def test_parses_documented_payload(self):
         models = ollama.parse_tags(TAGS_PAYLOAD)

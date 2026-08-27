@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import socket
 import time
 import urllib.error
 import urllib.request
@@ -198,7 +199,7 @@ class OllamaBackend(Backend):
     name = "ollama"
 
     def __init__(self, model: str, base_url: str = "http://localhost:11434",
-                 think: bool | str | None = False, timeout: int = 600,
+                 think: bool | str | None = False, timeout: int = 240,
                  retries: int = 2, keep_alive: str | None = "10m") -> None:
         self.model = model
         # Tolerate being handed the OpenAI-compatible URL, since that is what every other part
@@ -265,7 +266,19 @@ def _send(request: urllib.request.Request, timeout: int, retries: int) -> dict:
             if exc.code not in (408, 409, 429) and exc.code < 500:
                 raise LLMError(f"HTTP {exc.code}: {detail}") from exc
             last = LLMError(f"HTTP {exc.code}: {detail}")
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        except (TimeoutError, socket.timeout) as exc:
+            # Do not retry a timeout. If a request did not finish inside the budget it will not
+            # finish inside the same budget again, and retrying turns one slow call into three:
+            # a real run spent 28 minutes on a single repair — 600s x 3 attempts — before failing
+            # anyway. A clean failure after one timeout is strictly better than a stall.
+            raise LLMError(
+                f"timed out after {timeout}s (not retried — a repeat would take as long). "
+                f"Lower the token budget, use a smaller model, or raise the timeout."
+            ) from exc
+        except (urllib.error.URLError, json.JSONDecodeError) as exc:
+            # A URLError wrapping a timeout is the same situation wearing a different exception.
+            if isinstance(getattr(exc, "reason", None), (TimeoutError, socket.timeout)):
+                raise LLMError(f"timed out after {timeout}s (not retried)") from exc
             last = LLMError(f"{type(exc).__name__}: {exc}")
         if attempt < retries:
             time.sleep(2 ** attempt)
