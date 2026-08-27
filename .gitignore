@@ -1,0 +1,21 @@
+# Generated manuscripts and project state. Runs are outputs, not source.
+# Remove this line if you want a manuscript's history under version control — per-scene text
+# files are stored precisely so that `git diff` on a repaired scene shows the repair.
+/runs/
+
+# The full slop list, fetched on demand (see data/README.md). The seed list is committed.
+/data/slop_full.json
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# The three story concepts are the author's original creative premises, kept private
+# deliberately: publishing a premise gives it away. docs/TESTING.md documents the acceptance
+# markers, which are the generalisable part, without the concepts themselves.
+/examples/concepts/

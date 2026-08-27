@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "red-thread"
+version = "0.1.0"
+description = "Orchestrated long-form fiction: a spec tree, a fact ledger, and a verifier that refuses to commit prose that broke its brief."
+requires-python = ">=3.11"
+# No runtime dependencies, on purpose. The model adapter is urllib against two documented HTTP
+# APIs; adding an SDK would pin a version for no capability this project uses.
+dependencies = []
+
+[project.scripts]
+redthread = "redthread.cli:main"
+
+[tool.setuptools]
+packages = ["redthread"]
+
+[tool.setuptools.package-data]
+redthread = []
+
+[tool.pytest.ini_options]
+# The suite is plain unittest and runs under either runner:
+#   python -m unittest discover -s tests -t .
+#   pytest
+testpaths = ["tests"]

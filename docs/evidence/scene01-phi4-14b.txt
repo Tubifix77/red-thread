@@ -1,0 +1,15 @@
+Siv Alderman leaned over the terminal in the pump house of Provision substation four, the glow of the monitor casting shadows across her focused brow. The late evening had slipped by unnoticed, the dry season’s stillness pressing against the closed windows. She'd chosen her own time, outside of mandated hours, resenting how this task had somehow made it necessary.
+
+The terminal's hum was the only company she kept, surrounded by equipment that demanded her attention: impellers, couplings, and other parts whose part numbers she could name in her sleep. There was solace in the familiar, the predictable click of keys under her fingertips. Siv was the solitary keeper of this digital language, a language only she could read. No one else in Hallowmere could decipher the scripts that governed their automated world.
+
+She began the tedious task of reconciling the cold-storage failure logs with the data in the core. Cold storage had failed three times in the last two years, each time blamed on component age without further ado. To Siv, this was a half-truth at best.
+
+The screen flickered its steady stream of data as she cross-referenced entries line by line. She frowned when she reached the log entry for the third failure. It wasn't matching up with what the Provision's code indicated. She blinked, unsure if fatigue was clouding her judgment. Misreading was not uncommon in this line of work, even with decades of training. She rechecked and rechecked the entry against the core, but the numbers simply would not align.
+
+As shadows grew longer, her fingers traced over the keys, pressing methodically, each action bringing her closer to the unsettling truth. Her eyes flitted from the glaring screen to her handwritten notes, and then back again. What the logs said was supposed to have happened, and what should have happened according to the Provision did not match up. The anomaly was stark: a logic branch that had been written into the code, something the founders had clearly intended, but something the code could never reach.
+
+Siv's breath caught, then evened out as she reached for her paper notebook. The anomaly's line number went down as if the very act of writing it could somehow solidify its existence in her world. It was an acknowledgment, if not an answer. A small nod to the growing mystery in her hands.
+
+With her task for the evening complete, Siv powered down the terminal. In the silence of the room, the hum of machinery was a low reminder that for all its complexity, it was only a part of a larger, unchangeable system. 
+
+She left the details hidden within Provision's labyrinth, taking nothing more with her than the line number in her palm. The path of what lay ahead, what consequences her understanding might have, remained as enigmatic as the branch itself. Her footsteps echoed softly as she headed out of the pump house, a solitary figure moving against the backdrop of a town blissfully unaware. The night waited for her next move, whatever it might be.

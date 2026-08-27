@@ -1,0 +1,38 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The suite has no dependencies, so the matrix is about the two things that have
+        # actually broken it: Windows console encoding (progress glyphs) and the 3.11 floor
+        # claimed in pyproject.toml.
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run the suite
+        run: python -m unittest discover -s tests -t . -v
+
+      - name: Build the reference plan and audit it
+        # An end-to-end smoke test that needs no model and no API key: if the plan audit stops
+        # reporting clean, either a check regressed or the fixture drifted into a degenerate
+        # shape. Both are worth failing CI over.
+        run: |
+          python examples/build_inherited_glitch.py runs/ci
+          python -m redthread audit runs/ci
+          python -m redthread brief runs/ci --scene 4
