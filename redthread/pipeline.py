@@ -124,6 +124,18 @@ class Config:
     """Write a scene whose predecessor is not committed. Off by default — see `write_scene`."""
 
 
+def _prose_budget(words: int) -> int:
+    """Output budget for a call that must return a whole scene.
+
+    Three tokens per word for the prose, plus a flat 4000 of headroom for reasoning. The headroom
+    is the part that was missing: a thinking model spends tokens before it writes anything, and a
+    budget sized for the prose alone gets truncated. A real run had repair fail in twelve seconds
+    on an 897-word scene because the reply was cut off and the truncation guard — correctly —
+    rejected it, which read as "the model would not do it".
+    """
+    return min(32000, words * 3 + 4000)
+
+
 def _score(violations: list[Violation]) -> tuple[int, int, int]:
     """Sort key for candidate selection. Lower is better."""
     return (
@@ -194,7 +206,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         try:
             reply = models.writer.complete(
                 brief, system=WRITER_SYSTEM,
-                max_tokens=min(32000, int(spec.word_target * 3) + 1000),
+                max_tokens=_prose_budget(spec.word_target),
                 temperature=config.temperature)
         except LLMError as exc:
             result.notes.append(f"draft failed: {exc}")
@@ -319,8 +331,8 @@ def _repair(scene: Scene, violations: list[Violation], models: Models,
     prompt = REPAIR_PROMPT.format(problems="\n".join(lines), text=scene.text)
     try:
         reply = models.writer.complete(prompt, system=WRITER_SYSTEM,
-                                        max_tokens=min(32000, len(scene.text) // 2 + 2000),
-                                        temperature=0.6)
+                                       max_tokens=_prose_budget(scene.word_count()),
+                                       temperature=0.6)
     except LLMError:
         return None
     text = strip_reasoning(reply.text)
@@ -344,7 +356,7 @@ def _expand(scene: Scene, spec: SceneSpec, models: Models) -> str | None:
     try:
         reply = models.writer.complete(
             prompt, system=WRITER_SYSTEM,
-            max_tokens=min(32000, int(spec.word_target * 3) + 1000), temperature=0.8)
+            max_tokens=_prose_budget(spec.word_target), temperature=0.8)
     except LLMError:
         return None
     text = strip_reasoning(reply.text)

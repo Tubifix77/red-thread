@@ -60,6 +60,11 @@ Rules:
 - Do not record what a character feels or believes unless the prose states it as fact.
 - Do not record anything the scene did not actually establish. Inventing facts here is worse \
 than missing them, because an invented fact becomes a constraint on every later scene.
+- BE SPARING. Record only what a later scene could actually contradict. Atmosphere is not a fact: \
+"the screen was flickering", "the room was cold", "her fingers were calloused" are description, \
+and recording them turns every later scene into an argument with the weather. Ten durable facts \
+are worth more than forty transient ones — everything here constrains the rest of the book and is \
+fed into every later brief.
 
 SCENE {index} of "{title}":
 ---
@@ -72,7 +77,14 @@ Schema:
 
 
 def extract_facts(scene: Scene, story: StorySpec, models: Models,
-                  max_facts: int = 60) -> list[Fact]:
+                  max_facts: int = 30) -> list[Fact]:
+    """Prose into quadruples.
+
+    The cap is a backstop against over-recording, not a target. A real run on a local model
+    returned 59 facts for a 689-word scene, mostly atmosphere, and that compounds badly: the
+    ledger fills with transient description, every later brief is padded with it, and
+    `conflict_candidates` starts manufacturing contradictions out of how the light was falling.
+    """
     prompt = EXTRACT_PROMPT.format(index=scene.index, title=story.title,
                                    text=_clip(scene.text, 2500), json_only=JSON_ONLY)
     reply = models.extractor.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)

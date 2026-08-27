@@ -188,6 +188,53 @@ The general lesson, and the reason not to trust the research section above on it
 failure that mattered lived in **the interaction between this project's brief and a specific
 model**, which no external benchmark can see. Run your own briefs.
 
+## Running the full loop locally: what broke
+
+The first end-to-end write run — plan, brief, draft, verify, repair, commit gate — was done with
+`qwen3:8b` in every role. The commit gate correctly refused the scene and nothing entered the
+ledger, which is the behaviour the architecture promises. Underneath that, four defects, and the
+first one is the important one.
+
+**1. Reasoning blocks silently destroyed structured output.** The run reported
+`0 facts extracted`. The obvious reading is that an 8B cannot do structured extraction — the exact
+risk this document warned about. It was wrong. Called directly with the same prompt on the same
+text, `qwen3:8b` extracts **18 clean facts**. The bug was ours: qwen3 is a thinking model and emits
+`<think>` blocks on the *structured* calls as readily as on prose, and `strip_reasoning` was only
+applied to writer output. The reasoning derailed the brace matching in `parse_json`, the parse
+failed, and the only visible symptom was a scene reporting no facts.
+
+The lesson generalises past this bug: **"the local model can't do it" is a hypothesis, not an
+observation.** Test the capability in isolation before designing around its absence. Stripping now
+happens inside `parse_json`, so every probe is covered at once.
+
+**2. An empty extraction passed the commit gate.** Only a parse *failure* blocked. An empty facts
+list did not, so a scene could have committed with the ledger blind to it — every later brief
+saying "nothing established yet" while the manuscript filled up. Now a BLOCKER above 150 words.
+
+**3. Under-length scenes were unrepairable by construction.** The repair prompt says "do not change
+the length by more than a few words", and length violations were being sent to it. A 564-word scene
+"repaired" to 591 and was held back anyway. Short scenes now take a separate expansion path — which
+worked on the next run: **689 → 897 words**, length resolved, minor violations down from three to
+one.
+
+**4. Token budgets ignored reasoning.** Repair failed in twelve seconds on an 897-word scene
+because the budget was sized for the prose alone, the reply was cut off, and the truncation guard
+correctly rejected it. Every whole-scene call now carries 4000 tokens of headroom.
+
+And one tuning problem rather than a bug: extraction returned **59 facts for a 689-word scene**,
+mostly atmosphere — "the screen was flickering", "her fingers were calloused". That compounds
+badly, because the ledger goes into every later brief and `conflict_candidates` would start
+manufacturing contradictions out of how the light was falling. The prompt now says to be sparing
+and the cap is 30.
+
+### What this says about local viability
+
+`qwen3:8b` can carry the extractor role. That was the biggest open question in this document and
+the answer is yes, once the reasoning-block problem is out of the way. What it struggles with is
+holding the *prohibitions* — somatic emotion, the forbidden-phrase list, thematic gloss survive
+into the draft and repair does not reliably remove them. Which is consistent with the bench: word
+targets and adherence, not capability, are where the small models lose.
+
 ## Measuring adherence yourself
 
 ```bash

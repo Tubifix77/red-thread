@@ -236,8 +236,14 @@ def render_brief(
         task.append(f"  {i}. {beat.summary}")
     if spec.notes:
         task.append(f"\nAlso: {spec.notes}")
+    # The target is stated at the top of the brief and again here, in the last line. Those are the
+    # two positions a model actually attends to (Liu et al.), and real runs came back consistently
+    # short — around two thirds of target — with the figure given only once, at the far end of a
+    # 1,000-word brief. Restating it costs nine words.
     task.append(
-        "\nWrite the scene now. Begin with the first sentence of prose."
+        f"\nWrite the scene now, in full. Begin with the first sentence of prose, cover every "
+        f"beat above, and write about {spec.word_target} words — a scene much shorter than that "
+        f"has skipped a beat or summarised one."
     )
     parts.append("\n".join(task))
 

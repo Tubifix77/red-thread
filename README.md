@@ -277,19 +277,36 @@ accumulates and survives reload, threads reach their final states, the seam is f
 verbatim, a mid-run rejection halts cleanly with nothing from the failed scene in dynamic memory,
 and a re-run resumes from the gap. Every check catches its defect.
 
-**Not proven, and only a real model can settle it:**
+**Proven by running it, on a local 8B with no API key:** the planner turns a premise into a plan
+that audits clean. The scheduler's guarantee holds even when the model misbehaves. The full write
+loop executes — brief, candidates, verification, expansion, commit gate — and the gate refuses,
+leaving the ledger untouched and the run halted rather than accumulating damage. Nine defects were
+found this way that no test had caught, and every one of them is now a test; the details are in
+[docs/MODELS.md](docs/MODELS.md).
 
-1. **Whether the prose is good.** The test suite uses fixture prose. Nothing here has yet produced
-   a scene worth reading.
-2. **Whether the seams actually disappear.** The chunk-buffer technique is validated in a different
+The most useful of those: a scene reported `0 facts extracted`, which read exactly like "an 8B
+can't do structured output". It wasn't. The same model on the same text extracts 18 clean facts —
+the bug was that reasoning blocks from a thinking model were only stripped from *prose* output, so
+the structured probes silently lost their JSON. **"The local model can't do it" is a hypothesis,
+not an observation.**
+
+**Not proven, and the honest list:**
+
+1. **Whether the prose is good.** Still the big one. No scene has yet cleared the gate on a local
+   model, and nothing here has produced a passage worth reading. The checks score adherence; they
+   cannot score quality, and no amount of them will.
+2. **Whether a full manuscript holds together.** Scene one has never committed. The cross-corpus
+   checks (`check_repetition`) have never had a real corpus to work against.
+3. **Whether scheduling structure costs anything creatively.** Making both markers hold by
+   construction removes a class of failure and also removes the model's freedom to put a turn
+   where it wants one. No source compares scheduled against proposed structure for
+   reader-perceived quality. This is now the largest unexamined assumption in the project.
+4. **Whether the seams actually disappear.** The chunk-buffer technique is validated in a different
    modality only (long-form speech), not for prose. `check_seam` catches mechanical echo; whether a
    reader feels the join is a different question.
-3. **Whether bottom-up amendment helps.** DOME shows dynamic outlining beats rigid outlining on
-   conflict rate, but nothing found isolates prose amending its own spec as a quality win. Not yet
-   implemented — the spec tree is currently hand-authored.
-4. **Local-model viability for the structured stages.** Untested. The hybrid is reasoning, not a
-   measured result.
-5. **The generation-unit size.** Re3 drafts 256-token passages, ConWriter works at scene level; no
+5. **Whether bottom-up amendment helps.** Prose amending its own spec — the difference between an
+   outline-filler and a writing tool. Unbuilt.
+6. **The generation-unit size.** Re3 drafts 256-token passages, ConWriter works at scene level; no
    source compares unit sizes for reader-perceived quality. Scene-sized units with beat-sized specs
    is a judgement call.
 
