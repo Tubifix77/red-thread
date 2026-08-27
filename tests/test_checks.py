@@ -369,3 +369,48 @@ class TestRunAll(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTruncated(unittest.TestCase):
+    """The counterpart of the bounded output budget: a capped runaway ends mid-sentence."""
+
+    def test_mid_sentence_ending_is_flagged(self):
+        found = checks.check_truncated(scene("She walked to the bench and picked up the"))
+        self.assertEqual(found[0].kind, "truncated_scene")
+        self.assertEqual(found[0].severity, Severity.MAJOR)
+
+    def test_terminal_punctuation_passes(self):
+        for ending in ("It held.", "Did it hold?", "It held!", "It held…",
+                       '"It held."', "It held.”"):
+            self.assertEqual(checks.check_truncated(scene("Some prose. " + ending)), [],
+                             ending)
+
+    def test_empty_scene_is_not_double_flagged(self):
+        self.assertEqual(checks.check_truncated(scene("   ")), [])
+
+
+class TestSeamTailCopy(unittest.TestCase):
+    """From the first complete manuscript: scene 2 re-used scene 1's closing sentence as its
+    own ending, verbatim — the tail its brief handed it as context, copied forward."""
+
+    def test_copied_ending_is_major(self):
+        tail = ("she did not know why the provision had done what it had done and "
+                "she only needed to remember it now")
+        text = ("Otto said nothing else worth keeping. " * 30
+                + "She did not know why the Provision had done what it had done and she "
+                  "only needed to remember it now.")
+        found = checks.check_seam(scene(text), tail)
+        self.assertIn("seam_tail_copy", kinds(found))
+
+    def test_fresh_ending_passes(self):
+        tail = "she wrote the number down and closed the book on it for the night"
+        text = ("Otto said nothing else worth keeping. " * 30
+                + "The truck pulled out of the yard with its lights off.")
+        found = checks.check_seam(scene(text), tail)
+        self.assertNotIn("seam_tail_copy", kinds(found))
+
+    def test_name_stance_opening_is_flagged_as_reset(self):
+        found = checks.check_seam(
+            scene("Siv Alderman stood in the maintenance yard with the notebook."),
+            "some previous text here")
+        self.assertIn("seam_reset", kinds(found))

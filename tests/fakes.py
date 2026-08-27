@@ -213,17 +213,49 @@ _FILLER = [
 ]
 
 
+# Distinct closings, one per scene position, for the same reason as the openings: consecutive
+# fixture scenes must not share their final 5-grams, or `seam_tail_copy` — which exists to catch
+# a scene re-using the previous ending — fires on the fixture's own filler. Each entry is two
+# sentences totalling more than the check's 25-word window, so no cycled filler is ever inside
+# the compared endings.
+_CLOSINGS = [
+    "The spare bulb went into her pocket against every rule about pockets. She hung the "
+    "clipboard back on its nail and pulled the door to behind her.",
+    "One of the couplings still had paint on the thread from the factory. He carried the "
+    "bucket inside and did not sort them any further.",
+    "The count came to forty-one, which was one more than the ledger wanted. The dog followed "
+    "her as far as the gate and no further.",
+    "The MISC labels came off in strips and she balled them into her apron. She stacked the "
+    "four crates back in their wrong order and left them so.",
+    "Neither of them had touched the biscuits and neither would mention it. The mug of tea "
+    "went cold on the oilcloth between them.",
+    "The plough number had smudged on her wrist into something useless. Beata folded the "
+    "licence into her coat and took the long way home.",
+    "The chairs from the harvest meeting stayed stacked where they had been. Lund gathered "
+    "both folders under one arm and turned the lamp off.",
+    "The byre roof ticked as the day's heat went out of the iron. The kettle clicked off a "
+    "third time and nobody in the kitchen moved.",
+    "The fire extinguisher had rusted a ring into the concrete years ago. Siv propped the "
+    "door with it again on her way out into the dark.",
+    "A splice she had made herself in her first year still held tight. She walked the last "
+    "stretch of wire without stopping and let herself out.",
+]
+
+
 def clean_prose(words: int = 900, variant: int | None = None) -> str:
     """Prose that passes every deterministic check, at roughly the requested length.
 
-    Pass `variant` to get a distinct opening — required for any test that writes consecutive
-    scenes, or the seam check will reject everything after scene one. Callers that only write a
-    single scene can leave it unset.
+    Pass `variant` to get a distinct opening and closing — required for any test that writes
+    consecutive scenes, or the seam checks reject everything after scene one. Callers that only
+    write a single scene can leave it unset.
     """
     opening = _OPENINGS[(variant or 0) % len(_OPENINGS)]
+    closing = _CLOSINGS[(variant or 0) % len(_CLOSINGS)]
     out: list[str] = [opening]
-    count = len(opening.split())
-    i = 0
+    count = len(opening.split()) + len(closing.split())
+    # Rotate the filler per variant so consecutive scenes do not end on the same filler run-up
+    # to their (already distinct) closing sentences.
+    i = (variant or 0) * 3
     while count < words:
         sentence = _FILLER[i % len(_FILLER)]
         i += 1
@@ -232,6 +264,7 @@ def clean_prose(words: int = 900, variant: int | None = None) -> str:
             break
         out.append(sentence)
         count += length
+    out.append(closing)
     return " ".join(out)
 
 

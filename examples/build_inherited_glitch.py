@@ -125,6 +125,7 @@ def build_story() -> StorySpec:
                     "Which way she goes. Both terminal outcomes cost lives; the story must not "
                     "signal a correct answer."
                 ),
+                reveal_scene=10,
                 payoff=(
                     "She chooses, and the cost of the road she did not take stays legible on "
                     "the page. Nobody thanks her."
@@ -137,6 +138,7 @@ def build_story() -> StorySpec:
                     "That the well's registry entry was altered sixty years ago, for reasons "
                     "that have nothing to do with the code error."
                 ),
+                reveal_scene=6,
                 payoff=(
                     "Beata gets an answer about the well and it does not solve her problem. "
                     "This thread must never become evidence for the main plot."
@@ -146,6 +148,7 @@ def build_story() -> StorySpec:
                 kind=ThreadKind.RELATIONSHIP,
                 states=["dormant", "planted", "complicated", "escalated", "paid_off"],
                 concealment="That Otto has suspected something for years and chose not to look.",
+                reveal_scene=5,
                 payoff=(
                     "The person who taught her to be careful turns out to have been careful "
                     "about the wrong thing. He does not die and he is not redeemed."

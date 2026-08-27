@@ -84,6 +84,8 @@ REMEDIES = {
                           "smallest number of sentences that will carry it."),
     "thread_prohibition": "Remove what was revealed. The reader must not learn it in this scene.",
     "continuity_contradiction": "Change the new detail to match what was established earlier.",
+    "truncated_scene": ("The scene was cut off mid-sentence. End it properly at its last "
+                        "complete beat instead."),
     "internal_repetition": "Vary the repeated phrasing.",
     "slop": "Replace the flagged phrasing with something plainer.",
 }
@@ -110,7 +112,8 @@ the context sentences. Match the voice of the context. One sentence, two at most
 
 
 def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models: Models,
-              notes: list[str], samples: list[str] | None = None) -> str | None:
+              notes: list[str], samples: list[str] | None = None,
+              round_no: int = 0) -> str | None:
     """Sentence-local repair: splice out or rewrite only the offending sentences.
 
     This is what ConWriter's repair actually is — "revising only the conflict-bearing
@@ -165,7 +168,11 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                 detail=v.detail[:220], remedy=remedy,
                 before=before, sentence=original, after=after)
             try:
-                reply = models.writer.complete(prompt, max_tokens=300, temperature=0.6)
+                # The temperature climbs with the round, past identical-prompt caching: a real
+                # run got the same failed rewrite back in 0 seconds three rounds straight,
+                # because nothing about the request had changed.
+                reply = models.writer.complete(prompt, max_tokens=300,
+                                               temperature=min(1.0, 0.6 + 0.15 * round_no))
             except LLMError:
                 continue
             replacement = strip_reasoning(reply.text).strip().strip('"').strip()
@@ -186,7 +193,12 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                     rep_grams & set(checks.ngrams(checks.words(sample), 6))
                     for sample in samples)
             elif v.kind in DELETE_KINDS:
-                probe = Scene(spec_id=scene.spec_id, index=scene.index, text=replacement)
+                # Verified in context, not in isolation: a replacement can pass alone and still
+                # form a fresh gloss construction across the splice seam — a real run spliced a
+                # clean sentence after "…, but because" and produced "because she knew that…".
+                spliced_region = (text[max(0, lo - 80):lo] + replacement
+                                  + text[hi:hi + 80])
+                probe = Scene(spec_id=scene.spec_id, index=scene.index, text=spliced_region)
                 failed_verify = bool(checks.check_thematic_gloss(probe))
             elif v.kind == "forbidden_phrase":
                 # Told "any wording will do except that one", a real run's writer returned the
@@ -315,7 +327,12 @@ def _prose_budget(words: int, backend=None) -> int:
     field, the overhead is zero and the budget can be tight.
     """
     overhead = getattr(backend, "reasoning_overhead", 4000) if backend is not None else 4000
-    return min(32000, words * 2 + 800 + overhead)
+    # 1.5 tokens per word puts the ceiling near 1.3x the target. That makes a 2x runaway
+    # physically impossible — the climax scenes of a real run came back at 2973 and 3062 words
+    # against a 1300 target, and five trims could not close a gap that size. A draft that hits
+    # the ceiling ends mid-sentence instead, which `check_truncated` catches deterministically
+    # and the trim path repairs at a sentence boundary. Bounded-and-detectable beats unbounded.
+    return min(32000, int(words * 1.5) + 250 + overhead)
 
 
 def _score(violations: list[Violation]) -> tuple[int, int, int]:
@@ -431,15 +448,24 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         short = next((v for v in fixable if v.kind == "length"
                       and scene.word_count() < spec.word_target), None)
         if short is not None:
-            return _expand(scene, spec, models), "expand"
+            return _expand(scene, spec, models, round_no=result.repairs), "expand"
+        if any(v.kind == "truncated_scene" for v in fixable):
+            # Snap to the last complete sentence, in code. A truncated draft is the budget cap
+            # doing its job; asking a model to "trim" it just regenerates at length — a real
+            # finale burned four rounds that way. The cap sits near 1.3–1.5x target, so the
+            # snapped scene lands in at worst minor-over territory.
+            terminal = set('.!?…"\'') | {"”", "’"}
+            complete = [hi for _, hi in checks.sentence_spans(scene.text)
+                        if scene.text[:hi].rstrip()[-1:] in terminal]
+            return (scene.text[:complete[-1]] if complete else None), "snap"
         if any(v.kind == "length_runaway" for v in fixable):
-            return _trim(scene, spec, models), "trim"
+            return _trim(scene, spec, models, round_no=result.repairs), "trim"
         quoteless = [v for v in fixable
                      if not (v.quote and checks.locate_quote(scene.text, v.quote))]
         if quoteless:
             return _repair(scene, fixable, models, config), "repair"
         repaired = _surgical(scene, spec, fixable, models, result.notes,
-                             samples=project.story.style.samples)
+                             samples=project.story.style.samples, round_no=result.repairs)
         if repaired is None:
             return _repair(scene, fixable, models, config), "repair"
         return repaired, "surgical"
@@ -451,9 +477,13 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             break
         repaired, action = attempt_fix(fixable)
         if repaired is None:
-            result.notes.append(f"{action} call failed; keeping previous draft")
-            progress.stage(f"{action} {result.repairs + 1}", "call failed or unusable")
-            break
+            # Consume a round and try again with the temperature bumped, rather than forfeiting
+            # the whole budget: a single unusable trim reply used to `break` here, leaving a
+            # runaway scene unrepaired with three rounds still in hand.
+            result.repairs += 1
+            result.notes.append(f"{action} attempt {result.repairs} unusable; retrying")
+            progress.stage(f"{action} {result.repairs}", "call failed or unusable · retrying")
+            continue
         result.repairs += 1
 
         candidate, new_det = run_deterministic(repaired)
@@ -462,9 +492,11 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             (action == "expand"
              and any(v.kind == "length" for v in det_violations)
              and not any(v.kind == "length" for v in new_det))
-            or (action == "trim"
-                and any(v.kind == "length_runaway" for v in det_violations)
-                and not any(v.kind == "length_runaway" for v in new_det)))
+            or (action in ("trim", "snap")
+                and any(v.kind in ("length_runaway", "truncated_scene")
+                        for v in det_violations)
+                and not any(v.kind in ("length_runaway", "truncated_scene")
+                            for v in new_det)))
         if not (improved or fixed_length):
             result.notes.append(f"{action} attempt {result.repairs} did not improve; discarded")
             progress.stage(f"{action} {result.repairs}", "no improvement · discarded")
@@ -586,7 +618,7 @@ def _repair(scene: Scene, violations: list[Violation], models: Models,
     return text
 
 
-def _trim(scene: Scene, spec: SceneSpec, models: Models) -> str | None:
+def _trim(scene: Scene, spec: SceneSpec, models: Models, round_no: int = 0) -> str | None:
     """Shrink a runaway scene toward its target.
 
     The counterpart of `_expand`, and just as necessary: the whole-scene repair prompt forbids
@@ -601,17 +633,20 @@ def _trim(scene: Scene, spec: SceneSpec, models: Models) -> str | None:
     try:
         reply = models.writer.complete(
             prompt, system=WRITER_SYSTEM,
-            max_tokens=_prose_budget(spec.word_target, models.writer), temperature=0.4)
+            max_tokens=_prose_budget(spec.word_target, models.writer),
+            temperature=min(1.0, 0.4 + 0.2 * round_no))
     except LLMError:
         return None
     text = strip_reasoning(reply.text)
-    # A "trim" that grew, or that gutted the scene below the floor, is not a trim.
-    if not (spec.word_target * 0.7 <= len(text.split()) < scene.word_count()):
+    # A "trim" that grew is not a trim. One that over-cut is still progress — the length checks
+    # flag it and the expand path pulls it back up — so the floor is generous: a real run
+    # rejected a usable trim, hit `break`, and forfeited the whole repair budget over it.
+    if not (spec.word_target * 0.5 <= len(text.split()) < scene.word_count()):
         return None
     return text
 
 
-def _expand(scene: Scene, spec: SceneSpec, models: Models) -> str | None:
+def _expand(scene: Scene, spec: SceneSpec, models: Models, round_no: int = 0) -> str | None:
     """Grow an under-length scene toward its target without adding plot.
 
     Kept separate from `_repair` because the two instructions are contradictory: repair must not
@@ -625,7 +660,8 @@ def _expand(scene: Scene, spec: SceneSpec, models: Models) -> str | None:
     try:
         reply = models.writer.complete(
             prompt, system=WRITER_SYSTEM,
-            max_tokens=_prose_budget(spec.word_target, models.writer), temperature=0.8)
+            max_tokens=_prose_budget(spec.word_target, models.writer),
+            temperature=min(1.0, 0.8 + 0.1 * round_no))
     except LLMError:
         return None
     text = strip_reasoning(reply.text)

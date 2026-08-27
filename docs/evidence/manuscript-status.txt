@@ -1,0 +1,32 @@
+title                The Inherited Glitch
+scenes_planned       10
+scenes_committed     10
+words                12169
+facts                148
+threads_resolved     4
+threads_total        4
+knowledge_facts      30
+
+Threads:
+  [✓] T-CODE         paid_off       The dead line in the founders' code
+  [✓] T-CHOICE       chosen         Expose it or carry it
+  [✓] T-WELL         paid_off       Beata's eastern well
+  [✓] T-OTTO         paid_off       Siv and Otto
+
+Thread moves:
+  s1    T-CODE         dormant → planted
+  s2    T-OTTO         dormant → planted
+  s3    T-WELL         dormant → planted
+  s4    T-CODE         planted → complicated
+  s5    T-CHOICE       dormant → dilemma_visible
+  s5    T-OTTO         planted → complicated
+  s6    T-WELL         planted → complicated
+  s7    T-CODE         complicated → escalated
+  s7    T-CHOICE       dilemma_visible → cost_named
+  s8    T-CHOICE       cost_named → forced
+  s8    T-OTTO         complicated → escalated
+  s8    T-WELL         complicated → escalated
+  s9    T-CODE         escalated → paid_off
+  s9    T-OTTO         escalated → paid_off
+  s10   T-CHOICE       forced → chosen
+  s10   T-WELL         escalated → paid_off

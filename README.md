@@ -138,7 +138,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`models.py`](redthread/models.py) | Threads, transitions, specs, quadruple facts, violations | ConWriter, DOME |
 | [`ledger.py`](redthread/ledger.py) | Fact store, scoped retrieval, character knowledge, conflict candidates | DOME |
 | [`brief.py`](redthread/brief.py) | The scene brief — the most important file here | Liu et al., STORYTELLER, StoryScope |
-| [`checks.py`](redthread/checks.py) | 14 scene checks + a 3-part plan audit. No model calls | StoryScope, Antislop |
+| [`checks.py`](redthread/checks.py) | 16 scene checks + a 3-part plan audit. No model calls | StoryScope, Antislop |
 | [`verify.py`](redthread/verify.py) | 5 single-purpose LLM probes: extraction, contradiction, thread satisfaction, anti-tells, tension | DOME, ConWriter, Re3 |
 | [`pipeline.py`](redthread/pipeline.py) | The state machine and the commit gate | ConWriter, Re3 |
 | [`schedule.py`](redthread/schedule.py) | Deterministic thread scheduling — both markers by construction | CONCOCT |
@@ -149,7 +149,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`progress.py`](redthread/progress.py) | Orchestrator view — stages, timings, thread state | — |
 | [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` | — |
 
-**227 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**285 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
 
@@ -272,38 +272,41 @@ accumulates and survives reload, threads reach their final states, the seam is f
 verbatim, a mid-run rejection halts cleanly with nothing from the failed scene in dynamic memory,
 and a re-run resumes from the gap. Every check catches its defect.
 
-**Proven by running it, on a local 8B with no API key:** the planner turns a premise into a plan
-that audits clean. The scheduler's guarantee holds even when the model misbehaves. The full write
-loop executes — brief, candidates, verification, expansion, commit gate — and the gate refuses,
-leaving the ledger untouched and the run halted rather than accumulating damage. Nine defects were
-found this way that no test had caught, and every one of them is now a test; the details are in
-[docs/MODELS.md](docs/MODELS.md).
+**Proven by running it to completion, all local, zero API calls:** a full manuscript exists.
+*The Inherited Glitch* — 10 scenes, 12,169 words, generated end to end on `qwen3:8b` in every role
+on a 10GB card. Every thread walked its state machine to its terminal state on schedule; 148 facts
+accumulated in the ledger and fed every later brief; concealments were enforced and released at
+their declared reveal scenes; the commit gate refused twenty-odd bad versions along the way and
+nothing it refused ever contaminated dynamic memory. The run record, seam audit, and a sample
+scene are in [docs/evidence/](docs/evidence/manuscript-run.md).
 
-The most useful of those: a scene reported `0 facts extracted`, which read exactly like "an 8B
-can't do structured output". It wasn't. The same model on the same text extracts 18 clean facts —
-the bug was that reasoning blocks from a thinking model were only stripped from *prose* output, so
-the structured probes silently lost their JSON. **"The local model can't do it" is a hypothesis,
-not an observation.**
+Getting there surfaced roughly twenty defects no test had caught — every one is now a test, and
+the mechanism-level findings (judge calibration, phased repair, surgical splicing, bounded output
+budgets) are written up in [docs/MODELS.md](docs/MODELS.md) and the addendum in
+[docs/RESEARCH.md](docs/RESEARCH.md). The one worth repeating: a scene reported `0 facts
+extracted`, which read exactly like "an 8B can't do structured output" — the same model on the
+same text extracts 18 clean facts, and the bug was ours. **"The local model can't do it" is a
+hypothesis, not an observation.**
 
 **Not proven, and the honest list:**
 
-1. **Whether the prose is good.** Still the big one. No scene has yet cleared the gate on a local
-   model, and nothing here has produced a passage worth reading. The checks score adherence; they
-   cannot score quality, and no amount of them will.
-2. **Whether a full manuscript holds together.** Scene one has never committed. The cross-corpus
-   checks (`check_repetition`) have never had a real corpus to work against.
-3. **Whether scheduling structure costs anything creatively.** Making both markers hold by
+1. **Whether the prose is *good*.** The structure held; the sentences are an 8B's. The system's
+   own cross-corpus audit says so: 27 five-word phrases recur in three or more scenes ("she
+   didn't need to…" ×5), and eight of ten scenes opened on name-plus-stance before that became a
+   check. Committed-with-minors is the designed behaviour — the per-scene reports carry the
+   full list for a human pass. A better local writer slots in with one flag.
+2. **Whether scheduling structure costs anything creatively.** Making both markers hold by
    construction removes a class of failure and also removes the model's freedom to put a turn
    where it wants one. No source compares scheduled against proposed structure for
-   reader-perceived quality. This is now the largest unexamined assumption in the project.
-4. **Whether the seams actually disappear.** The chunk-buffer technique is validated in a different
-   modality only (long-form speech), not for prose. `check_seam` catches mechanical echo; whether a
-   reader feels the join is a different question.
-5. **Whether bottom-up amendment helps.** Prose amending its own spec — the difference between an
+   reader-perceived quality. This is the largest unexamined assumption in the project.
+3. **Whether the seams actually disappear for a reader.** Mechanically they held — the audit
+   shows every scene opening against the right prior state. Whether a reader *feels* the joins
+   is a different question, and one committed manuscript is one data point.
+4. **Whether bottom-up amendment helps.** Prose amending its own spec — the difference between an
    outline-filler and a writing tool. Unbuilt.
-6. **The generation-unit size.** Re3 drafts 256-token passages, ConWriter works at scene level; no
-   source compares unit sizes for reader-perceived quality. Scene-sized units with beat-sized specs
-   is a judgement call.
+5. **The generation-unit size.** Re3 drafts 256-token passages, ConWriter works at scene level; no
+   source compares unit sizes for reader-perceived quality. Scene-sized units with beat-sized
+   specs is a judgement call.
 
 ## Next
 

@@ -177,6 +177,25 @@ def check_length(scene: Scene, spec: SceneSpec, tolerance: float = 0.15,
     return []
 
 
+def check_truncated(scene: Scene) -> list[Violation]:
+    """A scene that stops mid-sentence was cut off, not ended.
+
+    The counterpart of the bounded output budget: with the ceiling near 1.3x the word target, a
+    runaway draft hits the cap instead of running to 2x, and what that looks like is a scene
+    whose last character is not sentence-terminal. Deterministic, and repaired by the trim path,
+    which ends at a sentence boundary by construction.
+    """
+    text = scene.text.rstrip().rstrip("\"'”’)")
+    if not text:
+        return []
+    if text[-1] in ".!?…—":
+        return []
+    tail_words = " ".join(text.split()[-8:])
+    return [Violation("truncated_scene", Severity.MAJOR,
+                      "the scene stops mid-sentence — the draft hit its output ceiling",
+                      "check_truncated", tail_words)]
+
+
 # --------------------------------------------------------------------------------------
 # 2. format leakage
 # --------------------------------------------------------------------------------------
@@ -499,6 +518,10 @@ _OPENERS = [
     re.compile(r"^\s*(the (rain|sun|wind|air|morning|light|sky))\b", re.I),
     re.compile(r"^\s*\w+ (?:woke|awoke|opened (?:her|his|their) eyes)\b", re.I),
     re.compile(r"^\s*(?:later|afterwards?|the next (?:day|morning)),?\s", re.I),
+    # Name-plus-stance: "Siv Alderman stood in the yard…". One is fine; as a habit it is scene
+    # monotony — the first complete local manuscript opened eight of its ten scenes this way.
+    re.compile(r"^\s*[A-Z][a-z]+(?: [A-Z][a-z]+)? (?:stood|was standing|sat|was sitting|"
+               r"walked into|stepped into)\b"),
 ]
 
 
@@ -537,10 +560,29 @@ def check_seam(scene: Scene, previous_tail: str) -> list[Violation]:
         if m and previous_tail:
             out.append(Violation(
                 "seam_reset", Severity.MINOR,
-                "opens with a scene-reset move (weather / waking / time-skip label) despite "
-                "following directly on from the previous scene",
+                "opens with a stock scene-opening move (weather / waking / time-skip / "
+                "name-plus-stance) despite following directly on from the previous scene",
                 "check_seam", m.group(0).strip()))
             break
+
+    # The ending copied back. The brief hands each scene the previous one's tail as continuity
+    # context, and the first complete local manuscript re-used that tail as its own closing
+    # line, verbatim, in the very next scene — a refrain nobody wrote, logged only as a MINOR
+    # repetition at the time. An ending duplicated across consecutive scenes is a MAJOR in its
+    # own right.
+    if previous_tail:
+        # Windowed to the final 25 words: the observed failure was one full closing sentence
+        # copied forward, and a wider window starts matching ordinary shared vocabulary from
+        # mid-scene instead of the ending itself.
+        closing = set(ngrams(words(" ".join(scene.text.split()[-25:])), 5))
+        prev_close = set(ngrams(words(" ".join(previous_tail.split()[-25:])), 5))
+        stolen = closing & prev_close
+        if len(stolen) >= 3:
+            out.append(Violation(
+                "seam_tail_copy", Severity.MAJOR,
+                f"the scene's ending repeats {len(stolen)} five-word run(s) of the previous "
+                f"scene's ending — the closing line was copied forward",
+                "check_seam", " ".join(next(iter(stolen)))))
     return out
 
 
@@ -634,6 +676,7 @@ def run_all(
     out: list[Violation] = []
     out += check_format(scene)
     out += check_length(scene, spec)
+    out += check_truncated(scene)
     out += check_seam(scene, previous_tail)
     out += check_character_overlap(spec, previous_characters or [])
     out += check_pov(scene, story)

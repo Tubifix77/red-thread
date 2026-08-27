@@ -266,8 +266,10 @@ class TestSilentFailureGuards(PipelineCase):
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=1))
 
-        self.assertEqual(result.repairs, 0)
-        self.assertTrue(any("expand call failed" in n for n in result.notes), result.notes)
+        # The unusable reply consumes a round and is retried, not spliced and not forfeited.
+        self.assertTrue(any("expand attempt 1 unusable; retrying" in n
+                            for n in result.notes), result.notes)
+        self.assertNotIn("Three words only.", result.scene.text)
 
     def test_an_over_long_scene_still_goes_to_repair(self):
         """Over-length is MINOR and is not an expansion problem."""
@@ -388,7 +390,8 @@ class TestRepair(PipelineCase):
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=1))
 
-        self.assertEqual(result.repairs, 0)
+        # This truncation hits phase C — the single bounded response to the judge — whose
+        # failure wording differs from phase A's retry loop.
         self.assertIn("repair call failed; keeping previous draft", result.notes)
 
     def test_repair_budget_is_bounded(self):
@@ -717,7 +720,7 @@ class TestTrim(PipelineCase):
                              Config(candidates=1, max_repairs=1))
 
         self.assertFalse(result.committed)
-        self.assertTrue(any("call failed" in n for n in result.notes), result.notes)
+        self.assertTrue(any("unusable; retrying" in n for n in result.notes), result.notes)
 
     def test_length_ties_break_toward_the_target(self):
         """A real run kept a 2.4x runaway over an on-length draft because the violation tuples

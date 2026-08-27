@@ -234,8 +234,11 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
         label = thread.name if thread else tid
         for item in op.post:
             required.append((tid, f"[{label}] {item}"))
-        if op.to_state:
-            required.append((tid, f"[{label}] the thread must end in the state: {op.to_state}"))
+        # op.to_state is deliberately NOT given to the judge. State names are this system's
+        # bookkeeping labels ("chosen", "paid_off"), not textual events — a judge asked whether
+        # prose "ends the thread in state paid_off" can only hallucinate the mapping, and a real
+        # finale was held back on exactly that. The concrete post lines above are the checkable
+        # rendering of the transition; the state change itself is applied by Project.commit.
         for item in op.forbid:
             forbidden.append((tid, f"[{label}] {item}"))
         if (thread and thread.concealment

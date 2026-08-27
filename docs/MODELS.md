@@ -268,6 +268,33 @@ third-limited interiority — as theme-explaining.
 The first scene ever to commit on a fully local pipeline did so twenty minutes after this policy
 landed: 924 words, zero blockers, zero majors, 14 facts, 34 seconds.
 
+## The night it finished: a complete manuscript on one 8B
+
+2026-08-28, overnight, fully autonomous: *The Inherited Glitch*, 10/10 scenes, 12,169 words,
+`qwen3:8b` in every role, RTX 3080 10GB, zero API calls. Scene times 29s–2m42s once the machinery
+stabilised. The full defect log lives in the commit history; the pattern behind it is worth more
+than the list:
+
+**Every deadlock traced to asking a model for a judgement code could make, or asking it in a form
+it could not satisfy.** The judge re-run inside the repair loop (flipped verdicts poisoned every
+comparison — now it judges once). The state-name pseudo-requirement ("thread must end in state
+'chosen'" — our bookkeeping label, not a textual event; the judge could only hallucinate a
+mapping). The concealment enforced on the reveal scene itself (a brief that simultaneously
+required and forbade the same disclosure). Whole-scene rewrites asked of a model that can manage
+one sentence (surgical splicing, code-verified in context). Trims asked of a model that
+regenerates at length (the output budget now makes runaway physically impossible, and truncation
+snaps to the last sentence in code). Each fix moved work from the model to code, and each one is
+a test.
+
+**The honest prose verdict** is in [evidence/manuscript-run.md](evidence/manuscript-run.md): the
+structure held completely — threads, seams, facts, concealments — and the sentences are an 8B's.
+The system's own cross-corpus audit caught the tics (27 recurring 5-grams; a closing line copied
+verbatim into the next scene's ending; name-plus-stance openings on eight of ten scenes), logged
+them as MINOR per the calibration policy, and two of them became deterministic checks the same
+night. That is the designed division of labour: the machine guarantees the book's *shape* and
+surfaces its prose debt scene by scene; raising the sentence ceiling is a writer-model upgrade,
+one `--local` flag away.
+
 ## Measuring adherence yourself
 
 ```bash
