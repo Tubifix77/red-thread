@@ -361,13 +361,16 @@ def probe_tells(scene: Scene, models: Models) -> list[Violation]:
         # let a hallucinated judgement burn a repair round or hold a scene back.
         if quote and _checks.locate_quote(scene.text, quote) is None:
             continue
-        severity = (Severity.MAJOR if str(row.get("severity", "minor")).lower() == "major"
-                    else Severity.MINOR)
-        if not quote:
-            # A claim with no evidence at all is worth logging, not repairing against.
-            severity = Severity.MINOR
+        # Advisory, always. Calibrated on the target judge (qwen3:8b, temperature 0, three
+        # samples each): it flags the glossy fixture correctly 3/3 — and also flags "The tally
+        # sheet had been photocopied so often that the column headings had closed up", a pure
+        # physical description, as thematic gloss 3/3. A judge with a hard false-positive floor
+        # will find a MAJOR in any scene, which as a blocking gate means nothing ever commits.
+        # Blocking power for gloss belongs to the deterministic check, which passes the clean
+        # fixture and catches the glossy one; these findings are kept as MINOR so a human
+        # reading scenes/NNNN.json still sees them.
         out.append(Violation(
-            f"tell_{tell}", severity,
+            f"tell_{tell}", Severity.MINOR,
             f"{_TELL_LABELS.get(tell, tell)}: {row.get('why', '')}",
             "llm:probe_tells", quote))
     return out

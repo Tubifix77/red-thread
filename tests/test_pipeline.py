@@ -541,6 +541,42 @@ class TestSurgicalRepair(PipelineCase):
         self.assertEqual(backend.count("repair"), 1)
 
 
+    def test_mixed_quoteless_and_quoted_majors_route_to_whole_scene_first(self):
+        """A quoteless major means something must be ADDED; surgical can only remove or
+        replace. On a real run the quoted tells won the routing every round and the missed
+        obligation was never repaired."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(880)
+                      + " She finally saw the truth of the whole arrangement laid out plain.")
+        backend.queue("threads", fakes.threads_one_missed(0), fakes.threads_all_met())
+        backend.queue("repair", fakes.clean_prose(905))
+
+        write_scene(self.project, self.project.spec_at(1), models,
+                    Config(candidates=1, max_repairs=2))
+
+        roles = [r for r, _ in backend.calls]
+        self.assertIn("repair", roles, "the additive whole-scene path never ran")
+        self.assertLess(roles.index("repair"),
+                        roles.index("surgical") if "surgical" in roles else len(roles),
+                        "whole-scene must run before surgical when a quoteless major exists")
+
+    def test_gloss_below_target_is_rewritten_not_deleted(self):
+        """Deleting is free but costs words: a real run deleted its way from 918 to 772 words.
+        At or below target, gloss is rewritten into something concrete instead."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(810)
+                      + " And in that moment, she understood everything the founders had hidden.")
+        backend.queue("surgical", "She photographed the page and clipped the print to the log.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertEqual(backend.count("surgical"), 1,
+                         "below target the gloss should be rewritten, which needs a model call")
+        self.assertNotIn("in that moment", result.scene.text)
+        self.assertIn("photographed the page", result.scene.text)
+
+
 class TestJudgeEvidence(PipelineCase):
     """A local judge sometimes 'quotes' a paraphrase of its own reasoning rather than the
     scene. Evidence that does not locate in the text is not actionable."""
@@ -560,7 +596,11 @@ class TestJudgeEvidence(PipelineCase):
                         f"a hallucinated judgement held the scene back: "
                         f"{[str(v) for v in result.violations]}")
 
-    def test_probe_finding_with_real_quote_is_kept(self):
+    def test_probe_finding_with_real_quote_is_kept_as_advisory(self):
+        """Calibrated on the target judge: it flags pure physical description as gloss 3/3,
+        so probe findings are MINOR — logged for the human, never blocking. The deterministic
+        gloss check carries the blocking power (and here it also fires, so the scene is still
+        held back — by the check that earns it)."""
         text = fakes.clean_prose(900) + " That was what it meant to keep a town alive."
         finding = json.dumps({"findings": [{
             "tell": "thematic_gloss", "present": True, "severity": "major",
@@ -572,8 +612,12 @@ class TestJudgeEvidence(PipelineCase):
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=0))
 
-        self.assertFalse(result.committed)
-        self.assertIn("tell_thematic_gloss", {v.kind for v in result.violations})
+        tells = [v for v in result.violations if v.kind == "tell_thematic_gloss"]
+        self.assertTrue(tells, "the evidenced finding should be kept")
+        self.assertTrue(all(v.severity is Severity.MINOR for v in tells),
+                        "probe findings are advisory at this judge size")
+        self.assertIn("thematic_gloss", {v.kind for v in result.violations},
+                      "the deterministic check still carries the block")
 
     def test_prohibition_without_locatable_quote_is_major_not_blocker(self):
         models, backend = fakes.scripted_models({

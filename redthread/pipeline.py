@@ -109,8 +109,8 @@ Write the replacement sentence only. No quotation marks around it, no commentary
 the context sentences. Match the voice of the context. One sentence, two at most."""
 
 
-def _surgical(scene: Scene, violations: list[Violation], models: Models,
-              notes: list[str]) -> str | None:
+def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models: Models,
+              notes: list[str], samples: list[str] | None = None) -> str | None:
     """Sentence-local repair: splice out or rewrite only the offending sentences.
 
     This is what ConWriter's repair actually is — "revising only the conflict-bearing
@@ -141,16 +141,25 @@ def _surgical(scene: Scene, violations: list[Violation], models: Models,
         return None
 
     text = scene.text
+    # Deleting is free but costs words, and a real run deleted its way from 918 words to 772 —
+    # under the length floor — while the judge kept finding new gloss. Delete only while the
+    # scene can afford it; once at or below target, gloss sentences are rewritten into something
+    # concrete instead, which holds the length while removing the tell.
+    can_delete = scene.word_count() > spec.word_target
     for lo, hi, v in sorted(spans, key=lambda s: s[0], reverse=True):
         original = text[lo:hi].strip()
-        if v.kind in DELETE_KINDS:
+        if v.kind in DELETE_KINDS and can_delete:
             replacement = ""
             notes.append(f"surgical: deleted the {v.kind} sentence (no model call)")
         else:
             before = text[max(0, lo - 160):lo].strip()[-140:]
             after = text[hi:hi + 160].strip()[:140]
+            remedy = REMEDIES.get(v.kind, "Rewrite it.")
+            if v.kind in DELETE_KINDS:
+                remedy = ("Replace it with one concrete sentence: a physical action, a thing "
+                          "seen, or words spoken. No meaning, no realisation, no summary.")
             prompt = SENTENCE_PROMPT.format(
-                detail=v.detail[:220], remedy=REMEDIES.get(v.kind, "Rewrite it."),
+                detail=v.detail[:220], remedy=remedy,
                 before=before, sentence=original, after=after)
             try:
                 reply = models.writer.complete(prompt, max_tokens=300, temperature=0.6)
@@ -161,6 +170,16 @@ def _surgical(scene: Scene, violations: list[Violation], models: Models,
             # is a deletion the kind did not ask for.
             if not replacement or len(replacement.split()) > 3 * max(4, len(original.split())):
                 continue
+            # Code-verified splice for style leaks: the writer that lifted a sample once will
+            # lift it again in the rewrite — a real run rewrote a leaked sentence and the
+            # replacement still shared four 6-grams with the sample. The checker's own n-gram
+            # test decides, not the model's promise.
+            if v.kind == "style_leak" and samples:
+                rep_grams = set(checks.ngrams(checks.words(replacement), 6))
+                if any(rep_grams & set(checks.ngrams(checks.words(sample), 6))
+                       for sample in samples):
+                    notes.append("surgical: style_leak rewrite still leaked; span skipped")
+                    continue
             notes.append(f"surgical: rewrote the {v.kind} sentence")
         gap = " " if replacement else ""
         text = (text[:lo].rstrip() + gap + replacement + gap
@@ -379,14 +398,24 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             repaired = _expand(scene, spec, models)
             action = "expand"
         else:
-            # Surgical first: violations whose quotes locate in the text get their sentences
-            # spliced out or rewritten individually. Whole-scene repair is the fallback for
-            # violations with no usable location.
-            repaired = _surgical(scene, fixable, models, result.notes)
-            action = "surgical"
-            if repaired is None:
+            # Routing rule, learned the hard way: a quoteless violation usually means something
+            # must be ADDED (a missed thread obligation has no offending sentence), and surgical
+            # splicing can only remove or replace. When any quoteless major is present the
+            # whole-scene repair goes first — its prompt lists every problem with its remedy —
+            # and surgical handles the located leftovers on the next attempt. Without this, the
+            # quote-bearing tells won the routing every round and the additive fix never ran.
+            quoteless = [v for v in fixable
+                         if not (v.quote and checks.locate_quote(scene.text, v.quote))]
+            if quoteless:
                 repaired = _repair(scene, fixable, models, config)
                 action = "repair"
+            else:
+                repaired = _surgical(scene, spec, fixable, models, result.notes,
+                                     samples=project.story.style.samples)
+                action = "surgical"
+                if repaired is None:
+                    repaired = _repair(scene, fixable, models, config)
+                    action = "repair"
 
         if repaired is None:
             result.notes.append(f"{action} call failed; keeping previous draft")
