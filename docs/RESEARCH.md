@@ -182,7 +182,22 @@ evaluators found more consistent pacing over 57% of the time versus baselines.
 
 **Design consequence.** This answers "how do I know when a node is small enough to write?" — do
 not expand depth-first to a fixed depth; expand the vaguest frontier node until concreteness is
-uniform. Every tree node carries a concreteness score.
+uniform. Implemented in `schedule.vaguest_first` / `schedule.score_spec`, driven by
+`planner.expand_beats`.
+
+**Where we deviate, and why.** CONCOCT trains a pairwise concreteness evaluator. We keep the
+*algorithm* and substitute a deterministic proxy (`schedule.concreteness`): concrete nouns, proper
+names and numerals raise the score, abstraction nouns and interiority verbs lower it, and
+readiness is that density multiplied by how well the beats cover the scene's target length. The
+algorithm only ever asks "which of these is least specified", so a ranker suffices where a
+measurement is not needed. Swapping in a trained comparator changes one function.
+
+Two bugs in that proxy are worth recording, because each made it silently useless rather than
+merely inaccurate. Sentence-initial capitalised words counted as proper nouns, so *"The
+protagonist comes to an understanding…"* scored as concrete as a scene full of named machinery and
+both saturated at 1.0 — a frontier whose every item scores 1.0 cannot be ordered. And scoring
+density alone meant *deleting* beats raised the score, ranking *"Things happen."* above a real
+beat. A proxy that cannot rank is worse than no proxy, because the algorithm above it still runs.
 
 ---
 
@@ -222,5 +237,15 @@ instead of a scratchpad in context.
 2. **Whether the chunk-buffer prefix trick helps prose.** Validated in a different modality only.
 3. **Whether bottom-up amendment improves quality.** DOME shows dynamic outlining beats rigid
    outlining on conflict rate; nothing found isolates *upward* revision (prose amending its own
-   spec) as a quality win.
-4. **Local-model viability for the structured stages.** Not investigated. Untested assumption.
+   spec) as a quality win. Still unbuilt.
+4. **Local-model viability for the structured stages.** Partly answered by running it: see
+   [MODELS.md](MODELS.md). Word-target adherence, not prose quality, turned out to be the
+   discriminator between local models, and four checks exist because of what they did to a real
+   brief. Whether a local model can carry the *planner* — the most structured stage of all — is
+   the open half.
+5. **Whether scheduling structure deterministically costs anything creatively.** Making both
+   acceptance markers hold by construction (`schedule.py`) is our design, not a cited result. It
+   removes a whole class of failure, but it also removes the model's freedom to put a turn where
+   it wants one. No source found compares *scheduled* against *proposed* structure for
+   reader-perceived quality, and a plan that never surprises its own scheduler may be worse in
+   ways the audit cannot see. This is the largest unexamined assumption in the project.

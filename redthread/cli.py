@@ -297,6 +297,49 @@ def cmd_bench(args) -> int:
     return 0
 
 
+def cmd_plan(args) -> int:
+    """Premise in, auditable plan out. The only command that creates a project."""
+    from .planner import make_plan
+    from .progress import Progress
+
+    premise_path = Path(args.premise)
+    premise = (premise_path.read_text(encoding="utf-8") if premise_path.exists()
+               else args.premise)
+    if not premise.strip():
+        raise SystemExit("give a premise, either as text or as a path to a file")
+
+    root = Path(args.out)
+    if (root / "story.json").exists() and not args.force:
+        raise SystemExit(
+            f"{root} already holds a project. Use --force to overwrite, but note that discards "
+            f"its ledger and any committed scenes.")
+
+    models, _writer_name, critic_name = _build_models(args)
+    progress = Progress(quiet=args.quiet)
+    print(f"\n  Planning from: {premise.strip()[:70]}…")
+    print(f"  planner: {critic_name}")
+    print("  " + "-" * 74)
+
+    result = make_plan(premise, models, total_words=args.words,
+                       avg_scene_words=args.scene_words, scenes=args.scenes,
+                       sharpen_rounds=args.sharpen, seed=args.seed, progress=progress)
+
+    Project(root, result.story, result.plan).save()
+
+    print(f"\n  {result.story.title}")
+    print(f"  {len(result.plan)} scenes, "
+          f"{sum(s.word_target for s in result.plan):,} target words")
+    print(f"  {len(result.story.threads)} threads, "
+          f"{len(result.story.characters)} characters")
+    for note in result.notes:
+        print(f"  · {note}")
+
+    _print_violations(result.violations, "Plan audit")
+    print(f"\n  written to {root}")
+    print(f"  next:  python -m redthread brief {root} --scene 1")
+    return 0 if result.is_clean() else 1
+
+
 def cmd_status(args) -> int:
     project = _load(args.project)
     for key, value in project.status().items():
@@ -344,6 +387,24 @@ def build_parser() -> argparse.ArgumentParser:
     def add_project(p):
         p.add_argument("project", help="path to the run directory (contains story.json)")
         return p
+
+    p = sub.add_parser("plan", help="generate a plan from a premise")
+    p.add_argument("premise", help="the premise, as text or a path to a file")
+    p.add_argument("--out", required=True, help="run directory to create")
+    p.add_argument("--words", type=int, default=60000, help="target manuscript length")
+    p.add_argument("--scene-words", type=int, default=1100, help="average scene length")
+    p.add_argument("--scenes", type=int, default=None, help="override the scene count")
+    p.add_argument("--sharpen", type=int, default=2,
+                   help="rounds of vaguest-first beat expansion")
+    p.add_argument("--seed", type=int, default=0, help="seed for word-target variation")
+    p.add_argument("--force", action="store_true", help="overwrite an existing project")
+    p.add_argument("--writer", default="claude-opus-5")
+    p.add_argument("--critic", default="claude-sonnet-5")
+    p.add_argument("--local", metavar="MODEL", help="plan with a local model")
+    p.add_argument("--all-local", metavar="MODEL", help="local model for every role")
+    p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
+    p.add_argument("--quiet", action="store_true")
+    p.set_defaults(func=cmd_plan)
 
     add_project(sub.add_parser("audit", help="plan-level checks (no model call)")) \
         .set_defaults(func=cmd_audit)

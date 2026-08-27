@@ -79,6 +79,25 @@ movement, no residue for later scenes to build on — `Project.commit` is the on
 ledger, and `write_all` halts at the first rejection rather than writing scene 8 against a state
 that never happened.
 
+### Structure is scheduled, not proposed
+
+The planner's central decision. Asking a model to lay out which scene advances which thread to
+which state produces plans that fail the audit constantly — threads re-entering states, whole
+threads stalling through the midpoint, subplots that never own a scene. Those are *scheduling
+constraints*, not creative decisions.
+
+So [`schedule.py`](redthread/schedule.py) computes the structure and
+[`planner.py`](redthread/planner.py) asks the model only what happens in a scene that must move a
+given thread to a given state — a far better-posed question than "outline a novel". Both
+acceptance markers then hold **by construction**, verified across 70 combinations of manuscript
+length and thread mix. `audit_plan` stops being a filter on model output and becomes a regression
+test on the scheduler, which is a much better place for it: a failing test is actionable, a
+rejected generation is just expensive.
+
+A model that misbehaves — reassigning thread states, inventing thread ids, returning junk — can
+degrade the plan's *content* and cannot touch its structure. That is asserted directly in
+[`tests/test_planner.py`](tests/test_planner.py).
+
 ### Repair is local, not regenerative
 
 A failing scene is not rewritten. Each violation carries the offending span verbatim, and repair
@@ -122,13 +141,15 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`checks.py`](redthread/checks.py) | 14 scene checks + a 3-part plan audit. No model calls | StoryScope, Antislop |
 | [`verify.py`](redthread/verify.py) | 5 single-purpose LLM probes: extraction, contradiction, thread satisfaction, anti-tells, tension | DOME, ConWriter, Re3 |
 | [`pipeline.py`](redthread/pipeline.py) | The state machine and the commit gate | ConWriter, Re3 |
+| [`schedule.py`](redthread/schedule.py) | Deterministic thread scheduling — both markers by construction | CONCOCT |
+| [`planner.py`](redthread/planner.py) | Premise → threads, cast, world, voice, scene content | CONCOCT, DOME, StoryScope |
 | [`project.py`](redthread/project.py) | Plain-file state, diffable, resumable | — |
 | [`llm.py`](redthread/llm.py) | Anthropic + OpenAI-compatible backends, role split, reasoning-block stripping | — |
 | [`ollama.py`](redthread/ollama.py) | Discovery: what is installed, what plausibly fits, name resolution | — |
 | [`progress.py`](redthread/progress.py) | Orchestrator view — stages, timings, thread state | — |
-| [`cli.py`](redthread/cli.py) | `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` | — |
+| [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` | — |
 
-**167 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**227 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
 
@@ -139,6 +160,14 @@ against any prose), `audit` (plan-level failures, before a word is generated).
 ---
 
 ## Try it
+
+Plan a book from a premise:
+
+```bash
+python -m redthread plan "A harbour inspector finds the tide tables have been altered." --out runs/tide --words 60000
+```
+
+Or start from the hand-authored reference plan, which needs no model at all:
 
 ```bash
 python examples/build_inherited_glitch.py runs/glitch
@@ -266,9 +295,6 @@ and a re-run resumes from the gap. Every check catches its defect.
 
 ## Next
 
-- **The planner.** Vaguest-first expansion with a concreteness comparator (CONCOCT), so the tree is
-  expanded just-in-time from committed state rather than materialised up front. Every node already
-  carries a `concreteness` field for it.
 - **A real full run** end to end, then a manuscript long enough for the cross-corpus checks to bite.
 - **Sampler-level slop suppression** via `antislop-vllm` against a local endpoint, replacing the
   post-hoc phrase check — suppressing at sample time costs nothing, checking afterwards costs a

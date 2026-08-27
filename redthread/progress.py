@@ -74,6 +74,10 @@ class Progress:
     _glyphs: _Glyphs | None = None
 
     def __post_init__(self) -> None:
+        # Start the stage clock now. It used to be initialised only by `scene_start`, so any
+        # caller that reports stages without scenes — the planner does exactly that — measured
+        # its first stage against the epoch and printed durations like "359h30m".
+        self._stage_started = self.started
         if self.stream is None:
             self.stream = sys.stdout
         # Best effort: prefer UTF-8 so the unicode set survives. If the stream refuses, the
