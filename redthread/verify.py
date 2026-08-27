@@ -18,6 +18,15 @@ from .llm import LLMError, Models, parse_json
 from .models import (Fact, FactKind, Scene, SceneSpec, Severity, StorySpec, Thread,
                      Violation)
 
+STRUCTURED_BUDGET = 8000
+"""Output budget for every structured probe.
+
+Generous on purpose. A thinking model spends tokens on reasoning before it emits the JSON, and a
+budget sized for the JSON alone gets a truncated object — which reads as "the model could not do
+it" when in fact it was cut off mid-answer. Cheap insurance: these calls emit small objects, so a
+high ceiling costs nothing when it is not needed.
+"""
+
 JSON_ONLY = ("Reply with JSON only. No preamble, no explanation outside the JSON, no code "
              "fence commentary.")
 
@@ -66,7 +75,7 @@ def extract_facts(scene: Scene, story: StorySpec, models: Models,
                   max_facts: int = 60) -> list[Fact]:
     prompt = EXTRACT_PROMPT.format(index=scene.index, title=story.title,
                                    text=_clip(scene.text, 2500), json_only=JSON_ONLY)
-    reply = models.extractor.complete(prompt, max_tokens=4000, temperature=0.0)
+    reply = models.extractor.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
     data = parse_json(reply.text)
     rows = data.get("facts", []) if isinstance(data, dict) else data
 
@@ -131,7 +140,7 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
         f"{i}. EARLIER {old.as_line()}\n   NEW     {new.as_line()}"
         for i, (old, new) in enumerate(pairs))
     prompt = CONFLICT_PROMPT.format(pairs=rendered, json_only=JSON_ONLY)
-    reply = models.critic.complete(prompt, max_tokens=2000, temperature=0.0)
+    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
 
     try:
         data = parse_json(reply.text)
@@ -218,7 +227,7 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
         required="\n".join(f"{i}. {text}" for i, (_, text) in enumerate(required)) or "(none)",
         forbidden="\n".join(f"{i}. {text}" for i, (_, text) in enumerate(forbidden)) or "(none)",
         text=_clip(scene.text, 2500), json_only=JSON_ONLY)
-    reply = models.critic.complete(prompt, max_tokens=2500, temperature=0.0)
+    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
 
     try:
         data = parse_json(reply.text)
@@ -304,7 +313,7 @@ def probe_tells(scene: Scene, models: Models) -> list[Violation]:
     the StoryScope data, and the cheap layer only catches the phrasings, not the move.
     """
     prompt = TELLS_PROMPT.format(text=_clip(scene.text, 2500), json_only=JSON_ONLY)
-    reply = models.critic.complete(prompt, max_tokens=2000, temperature=0.0)
+    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
     try:
         data = parse_json(reply.text)
     except LLMError:
@@ -364,7 +373,7 @@ def probe_forecast(scene: Scene, story_so_far: str, models: Models,
     prompt = FORECAST_PROMPT.format(context=_clip(story_so_far, 1200),
                                     next_scene=_clip(scene.text, 700),
                                     json_only=JSON_ONLY)
-    reply = models.critic.complete(prompt, max_tokens=1200, temperature=0.0)
+    reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET, temperature=0.0)
     try:
         data = parse_json(reply.text)
     except LLMError:
@@ -406,6 +415,20 @@ def verify_scene(scene: Scene, spec: SceneSpec, story: StorySpec, ledger: Ledger
         return [], [Violation("extraction_failed", Severity.BLOCKER,
                               f"could not extract facts, so continuity cannot be checked: {exc}",
                               "llm:extract_facts")]
+
+    # An *empty* extraction is the dangerous case, and it used to pass silently. A real run on a
+    # local 8B returned zero facts for a 591-word scene: the JSON parsed, so nothing errored, the
+    # ledger stayed empty, and every later brief would have said "nothing established yet" while
+    # the manuscript filled up. Continuity would fail with no error anywhere — the exact failure
+    # mode the whole architecture exists to prevent.
+    if not facts and scene.word_count() > 150:
+        return facts, [Violation(
+            "extraction_empty", Severity.BLOCKER,
+            f"a {scene.word_count()}-word scene established no facts at all. Either the "
+            f"extractor model is not up to structured output — try a stronger model for the "
+            f"extractor role — or the scene genuinely establishes nothing, which is its own "
+            f"problem. Committing it would leave the ledger blind to this scene.",
+            "llm:extract_facts")]
 
     violations += judge_conflicts(facts, ledger, models)
     violations += check_threads(scene, spec, story, models)

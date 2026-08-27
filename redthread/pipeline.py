@@ -57,6 +57,28 @@ SCENE:
 
 Return the complete corrected scene as prose, nothing else."""
 
+EXPAND_PROMPT = """This scene is {actual} words. Its target is {target} words, so it is short by
+about {short}. A short scene almost always means beats were skipped or summarised.
+
+Expand it to the target. Rules:
+
+- Keep every sentence already written. You are deepening, not rewriting.
+- Add nothing new to the plot: no new events, no new characters, no new facts about the world.
+  Anything you add must be a closer look at something already there.
+- Spend the words on the beats that are thinnest — where the scene currently summarises an action
+  in one line, stage it instead: the physical steps, what is said, what is not said.
+- Do not pad with reflection or interiority. Do not explain what anything means.
+
+The beats this scene owes, in order:
+{beats}
+
+SCENE:
+---
+{text}
+---
+
+Return the complete expanded scene as prose, nothing else."""
+
 
 @dataclass
 class SceneResult:
@@ -216,10 +238,22 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         if not fixable:
             break
 
-        repaired = _repair(scene, fixable, models, config)
+        # A short scene cannot be fixed by the repair prompt, which forbids changing the length.
+        # Sending it there produced a real run where 564 words "repaired" to 591 and the scene
+        # was held back anyway. Under-length is an expansion job, and it goes first: once the
+        # scene is the right size, the remaining problems are repairable in place.
+        short = next((v for v in fixable if v.kind == "length"
+                      and scene.word_count() < spec.word_target), None)
+        if short is not None:
+            repaired = _expand(scene, spec, models)
+            action = "expand"
+        else:
+            repaired = _repair(scene, fixable, models, config)
+            action = "repair"
+
         if repaired is None:
-            result.notes.append("repair call failed; keeping previous draft")
-            progress.stage(f"repair {result.repairs + 1}", "call failed or truncated")
+            result.notes.append(f"{action} call failed; keeping previous draft")
+            progress.stage(f"{action} {result.repairs + 1}", "call failed or unusable")
             break
         result.repairs += 1
 
@@ -238,14 +272,13 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         # blocker for another is not progress, and accepting it is how oscillation starts.
         if _score(new_violations) >= _score(result.violations):
             result.notes.append("repair did not improve the scene; reverted")
-            progress.stage(f"repair {result.repairs}", "no improvement · reverted")
+            progress.stage(f"{action} {result.repairs}", "no improvement · reverted")
             break
         scene, result.scene = candidate, candidate
         result.violations = new_violations
         blockers, majors, minors = _score(new_violations)
-        progress.stage(f"repair {result.repairs}",
-                       f"fixed {len(fixable) - blockers - majors} · "
-                       f"{blockers}B/{majors}M/{minors}m")
+        progress.stage(f"{action} {result.repairs}",
+                       f"{candidate.word_count()}w · {blockers}B/{majors}M/{minors}m")
 
     # ---------------------------------------------------------------- commit gate
     scene.violations = result.violations
@@ -293,6 +326,30 @@ def _repair(scene: Scene, violations: list[Violation], models: Models,
     text = strip_reasoning(reply.text)
     # A "repair" that returns a third of the scene has rewritten, not repaired.
     if len(text.split()) < scene.word_count() * 0.6:
+        return None
+    return text
+
+
+def _expand(scene: Scene, spec: SceneSpec, models: Models) -> str | None:
+    """Grow an under-length scene toward its target without adding plot.
+
+    Kept separate from `_repair` because the two instructions are contradictory: repair must not
+    change the length, and this must. Conflating them meant a short scene could never be salvaged.
+    """
+    beats = "\n".join(f"  {i}. {b.summary}"
+                      for i, b in enumerate(spec.beats, 1)) or "  (none)"
+    prompt = EXPAND_PROMPT.format(
+        actual=scene.word_count(), target=spec.word_target,
+        short=max(0, spec.word_target - scene.word_count()), beats=beats, text=scene.text)
+    try:
+        reply = models.writer.complete(
+            prompt, system=WRITER_SYSTEM,
+            max_tokens=min(32000, int(spec.word_target * 3) + 1000), temperature=0.8)
+    except LLMError:
+        return None
+    text = strip_reasoning(reply.text)
+    # An "expansion" that came back shorter has rewritten rather than expanded.
+    if len(text.split()) <= scene.word_count():
         return None
     return text
 

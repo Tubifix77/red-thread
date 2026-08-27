@@ -212,12 +212,19 @@ _FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.S)
 
 
 def parse_json(text: str) -> dict | list:
-    """Extract JSON from a model reply that may be wrapped in prose or fences.
+    """Extract JSON from a model reply that may be wrapped in prose, fences, or reasoning.
 
     Models — local ones especially — add commentary around JSON no matter how the prompt is
     worded. Failing hard here would make the pipeline brittle for the exact backends it is meant
     to support, so this tries progressively looser strategies before giving up.
+
+    Reasoning blocks are stripped first, and that is not a nicety. A thinking model emits
+    `<think>…</think>` on *structured* calls as readily as on prose ones, and a real run silently
+    lost an entire scene's fact extraction to it: the reasoning derailed the brace matching, the
+    parse failed, and the only visible symptom was a scene reporting zero facts. Stripping here
+    covers every probe at once rather than at each call site.
     """
+    text = strip_reasoning(text)
     candidates: list[str] = [text.strip()]
     fenced = _FENCE.search(text)
     if fenced:

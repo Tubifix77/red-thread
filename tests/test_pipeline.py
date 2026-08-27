@@ -199,6 +199,88 @@ class TestCommitGate(PipelineCase):
         self.assertIn("extraction_failed", {v.kind for v in result.violations})
 
 
+class TestSilentFailureGuards(PipelineCase):
+    """Both of these came from the first real write run, on a local 8B."""
+
+    def test_an_empty_extraction_blocks_the_commit(self):
+        """The dangerous case: JSON parses, so nothing errors, but no facts come back.
+
+        A real run returned zero facts for a 591-word scene. The ledger stayed empty, every later
+        brief would have said "nothing established yet", and continuity would have failed with no
+        error anywhere.
+        """
+        models, backend = fakes.scripted_models({"extract": fakes.facts_json([])})
+        backend.queue("draft", fakes.clean_prose())
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=0))
+
+        self.assertFalse(result.committed)
+        self.assertIn("extraction_empty", {v.kind for v in result.violations})
+        self.assertEqual(self.project.ledger.facts, [])
+
+    def test_an_empty_extraction_is_tolerated_on_a_tiny_scene(self):
+        """A fragment may genuinely establish nothing; the guard is for real scenes."""
+        models, backend = fakes.scripted_models({"extract": fakes.facts_json([])})
+        backend.queue("draft", "She waited. Nothing came.")
+        spec = self.project.spec_at(1)
+        spec.word_target = 5
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=0))
+
+        self.assertNotIn("extraction_empty", {v.kind for v in result.violations})
+
+    def test_a_short_scene_is_expanded_not_repaired(self):
+        """The repair prompt forbids changing length, so a short scene sent there can never be
+        salvaged — a real run 'repaired' 564 words to 591 and was held back anyway."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(500))
+        backend.queue("draft", fakes.clean_prose(900))  # the expansion reply
+
+        spec = self.project.spec_at(1)
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=1))
+
+        expansions = [p for role, p in backend.calls if "so it is short by" in p]
+        self.assertEqual(len(expansions), 1, "the expansion prompt should have been used")
+        self.assertNotIn("Fix ONLY the problems listed", expansions[0])
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+
+    def test_the_expansion_prompt_carries_the_beats(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(500))
+        backend.queue("draft", fakes.clean_prose(900))
+        write_scene(self.project, self.project.spec_at(1), models,
+                    Config(candidates=1, max_repairs=1))
+
+        expansion = [p for role, p in backend.calls if "so it is short by" in p][0]
+        self.assertIn("a beat", expansion)
+        self.assertIn("another beat", expansion)
+
+    def test_an_expansion_that_came_back_shorter_is_rejected(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(500))
+        backend.queue("draft", "Three words only.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=1))
+
+        self.assertEqual(result.repairs, 0)
+        self.assertTrue(any("expand call failed" in n for n in result.notes), result.notes)
+
+    def test_an_over_long_scene_still_goes_to_repair(self):
+        """Over-length is MINOR and is not an expansion problem."""
+        models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
+        backend.queue("draft", fakes.clean_prose(1400))
+        backend.queue("repair", fakes.clean_prose(900))
+
+        write_scene(self.project, self.project.spec_at(1), models,
+                    Config(candidates=1, max_repairs=1))
+
+        self.assertTrue(any("Fix ONLY the problems listed" in p for _, p in backend.calls))
+        self.assertFalse(any("so it is short by" in p for _, p in backend.calls))
+
+
 class TestCandidateSelection(PipelineCase):
     def test_cleanest_candidate_is_chosen(self):
         models, backend = fakes.scripted_models()
