@@ -93,6 +93,17 @@ def locate_quote(text: str, quote: str) -> tuple[int, int] | None:
         raw_end = _denormalise_index(text, idx + len(needle))
         if raw_idx is not None and raw_end is not None:
             return (raw_idx, raw_end)
+
+    # Third strategy: word-sequence match across punctuation. The repetition and style-leak
+    # checks quote *token n-grams* ("up he turned the coupling a"), which can never contain the
+    # sentence punctuation of the text they came from ("…look up. He turned the coupling a…"),
+    # so a plain substring search misses exactly the quotes those checks produce.
+    tokens = re.findall(r"[a-z0-9']+", full)[:10]
+    if len(tokens) >= 3:
+        pattern = r"\b" + r"\W+".join(re.escape(t) for t in tokens)
+        m = re.search(pattern, text, re.I)
+        if m:
+            return m.span()
     return None
 
 

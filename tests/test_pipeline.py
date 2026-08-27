@@ -341,19 +341,21 @@ class TestRepair(PipelineCase):
         self.assertEqual(result.blockers(), [], "the worse version must not be kept")
 
     def test_a_bad_attempt_does_not_abandon_the_repair_budget(self):
-        """`break` on the first non-improving attempt made max_repairs=2 behave as 1."""
+        """`break` on the first non-improving attempt made max_repairs=2 behave as 1.
+
+        Multi-attempt convergence lives in the deterministic loop (phase A); the judge's
+        findings deliberately get one response, not a negotiation.
+        """
         models, backend = fakes.scripted_models()
-        backend.queue("draft", fakes.clean_prose())
-        backend.queue("threads", fakes.threads_one_missed(0),   # initial verify: missed
-                      fakes.threads_one_missed(0),              # after the bad attempt: still
-                      fakes.threads_all_met())                  # after the good one: met
-        backend.queue("repair", fakes.prose_with_heading(900))  # worse, discarded
-        backend.queue("repair", fakes.clean_prose(905))         # good, should be reached
+        backend.queue("draft", fakes.clean_prose(500))          # short: a length major
+        backend.queue("draft", fakes.clean_prose(520, 1))       # still short, discarded
+        backend.queue("draft", fakes.clean_prose(900, 1))       # resolved, kept
 
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=2))
 
-        self.assertEqual(backend.count("repair"), 2, "the second attempt was never made")
+        expansions = [p for role, p in backend.calls if "so it is short by" in p]
+        self.assertEqual(len(expansions), 2, "the second attempt was never made")
         self.assertTrue(result.committed,
                         f"held back by: {[str(v) for v in result.violations]}")
 
@@ -541,24 +543,31 @@ class TestSurgicalRepair(PipelineCase):
         self.assertEqual(backend.count("repair"), 1)
 
 
-    def test_mixed_quoteless_and_quoted_majors_route_to_whole_scene_first(self):
-        """A quoteless major means something must be ADDED; surgical can only remove or
-        replace. On a real run the quoted tells won the routing every round and the missed
-        obligation was never repaired."""
+    def test_deterministic_and_judge_findings_are_handled_in_their_own_phases(self):
+        """The phase contract. Deterministic violations are repaired in a loop that never
+        consults the judge (a judge that re-runs each round flips verdicts on near-identical
+        text and poisons the comparison — a real run discarded four good fixes that way). The
+        judge then verifies once, and its quoteless findings — things that must be ADDED —
+        get one whole-scene repair and one re-verify."""
         models, backend = fakes.scripted_models()
         backend.queue("draft", fakes.clean_prose(880)
                       + " She finally saw the truth of the whole arrangement laid out plain.")
+        backend.queue("surgical", "She saw the shape of the arrangement on the bench.")
         backend.queue("threads", fakes.threads_one_missed(0), fakes.threads_all_met())
         backend.queue("repair", fakes.clean_prose(905))
 
-        write_scene(self.project, self.project.spec_at(1), models,
-                    Config(candidates=1, max_repairs=2))
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
 
         roles = [r for r, _ in backend.calls]
-        self.assertIn("repair", roles, "the additive whole-scene path never ran")
-        self.assertLess(roles.index("repair"),
-                        roles.index("surgical") if "surgical" in roles else len(roles),
-                        "whole-scene must run before surgical when a quoteless major exists")
+        self.assertIn("surgical", roles, "the deterministic phase should have run surgically")
+        self.assertIn("repair", roles, "the additive whole-scene phase never ran")
+        self.assertLess(roles.index("surgical"), roles.index("threads"),
+                        "deterministic repair happens before the judge is consulted at all")
+        self.assertGreater(roles.index("repair"), roles.index("threads"),
+                           "the additive repair responds to the judge, not the other way round")
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
 
     def test_gloss_below_target_is_rewritten_not_deleted(self):
         """Deleting is free but costs words: a real run deleted its way from 918 to 772 words.
@@ -678,3 +687,47 @@ class TestJudgeEvidence(PipelineCase):
 
         self.assertIn(("thread_prohibition", "blocker"),
                       {(v.kind, v.severity.value) for v in result.violations})
+
+
+class TestTrim(PipelineCase):
+    """The counterpart of expansion. The whole-scene repair prompt forbids changing length, so
+    a runaway scene sent there is unfixable by construction — a real run burned four 52-second
+    repairs on a 2.4x overrun none of them were allowed to fix."""
+
+    def test_a_runaway_scene_is_trimmed(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(2100))
+        backend.queue("draft", fakes.clean_prose(900, 1))  # the trim reply
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        trims = [p for role, p in backend.calls if "Cut it to roughly" in p]
+        self.assertEqual(len(trims), 1, "the trim path should have run")
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+        self.assertLess(result.scene.word_count(), 1200)
+
+    def test_a_trim_that_grew_is_rejected(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(2100))
+        backend.queue("draft", fakes.clean_prose(2300, 1))
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=1))
+
+        self.assertFalse(result.committed)
+        self.assertTrue(any("call failed" in n for n in result.notes), result.notes)
+
+    def test_length_ties_break_toward_the_target(self):
+        """A real run kept a 2.4x runaway over an on-length draft because the violation tuples
+        tied and the sort was stable."""
+        models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
+        backend.queue("draft", fakes.clean_prose(2100))     # runaway: 1 major
+        backend.queue("draft", fakes.clean_prose(900, 1))   # on target: also 1 major (threads)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=2, max_repairs=0))
+
+        self.assertLess(result.scene.word_count(), 1200,
+                        "the on-length candidate should win the tie")

@@ -155,6 +155,9 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
             before = text[max(0, lo - 160):lo].strip()[-140:]
             after = text[hi:hi + 160].strip()[:140]
             remedy = REMEDIES.get(v.kind, "Rewrite it.")
+            if v.kind == "forbidden_phrase":
+                remedy = (f'The words "{v.quote}" must not appear in your sentence, in any '
+                          f'form. Say the thing another way entirely.')
             if v.kind in DELETE_KINDS:
                 remedy = ("Replace it with one concrete sentence: a physical action, a thing "
                           "seen, or words spoken. No meaning, no realisation, no summary.")
@@ -185,8 +188,15 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
             elif v.kind in DELETE_KINDS:
                 probe = Scene(spec_id=scene.spec_id, index=scene.index, text=replacement)
                 failed_verify = bool(checks.check_thematic_gloss(probe))
+            elif v.kind == "forbidden_phrase":
+                # Told "any wording will do except that one", a real run's writer returned the
+                # sentence with the banned phrase intact, four rounds straight, each served
+                # instantly from cache. The phrase's absence is checkable in one line.
+                failed_verify = v.quote.lower() in replacement.lower()
             if failed_verify:
-                if v.kind in DELETE_KINDS and can_delete:
+                if can_delete:
+                    # A sentence that fails verification twice is better gone than kept, and
+                    # the length budget says the scene can afford it.
                     replacement = ""
                     notes.append(f"surgical: {v.kind} rewrite failed verification; deleted")
                 else:
@@ -201,6 +211,28 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
     text = text.strip()
     return text if text != scene.text.strip() else None
 
+
+TRIM_PROMPT = """This scene is {actual} words. Its target is {target} words, so it has run
+about {over} words past its brief — usually by continuing past where the scene should stop, or
+by staging material that belongs to later scenes.
+
+Cut it to roughly {target} words. Rules:
+
+- Remove whole sentences and whole passages; do not compress good sentences into worse ones.
+- Anything after the scene's last required beat is the first candidate to go: find where the
+  scene should have ended, and end it there.
+- Keep every beat listed below. Do not add anything new.
+- The sentences you keep must survive word for word.
+
+The beats this scene owes, in order:
+{beats}
+
+SCENE:
+---
+{text}
+---
+
+Return the complete trimmed scene as prose, nothing else."""
 
 EXPAND_PROMPT = """This scene is {actual} words. Its target is {target} words, so it is short by
 about {short}. A short scene almost always means beats were skipped or summarised.
@@ -375,7 +407,10 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         result.scene.violations = result.violations
         return result
 
-    scored.sort(key=lambda row: row[0])
+    # Violation tuples tie often (two drafts, one major each). Distance to the word target
+    # breaks the tie — a real run kept a 2.4x runaway over an on-length draft because the sort
+    # was stable and the runaway arrived first.
+    scored.sort(key=lambda row: (row[0], abs(row[1].word_count() - spec.word_target)))
     _, scene, det_violations = scored[0]
     result.scene = scene
     if len(scored) > 1:
@@ -383,8 +418,65 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             f"selected best of {len(scored)} candidates (scores: "
             + ", ".join(str(s) for s, _, _ in scored) + ")")
 
-    # ---------------------------------------------------------------- verify
+    # ------------------------------------------------- phase A: deterministic repair loop
+    # The repair loop is driven by deterministic checks alone. It used to re-run the full LLM
+    # verify after every attempt, and that shape deadlocked a real run four rounds straight: the
+    # surgical fix removed the one deterministic major, then the judge — on near-identical
+    # text — flipped a binary verdict it had passed before, injecting a fresh MAJOR that made
+    # every attempt score as "no improvement". Judges are for judging, once; loops need stable
+    # measures. This is also most of the scene's latency: one LLM verify instead of 1+N.
     story_so_far = "\n\n".join(t[-800:] for t in committed_texts[-3:])
+
+    def attempt_fix(fixable: list[Violation]) -> str | None:
+        short = next((v for v in fixable if v.kind == "length"
+                      and scene.word_count() < spec.word_target), None)
+        if short is not None:
+            return _expand(scene, spec, models), "expand"
+        if any(v.kind == "length_runaway" for v in fixable):
+            return _trim(scene, spec, models), "trim"
+        quoteless = [v for v in fixable
+                     if not (v.quote and checks.locate_quote(scene.text, v.quote))]
+        if quoteless:
+            return _repair(scene, fixable, models, config), "repair"
+        repaired = _surgical(scene, spec, fixable, models, result.notes,
+                             samples=project.story.style.samples)
+        if repaired is None:
+            return _repair(scene, fixable, models, config), "repair"
+        return repaired, "surgical"
+
+    for _ in range(config.max_repairs):
+        fixable = [v for v in det_violations
+                   if v.severity in (Severity.BLOCKER, Severity.MAJOR)]
+        if not fixable:
+            break
+        repaired, action = attempt_fix(fixable)
+        if repaired is None:
+            result.notes.append(f"{action} call failed; keeping previous draft")
+            progress.stage(f"{action} {result.repairs + 1}", "call failed or unusable")
+            break
+        result.repairs += 1
+
+        candidate, new_det = run_deterministic(repaired)
+        improved = _score(new_det) < _score(det_violations)
+        fixed_length = (
+            (action == "expand"
+             and any(v.kind == "length" for v in det_violations)
+             and not any(v.kind == "length" for v in new_det))
+            or (action == "trim"
+                and any(v.kind == "length_runaway" for v in det_violations)
+                and not any(v.kind == "length_runaway" for v in new_det)))
+        if not (improved or fixed_length):
+            result.notes.append(f"{action} attempt {result.repairs} did not improve; discarded")
+            progress.stage(f"{action} {result.repairs}", "no improvement · discarded")
+            continue
+        scene, result.scene = candidate, candidate
+        det_violations = new_det
+        blockers, majors, minors = _score(new_det)
+        progress.stage(f"{action} {result.repairs}",
+                       f"{candidate.word_count()}w · {blockers}B/{majors}M/{minors}m"
+                       + ("  (length resolved)" if fixed_length and not improved else ""))
+
+    # ------------------------------------------------- phase B: one LLM verify
     facts, llm_violations = verify.verify_scene(
         scene, spec, project.story, project.ledger, models, story_so_far,
         with_forecast=config.with_forecast)
@@ -393,85 +485,53 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     blockers, majors, minors = _score(result.violations)
     progress.stage("verify", f"{len(facts)} facts extracted · {blockers}B/{majors}M/{minors}m")
 
-    # ---------------------------------------------------------------- localised repair
-    for _ in range(config.max_repairs):
-        fixable = [v for v in result.violations
-                   if v.severity in (Severity.BLOCKER, Severity.MAJOR)]
-        if not fixable:
-            break
-
-        # A short scene cannot be fixed by the repair prompt, which forbids changing the length.
-        # Sending it there produced a real run where 564 words "repaired" to 591 and the scene
-        # was held back anyway. Under-length is an expansion job, and it goes first: once the
-        # scene is the right size, the remaining problems are repairable in place.
-        short = next((v for v in fixable if v.kind == "length"
-                      and scene.word_count() < spec.word_target), None)
-        if short is not None:
-            repaired = _expand(scene, spec, models)
-            action = "expand"
-        else:
-            # Routing rule, learned the hard way: a quoteless violation usually means something
-            # must be ADDED (a missed thread obligation has no offending sentence), and surgical
-            # splicing can only remove or replace. When any quoteless major is present the
-            # whole-scene repair goes first — its prompt lists every problem with its remedy —
-            # and surgical handles the located leftovers on the next attempt. Without this, the
-            # quote-bearing tells won the routing every round and the additive fix never ran.
-            quoteless = [v for v in fixable
-                         if not (v.quote and checks.locate_quote(scene.text, v.quote))]
-            if quoteless:
-                repaired = _repair(scene, fixable, models, config)
-                action = "repair"
-            else:
-                repaired = _surgical(scene, spec, fixable, models, result.notes,
-                                     samples=project.story.style.samples)
-                action = "surgical"
-                if repaired is None:
-                    repaired = _repair(scene, fixable, models, config)
-                    action = "repair"
-
+    # ------------------------------------------------- phase C: one bounded response pass
+    # The judge gets one answer, not a negotiation. Its evidence-located findings get a single
+    # surgical pass plus one re-verify; quoteless "missed" obligations get one whole-scene
+    # repair. Whatever remains after that decides the gate.
+    serious = [v for v in llm_violations
+               if v.severity in (Severity.BLOCKER, Severity.MAJOR)]
+    if serious and config.max_repairs > 0:
+        located = [v for v in serious
+                   if v.quote and checks.locate_quote(scene.text, v.quote)]
+        repaired = None
+        if located:
+            repaired = _surgical(scene, spec, serious, models, result.notes,
+                                 samples=project.story.style.samples)
+            action = "surgical"
+        if repaired is None:
+            repaired = _repair(scene, serious, models, config)
+            action = "repair"
         if repaired is None:
             result.notes.append(f"{action} call failed; keeping previous draft")
             progress.stage(f"{action} {result.repairs + 1}", "call failed or unusable")
-            break
-        result.repairs += 1
-
-        candidate, det_violations = run_deterministic(repaired)
-        try:
-            facts, llm_violations = verify.verify_scene(
-                candidate, spec, project.story, project.ledger, models, story_so_far,
-                with_forecast=False)
-        except LLMError as exc:
-            result.notes.append(f"re-verify failed: {exc}")
-            break
-        candidate.facts = facts
-        new_violations = det_violations + llm_violations
-
-        # Acceptance is not a plain score comparison, and getting that wrong deadlocked a real
-        # run. An expansion that reaches the target length while introducing a different major
-        # scores no better on the tuple, so it was reverted — leaving a permanently short scene
-        # that no later repair could rescue, because the repair prompt may not change length.
-        #
-        # So an expansion that actually resolved the length problem is accepted regardless of the
-        # tuple: length is the one violation repair cannot address, and trading it for a
-        # repairable one is progress even when the count is unchanged.
-        improved = _score(new_violations) < _score(result.violations)
-        fixed_length = (action == "expand"
-                        and any(v.kind == "length" for v in result.violations)
-                        and not any(v.kind == "length" for v in new_violations))
-
-        if not (improved or fixed_length):
-            # Do not abandon the budget on one bad attempt: `break` here made max_repairs=2
-            # behave as 1. Keep the better version and try again.
-            result.notes.append(f"{action} attempt {result.repairs} did not improve; discarded")
-            progress.stage(f"{action} {result.repairs}", "no improvement · discarded")
-            continue
-
-        scene, result.scene = candidate, candidate
-        result.violations = new_violations
-        blockers, majors, minors = _score(new_violations)
-        progress.stage(f"{action} {result.repairs}",
-                       f"{candidate.word_count()}w · {blockers}B/{majors}M/{minors}m"
-                       + ("  (length resolved)" if fixed_length and not improved else ""))
+        if repaired is not None:
+            result.repairs += 1
+            candidate, new_det = run_deterministic(repaired)
+            if not [v for v in new_det if v.severity is Severity.BLOCKER]:
+                try:
+                    facts, llm_violations = verify.verify_scene(
+                        candidate, spec, project.story, project.ledger, models,
+                        story_so_far, with_forecast=False)
+                except LLMError as exc:
+                    result.notes.append(f"re-verify failed: {exc}")
+                else:
+                    candidate.facts = facts
+                    new_all = new_det + llm_violations
+                    if _score(new_all) < _score(result.violations):
+                        scene, result.scene = candidate, candidate
+                        det_violations = new_det
+                        result.violations = new_all
+                        blockers, majors, minors = _score(new_all)
+                        progress.stage(
+                            f"{action} {result.repairs}",
+                            f"{candidate.word_count()}w · "
+                            f"{blockers}B/{majors}M/{minors}m")
+                    else:
+                        result.notes.append(
+                            f"{action} response to the verify did not improve; discarded")
+                        progress.stage(f"{action} {result.repairs}",
+                                       "no improvement · discarded")
 
     # ---------------------------------------------------------------- commit gate
     scene.violations = result.violations
@@ -522,6 +582,31 @@ def _repair(scene: Scene, violations: list[Violation], models: Models,
     text = strip_reasoning(reply.text)
     # A "repair" that returns a third of the scene has rewritten, not repaired.
     if len(text.split()) < scene.word_count() * 0.6:
+        return None
+    return text
+
+
+def _trim(scene: Scene, spec: SceneSpec, models: Models) -> str | None:
+    """Shrink a runaway scene toward its target.
+
+    The counterpart of `_expand`, and just as necessary: the whole-scene repair prompt forbids
+    changing the length, so a runaway scene sent there is unfixable by construction — a real run
+    burned four 52-second repairs on a 2.4x overrun that none of them were allowed to fix.
+    """
+    beats = "\n".join(f"  {i}. {b.summary}"
+                      for i, b in enumerate(spec.beats, 1)) or "  (none)"
+    prompt = TRIM_PROMPT.format(
+        actual=scene.word_count(), target=spec.word_target,
+        over=max(0, scene.word_count() - spec.word_target), beats=beats, text=scene.text)
+    try:
+        reply = models.writer.complete(
+            prompt, system=WRITER_SYSTEM,
+            max_tokens=_prose_budget(spec.word_target, models.writer), temperature=0.4)
+    except LLMError:
+        return None
+    text = strip_reasoning(reply.text)
+    # A "trim" that grew, or that gutted the scene below the floor, is not a trim.
+    if not (spec.word_target * 0.7 <= len(text.split()) < scene.word_count()):
         return None
     return text
 

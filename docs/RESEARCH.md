@@ -229,6 +229,40 @@ instead of a scratchpad in context.
 
 ---
 
+## What one night of running it settled (2026-08-28)
+
+The first full manuscript run — all local, one 8B in every role — turned four of this file's
+design commitments into measured findings. Recorded here because they qualify sections above.
+
+**Section 4's "localised sentence repair" needs to be literal.** ConWriter revises only the
+conflict-bearing sentences. Our first implementation asked the model to return the *whole
+corrected scene*, and on an 8B that is a different operation: five consecutive whole-scene
+repairs changed nothing. Splicing single sentences by character offset — deletion in code for
+narrator-gloss, a one-sentence rewrite between two context sentences otherwise — converges, and
+its outputs can be code-verified before splicing (a model that lifted a style sample once lifts
+it again inside its own "fix").
+
+**The verifier must not sit inside the repair loop.** Re-running the LLM verify after every
+repair attempt let single flipped verdicts on near-identical text poison the improvement
+comparison: a real scene had its one deterministic major genuinely fixed four times, and each
+time the judge invented a different new one. The loop is now driven by deterministic checks
+alone; the judge verifies once at the end and its findings get one bounded response. Judges are
+for judging, once — loops need stable measures.
+
+**A local judge must be calibrated, not trusted — and the split is binary vs graded.**
+qwen3:8b at temperature 0, three samples per fixture: flags deliberately glossy text 3/3, and
+also flags "The tally sheet had been photocopied so often that the column headings had closed
+up" — pure physical description — as thematic gloss, 3/3. Its *binary* judgments held up in
+practice (its violated-prohibition calls located three real concealment leaks that repair then
+fixed); its *graded* and aesthetic judgments ("partial", the StoryScope-derived tells) are noise
+at this size. Policy: binary blocks, graded advises. The deterministic checks carry the tells.
+
+**Concealment needs a lifetime.** Enforcing a thread's concealment as a prohibition on every
+scene includes the scene whose post-conditions are the reveal — a brief that simultaneously
+requires and forbids the same disclosure, which no writer can satisfy and which the judge
+correctly flags from both sides. `Thread.reveal_scene` bounds it; the reveal scene's brief flips
+from "still concealed" to "THIS is the scene that discloses".
+
 ## Open questions the research did not settle
 
 1. **Optimal generation-unit size for prose quality.** Re3 drafts 256-token passages; ConWriter
