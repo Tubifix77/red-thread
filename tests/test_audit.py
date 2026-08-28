@@ -262,5 +262,42 @@ class TestProhibitionPhrasing(unittest.TestCase):
         self.assertIn("negated_prohibition", kinds(found))
 
 
+class TestStaleProhibitions(unittest.TestCase):
+    """`Thread.reveal_scene` exists because a scene once got a brief that both required and
+    forbade a reveal. Per-scene Forbid entries never got the same treatment: scene 13 of a live
+    run was held back for revealing an enclave the plan's own schedule had unsealed at scene 10."""
+
+    def _plan(self, index: int, forbid: str) -> list[SceneSpec]:
+        return [SceneSpec(id="s", index=index, summary="x",
+                          thread_ops={"T": Transition(forbid=[forbid])})]
+
+    def _story(self, reveal_scene: int | None) -> StorySpec:
+        return StorySpec(title="t", premise="p",
+                         threads=[Thread(id="T", name="The Enclave", concealment="the enclave",
+                                         reveal_scene=reveal_scene)])
+
+    def test_a_disclosure_forbidden_after_its_own_reveal_is_stale(self):
+        found = checks.check_stale_prohibitions(
+            self._plan(13, "The enclave is revealed"), self._story(10))
+        self.assertIn("stale_prohibition", kinds(found))
+
+    def test_the_same_forbid_before_the_reveal_stands(self):
+        found = checks.check_stale_prohibitions(
+            self._plan(4, "The enclave is revealed"), self._story(10))
+        self.assertEqual(found, [])
+
+    def test_a_craft_rule_is_never_stale(self):
+        """"the founders' motives being explained" is a rule against narrator gloss, not a
+        concealment, and holds for the whole book however much the reader knows."""
+        found = checks.check_stale_prohibitions(
+            self._plan(13, "the founders' motives being explained"), self._story(2))
+        self.assertEqual(found, [])
+
+    def test_a_plot_rule_is_never_stale(self):
+        found = checks.check_stale_prohibitions(
+            self._plan(13, "Dain kills Riven"), self._story(2))
+        self.assertEqual(found, [])
+
+
 if __name__ == "__main__":
     unittest.main()

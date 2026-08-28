@@ -985,6 +985,58 @@ def positive_prohibition(text: str) -> str:
     return re.sub(r"\s+", " ", out).strip()
 
 
+_DISCLOSURE = re.compile(
+    r"\b(?:reveal(?:s|ed|ing)?|disclos\w+|discover(?:s|ed|ing|y)?|uncover\w*|expos\w+|"
+    r"learn(?:s|ed|ing)?|told|tells|know(?:s|n|ing)?|made (?:public|explicit|clear))\b",
+    re.IGNORECASE)
+"""Verbs of a fact becoming available to the reader.
+
+"Explain" is deliberately absent. A Forbid saying "the founders' motives being explained" is a
+craft rule — do not have the narrator gloss the story — and it holds for every scene of the book
+however much the reader already knows. Reading it as a stale concealment would switch off a
+prohibition that was never about concealment at all.
+"""
+
+
+def is_disclosure_prohibition(text: str) -> bool:
+    """Does this Forbid entry prohibit the reader or a character finding something out?
+
+    Those are the entries a planner writes as per-scene copies of a thread's `concealment`, and
+    they go stale the moment the concealment is lifted. Everything else a Forbid can say — "Dain
+    kills Riven", "the door is opened" — stays true for the whole book and is left alone.
+    """
+    return bool(_DISCLOSURE.search(text))
+
+
+def check_stale_prohibitions(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
+    """A scene forbidding a disclosure the plan has already scheduled.
+
+    `Thread.reveal_scene` exists because a scene once got a brief that simultaneously required
+    and forbade a reveal. Per-scene Forbid entries never got the same treatment, and scene 13 of
+    a live run was held back for revealing an enclave the plan's own schedule had unsealed at
+    scene 10 — three scenes and four thousand words earlier. The judge was right that the scene
+    disclosed it; the rule was wrong to still be asking.
+    """
+    out: list[Violation] = []
+    for spec in plan:
+        for tid, op in spec.thread_ops.items():
+            thread = story.thread(tid)
+            if thread is None or thread.reveal_scene is None:
+                continue
+            if spec.index < thread.reveal_scene:
+                continue
+            for item in op.forbid:
+                if not is_disclosure_prohibition(item):
+                    continue
+                out.append(Violation(
+                    "stale_prohibition", Severity.MINOR,
+                    f"scene {spec.index} [{thread.name}] forbids a disclosure — \"{item}\" — but "
+                    f"the plan lifts this thread's concealment at scene {thread.reveal_scene}. "
+                    f"The prohibition contradicts the schedule and is not enforced.",
+                    "check_stale_prohibitions", item))
+    return out
+
+
 def check_prohibition_phrasing(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
     """Forbid entries must name what must not happen, positively.
 
@@ -1098,6 +1150,7 @@ def audit_plan(plan: list[SceneSpec], story: StorySpec,
     out += check_concealment(plan, story)
     out += check_spec_self_consistency(plan, story)
     out += check_prohibition_phrasing(plan, story)
+    out += check_stale_prohibitions(plan, story)
     out += check_cast_names(plan, story)
 
     # POV variety: a manuscript entirely in one head is legal but worth surfacing, since

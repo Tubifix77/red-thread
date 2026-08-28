@@ -252,6 +252,14 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
                 item = _checks.positive_prohibition(item)
                 if not item:
                     continue
+            # A disclosure prohibition on a thread whose concealment the schedule has already
+            # lifted is the planner's stale copy of that concealment. `Thread.reveal_scene` is
+            # the authority on when the reader may know; asking the judge to enforce the
+            # opposite held scene 13 of a live run back for revealing what scene 10 unsealed.
+            if (thread and thread.reveal_scene is not None
+                    and spec.index >= thread.reveal_scene
+                    and _checks.is_disclosure_prohibition(item)):
+                continue
             forbidden.append((tid, f"[{label}] {item}"))
         if (thread and thread.concealment
                 and (thread.reveal_scene is None or spec.index < thread.reveal_scene)):

@@ -775,7 +775,12 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                                  samples=project.story.style.samples)
             action = "surgical"
         if repaired is None:
+            # Two tries, because the first can fail on the call rather than on the answer — a
+            # live run lost scene 13's only response pass to one LLMError. Retrying a failed
+            # call is not a negotiation with the judge; it is asking the question once.
             repaired = _repair(scene, serious, models, config)
+            if repaired is None:
+                repaired = _repair(scene, serious, models, config)
             action = "repair"
         if repaired is None:
             result.notes.append(f"{action} call failed; keeping previous draft")
