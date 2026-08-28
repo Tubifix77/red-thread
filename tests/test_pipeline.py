@@ -532,6 +532,23 @@ class TestSeamRepair(PipelineCase):
         self.assertEqual(checks.check_seam(Scene(spec_id="s2", index=2, text=cut), tail), [])
         self.assertTrue(any("deseam: deleted" in n for n in notes), notes)
 
+    def test_a_scene_that_echoes_at_both_ends_is_fixed_one_end_per_round(self):
+        """Scene 12 of a live run opened on the previous scene's words and closed on them too.
+        Trimming the ending can never clear the opening, so an acceptance test that demanded
+        both be gone rejected every deletion that worked."""
+        previous = fakes.clean_prose(400, variant=3)
+        tail = " ".join(previous.split()[-150:])
+        text = tail + " " + fakes.clean_prose(700, variant=6) + " " + tail
+
+        for expected in ("seam_tail_copy", "seam_echo"):
+            flagged = checks.check_seam(Scene(spec_id="s2", index=2, text=text), tail)
+            self.assertIn(expected, {v.kind for v in flagged})
+            notes: list[str] = []
+            text = _deseam(Scene(spec_id="s2", index=2, text=text), tail, flagged, notes)
+            self.assertIsNotNone(text, f"no cut for {expected}: {notes}")
+
+        self.assertEqual(checks.check_seam(Scene(spec_id="s2", index=2, text=text), tail), [])
+
     def test_deletion_is_refused_when_it_would_gut_the_scene(self):
         """Past a few sentences the copy is not a seam artefact but an empty scene."""
         first = Scene(spec_id="s1", index=1, text=fakes.clean_prose(120))

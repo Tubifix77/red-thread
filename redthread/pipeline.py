@@ -171,9 +171,15 @@ def _deseam(scene: Scene, previous_tail: str, violations: list[Violation],
     spans = checks.sentence_spans(scene.text)
     if len(spans) < 4:
         return None
-    from_end = "seam_tail_copy" in kinds
-    if not (from_end or "seam_echo" in kinds):
+    # One end per call. A scene can echo at both — scene 12 of a live run opened on the previous
+    # scene's words and closed on them too — and trimming the ending can never clear the opening.
+    # The first cut of this asked for both kinds to be gone before accepting, so every deletion
+    # was rejected however well it worked, and the scene fell through to a rewrite that could not
+    # help either. Fix the ending here; the next round sees the opening and fixes that.
+    target = "seam_tail_copy" if "seam_tail_copy" in kinds else "seam_echo"
+    if target not in kinds:
         return None
+    from_end = target == "seam_tail_copy"
 
     original = len(scene.text.split())
     # Bounded by how much of the scene is duplicated, not by a sentence count. The first cut of
@@ -191,7 +197,7 @@ def _deseam(scene: Scene, previous_tail: str, violations: list[Violation],
             return None
         probe = Scene(spec_id=scene.spec_id, index=scene.index, text=candidate)
         still = {v.kind for v in checks.check_seam(probe, previous_tail)}
-        if still & {"seam_tail_copy", "seam_echo"} or checks.check_truncated(probe):
+        if target in still or checks.check_truncated(probe):
             continue
         where = "ending" if from_end else "opening"
         notes.append(f"deseam: deleted {drop} sentence(s) of copied {where}; "
