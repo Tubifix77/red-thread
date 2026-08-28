@@ -330,13 +330,14 @@ class TestRepair(PipelineCase):
 
     def test_repair_that_does_not_improve_is_discarded(self):
         """A repair trading one problem for another is not progress, and accepting it is how
-        repair loops start oscillating."""
+        repair loops start oscillating. A quoteless major routes to whole-scene repair; the
+        reply here trades it for a format BLOCKER, which must be discarded."""
         models, backend = fakes.scripted_models()
-        backend.queue("draft", fakes.prose_with_somatic_tics())
-        backend.queue("repair", fakes.prose_with_heading())  # strictly worse
+        backend.queue("draft", fakes.clean_prose(500))          # length major, quoteless path
+        backend.queue("draft", fakes.prose_with_heading(900))   # the "expansion": strictly worse
 
         result = write_scene(self.project, self.project.spec_at(1), models,
-                             Config(candidates=1, max_repairs=2))
+                             Config(candidates=1, max_repairs=1))
 
         self.assertTrue(any("did not improve; discarded" in n for n in result.notes),
                         result.notes)
@@ -734,3 +735,38 @@ class TestTrim(PipelineCase):
 
         self.assertLess(result.scene.word_count(), 1200,
                         "the on-length candidate should win the tie")
+
+
+class TestSomaticRepair(PipelineCase):
+    """From the first Debt of Years run: three body-beats in scene 1, seven attempts, held."""
+
+    def test_all_excess_beats_are_fixed_in_one_surgical_pass(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(860)
+                      + " His skin prickled at the ledger's weight."
+                      + " His gut twisted when the entry surfaced."
+                      + " His scalp crawled as the seal broke.")
+        backend.queue("surgical",
+                      "He set the ledger down harder than the desk deserved.",
+                      "He read the entry twice and said nothing.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+        self.assertEqual(backend.count("surgical"), 2,
+                         "two excess beats, two rewrites, one pass")
+
+    def test_a_rewrite_that_reaches_for_the_body_again_is_rejected(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(880)
+                      + " His skin prickled at the ledger's weight."
+                      + " His gut twisted when the entry surfaced.")
+        backend.queue("surgical", "His stomach knotted as he set the ledger down.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=1))
+
+        self.assertNotIn("stomach knotted", result.scene.text,
+                         "the somatic rewrite must not be spliced")

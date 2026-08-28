@@ -467,10 +467,16 @@ def check_somatic(scene: Scene, max_allowed: int = 1) -> list[Violation]:
             unique.append(f)
     if len(unique) <= max_allowed:
         return []
-    shown = "; ".join(f'"{u}"' for u in unique[:5])
+    # One violation PER excess instance, each carrying its own quote. As a single violation
+    # quoting only the first instance, surgical repair could fix one sentence per round and the
+    # check re-fired on the remainder forever — a real scene with three beats burned its whole
+    # repair budget that way. Per-instance violations become separate spans in one surgical
+    # pass. The first `max_allowed` instances stay unflagged: they are the allowance.
     return [Violation("somatic_emotion", Severity.MAJOR,
-                      f"{len(unique)} bodily-sensation emotion beats (allowed {max_allowed}): "
-                      f"{shown}", "check_somatic", unique[0])]
+                      f"bodily-sensation emotion beat {i + 1} of {len(unique)} "
+                      f"(allowed {max_allowed}): \"{beat}\"",
+                      "check_somatic", beat)
+            for i, beat in enumerate(unique[max_allowed:], start=max_allowed)]
 
 
 # --------------------------------------------------------------------------------------

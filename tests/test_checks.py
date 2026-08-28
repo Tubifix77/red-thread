@@ -90,7 +90,11 @@ class TestLength(unittest.TestCase):
 class TestSomatic(unittest.TestCase):
     """StoryScope: emotion via bodily metaphor in 81% of AI stories vs 38% of human ones."""
 
-    def test_multiple_somatic_beats_flagged(self):
+    def test_each_excess_somatic_beat_is_its_own_violation(self):
+        """One violation per excess instance, each with its own quote. As a single violation
+        quoting only the first beat, surgical repair fixed one sentence per round while the
+        check re-fired on the rest — a real scene with three beats burned its whole repair
+        budget that way."""
         text = (
             "Her chest tightened as she read the line number. "
             "His stomach dropped when the log came up empty. "
@@ -98,9 +102,12 @@ class TestSomatic(unittest.TestCase):
             "She let out a breath she didn't know she was holding."
         )
         found = checks.check_somatic(scene(text))
-        self.assertEqual(len(found), 1)
-        self.assertEqual(found[0].severity, Severity.MAJOR)
-        self.assertIn("somatic_emotion", kinds(found))
+        self.assertEqual(len(found), 3, "four beats minus the one-beat allowance")
+        self.assertTrue(all(v.severity is Severity.MAJOR for v in found))
+        quotes = [v.quote for v in found]
+        self.assertEqual(len(set(quotes)), 3, "each violation must locate its own beat")
+        for q in quotes:
+            self.assertIn(q.split()[-1], text)
 
     def test_one_somatic_beat_allowed(self):
         self.assertEqual(

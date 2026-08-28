@@ -205,6 +205,13 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                 # sentence with the banned phrase intact, four rounds straight, each served
                 # instantly from cache. The phrase's absence is checkable in one line.
                 failed_verify = v.quote.lower() in replacement.lower()
+            elif v.kind == "somatic_emotion":
+                # A writer that reaches for the body once reaches for it again in the rewrite:
+                # "his gut twist" comes back as "his stomach knotted" and the check re-fires.
+                # The replacement must contain no somatic beat at all — the scene's allowance is
+                # already spent by the instance the check left unflagged.
+                probe = Scene(spec_id=scene.spec_id, index=scene.index, text=replacement)
+                failed_verify = bool(checks.check_somatic(probe, max_allowed=0))
             if failed_verify:
                 if can_delete:
                     # A sentence that fails verification twice is better gone than kept, and
@@ -488,7 +495,12 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
 
         candidate, new_det = run_deterministic(repaired)
         improved = _score(new_det) < _score(det_violations)
-        fixed_length = (
+        # Resolving the length problem is accepted even when the violation tuple ties — but it
+        # must never buy a BLOCKER in. Without that clause, an "expansion" carrying a markdown
+        # heading was accepted because it reached the word target, and the blocker it smuggled
+        # in held the scene anyway.
+        no_new_blockers = not any(v.severity is Severity.BLOCKER for v in new_det)
+        fixed_length = no_new_blockers and (
             (action == "expand"
              and any(v.kind == "length" for v in det_violations)
              and not any(v.kind == "length" for v in new_det))
