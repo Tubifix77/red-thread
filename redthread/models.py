@@ -138,6 +138,13 @@ class Thread:
     payoff: str = ""
     """What resolution looks like. An unpaid thread at manuscript end is an error, not a mood."""
 
+    reveal_state: str | None = None
+    """The state whose arrival ends the concealment — the semantic half of the reveal. Code
+    cannot know that reaching 'discovered' discloses an enclave, but the planner can say so,
+    and the scheduler then derives `reveal_scene` from wherever it placed that state. Without
+    this, a planner-made thread whose second state was 'discovered' carried a concealment that
+    forbade the very disclosure its own schedule ordered two scenes in."""
+
     reveal_scene: int | None = None
     """First scene allowed to disclose the concealment. Before it, the concealment is enforced
     as a hard prohibition on every scene touching the thread; from it on, it is not. Without

@@ -108,6 +108,7 @@ Schema:
   "threads": [{{"id": "T-SHORT", "name": "...", "kind": "main|subplot|relationship|mystery|thematic",
                 "states": ["dormant", "...", "..."],
                 "concealment": "what the reader must not yet understand",
+                "concealment_ends_at_state": "the state from your list whose arrival DISCLOSES it",
                 "payoff": "what resolution looks like, and what it costs"}}],
   "style": {{"pov": "third limited", "tense": "past",
              "samples": ["...", "...", "..."],
@@ -177,8 +178,12 @@ def parse_story(data: dict) -> StorySpec:
         if len(states) < 2:
             states = ["dormant", "resolved"]
 
+        reveal_state = str(row.get("concealment_ends_at_state") or "").strip() or None
+        if reveal_state and reveal_state not in states:
+            reveal_state = None
         threads.append(Thread(id=tid, name=name, kind=kind, states=states,
                               concealment=str(row.get("concealment") or "").strip(),
+                              reveal_state=reveal_state,
                               payoff=str(row.get("payoff") or "").strip()))
 
     # Exactly one main thread. Code can settle this; asking again cannot do it better.
@@ -690,6 +695,19 @@ def make_plan(premise: str, models: Models, total_words: int = 60000,
     n_scenes = scenes or scene_count(total_words, avg_scene_words)
     schedule = schedule_threads(story.threads, n_scenes)
     specs = to_scene_specs(schedule, story.threads, total_words, seed=seed)
+
+    # Concealment timing is derived, never guessed: the planner names the state that discloses
+    # each concealment, the scheduler knows which scene that state lands in, so the prohibition
+    # is enforced exactly up to that scene. A concealment with no declared reveal state ends at
+    # the thread's terminal state — payoffs disclose — rather than never, because "never" made a
+    # planner-made brief order a discovery its own prohibition forbade.
+    for thread in story.threads:
+        if not thread.concealment:
+            continue
+        target = thread.reveal_state or (thread.states[-1] if thread.states else None)
+        landing = [i for i, state in schedule.transitions_for(thread.id) if state == target]
+        if landing:
+            thread.reveal_scene = landing[0]
     stage("schedule", f"{n_scenes} scenes, "
                       f"{sum(1 for m in schedule.moves.values() for s in m.values() if s)} "
                       f"thread moves")

@@ -512,3 +512,44 @@ class TestPlanShape(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRevealState(unittest.TestCase):
+    """Concealment timing is derived from the schedule, never guessed: the planner names the
+    state that discloses each concealment, the scheduler knows which scene that state lands in.
+    Without this, a planner-made thread whose second state was 'discovered' carried a
+    concealment forbidding the very disclosure its own schedule ordered two scenes in."""
+
+    def test_reveal_state_is_parsed_and_validated(self):
+        threads = [
+            {"id": "A", "name": "A", "kind": "main", "states": FIVE,
+             "concealment": "c", "concealment_ends_at_state": "escalated", "payoff": "p"},
+            {"id": "B", "name": "B", "kind": "subplot", "states": FIVE,
+             "concealment": "c", "concealment_ends_at_state": "not_a_state", "payoff": "p"},
+        ]
+        story = parse_story(json.loads(story_json(threads=threads)))
+        self.assertEqual(story.thread("A").reveal_state, "escalated")
+        self.assertIsNone(story.thread("B").reveal_state,
+                          "a state not in the machine must not survive parsing")
+
+    def test_reveal_scene_is_derived_from_the_schedule(self):
+        backend = PlannerBackend(story=story_json(threads=[
+            {"id": "T-TIDE", "name": "Tables", "kind": "main", "states": FIVE,
+             "concealment": "who altered them", "concealment_ends_at_state": "escalated",
+             "payoff": "p"},
+            {"id": "T-BOAT", "name": "Licence", "kind": "subplot", "states": FIVE,
+             "concealment": "it lapsed", "payoff": "p"},
+        ]))
+        result = make_plan("A premise.", models_with(backend), total_words=13200)
+
+        tide = result.story.thread("T-TIDE")
+        landing = [i for i, s in checks.planned_state_sequence(result.plan, "T-TIDE")
+                   if s == "escalated"]
+        self.assertEqual(tide.reveal_scene, landing[0],
+                         "reveal must land exactly where the schedule put the state")
+
+        boat = result.story.thread("T-BOAT")
+        terminal = [i for i, s in checks.planned_state_sequence(result.plan, "T-BOAT")
+                    if s == boat.states[-1]]
+        self.assertEqual(boat.reveal_scene, terminal[0],
+                         "no declared reveal state defaults to the terminal — payoffs disclose")
