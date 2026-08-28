@@ -21,7 +21,8 @@ from redthread.models import (Beat, Character, Scene, SceneSpec, Severity, Story
                               StyleContract,
                               Thread, ThreadKind, Transition)
 from redthread import checks
-from redthread.pipeline import (Config, _deseam, _reseam, write_all, write_scene)
+from redthread.pipeline import (Config, _deseam, _expand_passage, _reseam,
+                                write_all, write_scene)
 from redthread.project import Project
 
 from tests import fakes
@@ -606,6 +607,60 @@ class TestSeamRepair(PipelineCase):
         self.assertFalse(result.committed)
         self.assertLess(result.repairs, 8, "the loop should stop before the budget runs out")
         self.assertTrue(any("tried twice and failed" in n for n in result.notes), result.notes)
+
+
+BREAK = "\n\n"
+
+
+class TestExpansionIsLocal(PipelineCase):
+    """Whole-scene expansion asks a small model to reproduce every word it was given and add
+    more. A live run watched it come back shorter twice, get sidelined, and lose a scene that
+    `_deseam` had just correctly repaired — the seam fixed, the length not."""
+
+    def _scene(self) -> Scene:
+        paragraphs = [fakes.clean_prose(220, variant=1), "He set it down and waited.",
+                      fakes.clean_prose(220, variant=4)]
+        return Scene(spec_id="s1", index=1, text=BREAK.join(paragraphs))
+
+    def test_the_thinnest_interior_passage_is_the_one_rewritten(self):
+        models, backend = fakes.scripted_models()
+        scene = self._scene()
+        spec = self.project.spec_at(1)
+        spec.word_target = scene.word_count() + 300
+
+        notes: list[str] = []
+        grown = _expand_passage(scene, spec, models, notes)
+
+        self.assertIsNotNone(grown, notes)
+        self.assertGreater(len(grown.split()), scene.word_count())
+        self.assertTrue(any("staged the thinnest passage" in n for n in notes), notes)
+        prompts = [p for role, p in backend.calls if role == "passage"]
+        self.assertEqual(len(prompts), 1)
+        self.assertIn("He set it down and waited.", prompts[0])
+
+    def test_the_opening_and_closing_paragraphs_are_never_touched(self):
+        """The shortfall is usually there *because* `_deseam` just cut a copied seam. An
+        expansion that rewrote either end could hand the seam straight back."""
+        models, _ = fakes.scripted_models()
+        scene = self._scene()
+        spec = self.project.spec_at(1)
+        spec.word_target = scene.word_count() + 300
+
+        grown = _expand_passage(scene, spec, models, [])
+
+        paragraphs = grown.split(BREAK)
+        original = scene.text.split(BREAK)
+        self.assertTrue(paragraphs[0].startswith(original[0][:40]))
+        self.assertTrue(paragraphs[-1].endswith(original[-1][-40:]))
+
+    def test_a_scene_of_one_paragraph_falls_back(self):
+        models, backend = fakes.scripted_models()
+        scene = Scene(spec_id="s1", index=1, text=fakes.clean_prose(400))
+        spec = self.project.spec_at(1)
+        spec.word_target = 900
+
+        self.assertIsNone(_expand_passage(scene, spec, models, []))
+        self.assertEqual(backend.count("passage"), 0)
 
 
 class TestSurgicalRepair(PipelineCase):

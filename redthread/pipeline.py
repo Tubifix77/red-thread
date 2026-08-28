@@ -442,6 +442,31 @@ SCENE:
 Return the complete expanded scene as prose, nothing else."""
 
 
+PASSAGE_PROMPT = """One passage in a novel scene is too thin. Stage it properly.
+
+This is the passage. Rewrite it at about {want} words — it is currently {have}:
+---
+{passage}
+---
+
+It sits between these, which you must NOT rewrite or repeat:
+
+  BEFORE: …{before}
+  AFTER:  {after}…
+
+The beats this scene owes, for context — the passage covers part of this, not all of it:
+{beats}
+
+Rules:
+- Add no new events, no new characters, no facts the scene has not already established. Every
+  added word is a closer look at what is already happening here.
+- Where the passage summarises an action in one line, stage it: the physical steps, what is said,
+  what is not said, what is done instead of said.
+- Do not pad with reflection or interiority. Do not explain what anything means.
+
+Write the replacement passage only. No commentary."""
+
+
 @dataclass
 class SceneResult:
     scene: Scene
@@ -627,7 +652,8 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         short = next((v for v in fixable if v.kind == "length"
                       and scene.word_count() < spec.word_target), None)
         if short is not None and "expand" not in sidelined:
-            return _expand(scene, spec, models, round_no=result.repairs), "expand"
+            return (_expand(scene, spec, models, result.notes,
+                            round_no=result.repairs), "expand")
         if any(v.kind == "truncated_scene" for v in fixable):
             # Snap to the last complete sentence, in code. A truncated draft is the budget cap
             # doing its job; asking a model to "trim" it just regenerates at length — a real
@@ -863,12 +889,66 @@ def _trim(scene: Scene, spec: SceneSpec, models: Models, round_no: int = 0) -> s
     return text
 
 
-def _expand(scene: Scene, spec: SceneSpec, models: Models, round_no: int = 0) -> str | None:
+def _expand_passage(scene: Scene, spec: SceneSpec, models: Models, notes: list[str],
+                    round_no: int = 0) -> str | None:
+    """Grow the thinnest passage and splice it in, instead of asking for the whole scene back.
+
+    The same lesson as `_surgical`. Whole-scene expansion asks an 8B to reproduce 876 words
+    verbatim and add 270 more; it rewrites instead, comes back shorter, and the attempt is
+    discarded. A live run lost a scene that way after `_deseam` had correctly cut a copied
+    opening and left the scene under its target — the seam was fixed and the length was not.
+
+    Asked for one paragraph between two it can see but must not touch, the same model manages.
+    The first and last paragraphs are never chosen, so an expansion cannot reintroduce the seam
+    violation that caused the shortfall.
+    """
+    shortfall = spec.word_target - scene.word_count()
+    paragraphs = [p for p in scene.text.split("\n\n") if p.strip()]
+    if shortfall <= 0 or len(paragraphs) < 3:
+        return None
+
+    interior = list(range(1, len(paragraphs) - 1))
+    pick = min(interior, key=lambda i: len(paragraphs[i].split()))
+    passage = paragraphs[pick]
+    have = len(passage.split())
+
+    prompt = PASSAGE_PROMPT.format(
+        passage=passage, have=have, want=have + shortfall,
+        before=" ".join(paragraphs[pick - 1].split()[-40:]),
+        after=" ".join(paragraphs[pick + 1].split()[:40]),
+        beats="\n".join(f"  {i}. {b.summary}" for i, b in enumerate(spec.beats, 1)) or "  (none)")
+    try:
+        reply = models.writer.complete(
+            prompt, system=WRITER_SYSTEM,
+            max_tokens=_prose_budget(have + shortfall + 200, models.writer),
+            temperature=min(1.0, 0.8 + 0.1 * round_no))
+    except LLMError:
+        return None
+
+    replacement = strip_reasoning(reply.text).strip()
+    if len(replacement.split()) <= have:
+        return None
+
+    rebuilt = list(paragraphs)
+    rebuilt[pick] = replacement
+    candidate = "\n\n".join(rebuilt)
+    if checks.check_truncated(Scene(spec_id=scene.spec_id, index=scene.index, text=candidate)):
+        return None
+    notes.append(f"expand: staged the thinnest passage, {have} words to "
+                 f"{len(replacement.split())}")
+    return candidate
+
+
+def _expand(scene: Scene, spec: SceneSpec, models: Models, notes: list[str],
+            round_no: int = 0) -> str | None:
     """Grow an under-length scene toward its target without adding plot.
 
     Kept separate from `_repair` because the two instructions are contradictory: repair must not
     change the length, and this must. Conflating them meant a short scene could never be salvaged.
     """
+    local = _expand_passage(scene, spec, models, notes, round_no=round_no)
+    if local is not None:
+        return local
     beats = "\n".join(f"  {i}. {b.summary}"
                       for i, b in enumerate(spec.beats, 1)) or "  (none)"
     prompt = EXPAND_PROMPT.format(
