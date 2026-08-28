@@ -331,6 +331,19 @@ class TestBriefLeakage(unittest.TestCase):
                   "number down, then goes home."), spec)
         self.assertIn("brief_leak", kinds(found))
 
+    def test_every_copied_run_gets_its_own_violation(self):
+        """`_surgical` rewrites the sentence a quote falls in. One violation carrying one of
+        seven copied runs gets one sentence rewritten and the check fires again on the other
+        six — which is how scene 26 of a live run spent every repair round it had."""
+        spec = make_spec(beats=[Beat("She finds an unreachable branch in the founders' code "
+                                     "and writes the line number down before going home")])
+        found = checks.check_brief_leak(
+            scene("She finds an unreachable branch in the founders' code and writes the line "
+                  "number down before going home."), spec)
+        self.assertGreater(len(found), 1)
+        self.assertEqual(len({v.quote for v in found}), len(found),
+                         "each violation must point at a different run")
+
     def test_one_grammar_heavy_run_is_not_a_leak(self):
         """From a live run: scene 4 was held back, unrepairably, for a single shared run —
         "his back to the council the", four of whose six tokens are function words. The scene

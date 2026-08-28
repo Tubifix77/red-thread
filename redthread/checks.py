@@ -360,12 +360,20 @@ def check_brief_leak(scene: Scene, spec: SceneSpec) -> list[Violation]:
             continue
         shared = [g for g in scene_grams & set(ngrams(words(source), 6))
                   if sum(1 for w in g if w not in _FUNCTION_WORDS) >= 4]
-        if len(shared) >= 2:
+        if len(shared) < 2:
+            continue
+        # One violation per copied run, not one per source. The same lesson `check_somatic`
+        # learned: `_surgical` rewrites the sentence a quote falls in, so a single violation
+        # carrying one of seven runs gets one sentence rewritten and the check fires again on
+        # the other six. Scene 26 of a live run spent every repair round that way. Capped,
+        # because a draft with more than a handful is a draft that read its brief aloud and
+        # wants redrafting rather than surgery.
+        for run in sorted(shared)[:6]:
             out.append(Violation(
                 "brief_leak", Severity.MAJOR,
-                f"the draft reproduces {len(shared)} six-word run(s) of wording from its own "
-                f"brief — it is narrating the instruction rather than dramatising it",
-                "check_brief_leak", " ".join(sorted(shared)[0])))
+                f"the draft reproduces this six-word run from its own brief (one of "
+                f"{len(shared)}) — it is narrating the instruction rather than dramatising it",
+                "check_brief_leak", " ".join(run)))
     return out
 
 
