@@ -22,6 +22,7 @@ ROLES = {
     "One sentence in a novel scene must be rewritten": "surgical",
     "It currently reuses wording from the": "reseam",
     "One passage in a novel scene is too thin": "passage",
+    "is missing something it was required to make happen": "fulfil",
 }
 
 
@@ -87,12 +88,15 @@ class ScriptedBackend(Backend):
         # Longer than any thin passage a test will hand it, so the "came back
         # shorter" guard in `_expand_passage` does not reject it.
         "passage": " ".join(_FILLER) + " " + " ".join(_FILLER),
+        "fulfil": ("She put the vial on the bench and slid it across to him. He did not "
+                   "pick it up. The tally sheet went into the stove and the stove door "
+                   "clanged shut behind it."),
         "reseam": (
             "She set the wrench down on the bench, threads up, and wiped her hands on "
             "the rag hanging from the vice. Otto counted the washers back into their tin "
             "and pressed the lid on with his thumb. The yard door stuck the way it "
             "always stuck, and she put her shoulder to it and went out into the cold."),
-            "draft": "",
+        "draft": "",
         }
         self.defaults.update(defaults or {})
         self.queues: dict[str, list[str]] = {}

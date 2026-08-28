@@ -19,9 +19,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from redthread.models import (Beat, Character, Scene, SceneSpec, Severity, StorySpec,
                               StyleContract,
-                              Thread, ThreadKind, Transition)
+                              Thread, ThreadKind, Transition, Violation)
 from redthread import checks
-from redthread.pipeline import (Config, _deseam, _expand_passage, _reseam,
+from redthread.pipeline import (Config, _deseam, _expand_passage, _fulfil, _reseam,
                                 write_all, write_scene)
 from redthread.project import Project
 
@@ -683,6 +683,62 @@ class TestExpansionIsLocal(PipelineCase):
 
         self.assertIsNone(_expand_passage(scene, spec, models, []))
         self.assertEqual(backend.count("passage"), 0)
+
+
+class TestMissedObligation(PipelineCase):
+    """A missed obligation is the one violation with nothing to point at: the judge says the
+    scene never delivered X, so there is no quote and sentence-local surgery has no purchase.
+    That left whole-scene repair, which on an 8B returns a shortened rewrite that drops
+    something else — three times running, on the finale of a live 27-scene book."""
+
+    def _scene(self) -> Scene:
+        return Scene(spec_id="s1", index=1,
+                     text=BREAK.join([fakes.clean_prose(300, variant=1),
+                                      fakes.clean_prose(300, variant=4),
+                                      fakes.clean_prose(300, variant=8)]))
+
+    def _missed(self) -> list[Violation]:
+        return [Violation("thread_obligation", Severity.MAJOR,
+                          "missed: [The Allegiance] the enclave sacrifices its people",
+                          "llm:check_threads")]
+
+    def test_the_missing_beat_is_written_and_spliced_in(self):
+        models, backend = fakes.scripted_models()
+        scene = self._scene()
+        notes: list[str] = []
+
+        grown = _fulfil(scene, self._missed(), models, notes)
+
+        self.assertIsNotNone(grown, notes)
+        self.assertGreater(len(grown.split()), scene.word_count())
+        self.assertIn("slid it across to him", grown)
+        self.assertTrue(any("fulfil: wrote" in n for n in notes), notes)
+        self.assertEqual(backend.count("fulfil"), 1)
+
+    def test_the_final_passage_stays_last(self):
+        """A missing beat belongs before the ending, not after it: the seam checks have already
+        cleared that ending, and appending past it would hand the scene a new one."""
+        models, _ = fakes.scripted_models()
+        scene = self._scene()
+
+        grown = _fulfil(scene, self._missed(), models, [])
+
+        self.assertTrue(grown.endswith(scene.text.split(BREAK)[-1]))
+
+    def test_the_judge_wording_reaches_the_prompt_without_its_prefix(self):
+        models, backend = fakes.scripted_models()
+        _fulfil(self._scene(), self._missed(), models, [])
+
+        prompt = [p for role, p in backend.calls if role == "fulfil"][0]
+        self.assertIn("the enclave sacrifices its people", prompt)
+        self.assertNotIn("missed:", prompt)
+
+    def test_nothing_to_do_without_a_missed_obligation(self):
+        models, backend = fakes.scripted_models()
+        other = [Violation("thread_prohibition", Severity.MAJOR, "violated: x", "llm")]
+
+        self.assertIsNone(_fulfil(self._scene(), other, models, []))
+        self.assertEqual(backend.count("fulfil"), 0)
 
 
 class TestSurgicalRepair(PipelineCase):

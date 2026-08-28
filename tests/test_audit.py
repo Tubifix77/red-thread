@@ -335,6 +335,19 @@ class TestPostNamesAnEvent(unittest.TestCase):
                        "abandoned"), self._story())
         self.assertIn("post_names_an_absence", kinds(found))
 
+    def test_an_absence_without_a_negation_word_is_flagged(self):
+        """The finale of a live run was told to bring about "the bailiff's past is left
+        unspoken". A scene cannot be shown not saying something."""
+        for post in ("the bailiff's past is left unspoken",
+                     "the question remains unanswered"):
+            with self.subTest(post=post):
+                self.assertTrue(checks.is_absence_post(post))
+        self.assertEqual(checks.positive_prohibition("the bailiff's past is left unspoken"),
+                         "the bailiff's past is spoken")
+
+    def test_an_ordinary_leaving_is_not_an_absence(self):
+        self.assertFalse(checks.is_absence_post("Dain leaves the vial on the ground"))
+
     def test_an_event_with_a_negated_qualifier_is_left_alone(self):
         """The first version of this check flagged any negation and caught four lines of the
         reference plan on the spot. Each has a real event; the negation describes it."""

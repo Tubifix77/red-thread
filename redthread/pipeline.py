@@ -104,6 +104,7 @@ DELETE_KINDS = {"thematic_gloss", "tell_thematic_gloss"}
 # sentence a quote lands in while the check compares a whole region. It could never converge,
 # and 292 green tests said nothing about it because the fixtures were built not to trip it.
 DEDICATED_REPAIRS = {
+    "thread_obligation": "fulfil",
     "length": "expand",
     "length_runaway": "trim",
     "truncated_scene": "snap",
@@ -783,6 +784,9 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             repaired = _surgical(scene, spec, serious, models, result.notes,
                                  samples=project.story.style.samples)
             action = "surgical"
+        if repaired is None and any(v.kind == "thread_obligation" for v in serious):
+            repaired = _fulfil(scene, serious, models, result.notes)
+            action = "fulfil"
         if repaired is None:
             # Two tries, because the first can fail on the call rather than on the answer — a
             # live run lost scene 13's only response pass to one LLMError. Retrying a failed
@@ -903,6 +907,64 @@ def _trim(scene: Scene, spec: SceneSpec, models: Models, round_no: int = 0) -> s
     return text
 
 
+FULFIL_PROMPT = """A scene of a novel is missing something it was required to make happen.
+
+MISSING: {missing}
+
+Write the passage that makes it happen — {want} words, three or four sentences. Show it: the
+action, the object, what is said. Do not summarise it, do not have the narrator announce it, and
+do not explain what it means.
+
+It goes here, between these two passages, which you must NOT rewrite or repeat:
+
+  BEFORE: …{before}
+  AFTER:  {after}…
+
+Write the new passage only. No commentary."""
+
+
+def _fulfil(scene: Scene, violations: list[Violation], models: Models, notes: list[str],
+            round_no: int = 0) -> str | None:
+    """Write the missing beat and splice it in, rather than asking for the scene back.
+
+    A missed obligation is the one violation with nothing to point at: the judge says the scene
+    never delivered X, so there is no quote, no sentence to rewrite, and `_surgical` has no
+    purchase. That left whole-scene repair — which on an 8B returns a shortened rewrite that
+    drops something else, and did so on the finale of a live run three times running.
+
+    What the scene needs is not a rewrite but an addition, so this asks for the addition. It goes
+    before the final passage, where a missing beat almost always belongs and where it cannot
+    disturb an ending the seam checks have already cleared.
+    """
+    missing = [v for v in violations if v.kind == "thread_obligation"]
+    paragraphs = [p for p in scene.text.split("\n\n") if p.strip()]
+    if not missing or len(paragraphs) < 2:
+        return None
+
+    want = max(60, min(140, 900 - scene.word_count()) if scene.word_count() < 900 else 90)
+    prompt = FULFIL_PROMPT.format(
+        missing="\n".join(f"  - {v.detail.removeprefix('missed: ')}" for v in missing[:3]),
+        want=want,
+        before=" ".join(paragraphs[-2].split()[-50:]),
+        after=" ".join(paragraphs[-1].split()[:50]))
+    try:
+        reply = models.writer.complete(prompt, system=WRITER_SYSTEM,
+                                       max_tokens=_prose_budget(want + 200, models.writer),
+                                       temperature=min(1.0, 0.7 + 0.1 * round_no))
+    except LLMError:
+        return None
+
+    addition = strip_reasoning(reply.text).strip()
+    if len(addition.split()) < 20:
+        return None
+    candidate = "\n\n".join(paragraphs[:-1] + [addition, paragraphs[-1]])
+    if checks.check_format(Scene(spec_id=scene.spec_id, index=scene.index, text=candidate)):
+        return None
+    notes.append(f"fulfil: wrote {len(addition.split())} words staging "
+                 f"{len(missing)} missed obligation(s)")
+    return candidate
+
+
 def _expand_passage(scene: Scene, spec: SceneSpec, models: Models, notes: list[str],
                     round_no: int = 0) -> str | None:
     """Grow the thinnest passage and splice it in, instead of asking for the whole scene back.
@@ -921,20 +983,25 @@ def _expand_passage(scene: Scene, spec: SceneSpec, models: Models, notes: list[s
     if shortfall <= 0 or len(paragraphs) < 3:
         return None
 
+    # The paragraph closest in size to the shortfall, so the rewrite roughly doubles it. Picking
+    # the thinnest regardless of the gap asked an 8B to turn 47 words into 467, and what came
+    # back was padding that tripped three other checks. Growth is capped per round; a scene that
+    # needs more than this gets it over two rounds instead of one distorted paragraph.
     interior = list(range(1, len(paragraphs) - 1))
-    pick = min(interior, key=lambda i: len(paragraphs[i].split()))
+    pick = min(interior, key=lambda i: abs(len(paragraphs[i].split()) - shortfall))
     passage = paragraphs[pick]
     have = len(passage.split())
+    want = min(have + shortfall, have * 2 + 60)
 
     prompt = PASSAGE_PROMPT.format(
-        passage=passage, have=have, want=have + shortfall,
+        passage=passage, have=have, want=want,
         before=" ".join(paragraphs[pick - 1].split()[-40:]),
         after=" ".join(paragraphs[pick + 1].split()[:40]),
         beats="\n".join(f"  {i}. {b.summary}" for i, b in enumerate(spec.beats, 1)) or "  (none)")
     try:
         reply = models.writer.complete(
             prompt, system=WRITER_SYSTEM,
-            max_tokens=_prose_budget(have + shortfall + 200, models.writer),
+            max_tokens=_prose_budget(want + 200, models.writer),
             temperature=min(1.0, 0.8 + 0.1 * round_no))
     except LLMError:
         return None

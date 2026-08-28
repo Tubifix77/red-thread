@@ -932,6 +932,9 @@ _NEGATIONS = re.compile(
 
 _NEITHER_NOR = re.compile(r"\bneither\b(.*?)\bnor\b", re.IGNORECASE | re.DOTALL)
 
+_LEFT_UNDONE = re.compile(
+    r"\b(?:left|leaves|remains?|stays?|goes)\s+(un\w+)\b", re.IGNORECASE)
+
 
 def is_absence_post(text: str) -> bool:
     """Is this `post` line entirely a thing not happening?
@@ -948,7 +951,12 @@ def is_absence_post(text: str) -> bool:
     distinguishing mark is a `neither … nor` reached without passing a clause boundary.
     """
     match = _NEITHER_NOR.search(text)
-    return bool(match) and "," not in text[:match.start()]
+    if match and "," not in text[:match.start()]:
+        return True
+    # The other way a plan writes an absence without a negation word: "the bailiff's past is
+    # left unspoken", "the question remains unanswered". A scene cannot be shown not saying
+    # something, so the judge reports it missed — as it did for the finale of a live run.
+    return bool(_LEFT_UNDONE.search(text))
 
 # "nothing" and "none" are how a plan writes an *empty* forbid list, not how it writes a
 # negation. Flagging those reports a placeholder as a malformed rule.
@@ -1009,6 +1017,13 @@ def positive_prohibition(text: str) -> str:
     # resolved nor abandoned", which is two forbidden events written as one absence.
     out = _NEITHER_NOR.sub(lambda m: m.group(1).strip() + " or ", text)
     if out != text:
+        return re.sub(r"\s+", " ", out).strip()
+
+    # "the bailiff's past is left unspoken" forbids the event "the bailiff's past is spoken".
+    out = _LEFT_UNDONE.sub(lambda m: "is " + re.sub(r"^un", "", m.group(1), flags=re.I), text)
+    if out != text:
+        # "is left unspoken" already carries its copula, so the substitution doubles it.
+        out = re.sub(r"\b(is|are|was|were)\s+is\b", r"\1", out, flags=re.I)
         return re.sub(r"\s+", " ", out).strip()
 
     for pattern, replacement in _UNNEGATE:
@@ -1095,6 +1110,34 @@ def check_post_is_an_event(plan: list[SceneSpec], story: StorySpec) -> list[Viol
                         f"thing not happening. No prose can evidence an absence, so the judge "
                         f"reports it missed however the scene goes. This belongs in \"forbid\".",
                         "check_post_is_an_event", item))
+    return out
+
+
+_BEAT_PROSE = re.compile(r"['\"“”‘’][^'\"“”‘’]{12,}['\"“”‘’]")
+
+
+def check_beats_are_intent(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
+    """A beat says what happens. A beat written as prose guarantees the scene reproduces it.
+
+    Scene 26 of a live run had ten beats like "Dain steps forward, his boots crunching over dry
+    leaves, his voice steady and low" and "Dain speaks, his words cutting through the silence,
+    'You will not take these years.'" The writer did what it was told, `check_brief_leak` found
+    seven copied runs, and no repair could fix a scene whose brief was the scene.
+
+    Quoted speech is the unambiguous mark and the only one checked here: a beat carrying a line
+    of dialogue has stopped planning and started writing.
+    """
+    out: list[Violation] = []
+    for spec in plan:
+        for beat in spec.beats:
+            if not _BEAT_PROSE.search(beat.summary):
+                continue
+            out.append(Violation(
+                "beat_is_prose", Severity.MAJOR,
+                f"scene {spec.index} has a beat containing written dialogue — \"{beat.summary}\". "
+                f"A beat names what happens so the scene can dramatise it; written out, the "
+                f"scene copies it back and `check_brief_leak` is right to flag the copy.",
+                "check_beats_are_intent", beat.summary))
     return out
 
 
@@ -1242,6 +1285,7 @@ def audit_plan(plan: list[SceneSpec], story: StorySpec,
     out += check_prohibition_phrasing(plan, story)
     out += check_stale_prohibitions(plan, story)
     out += check_post_is_an_event(plan, story)
+    out += check_beats_are_intent(plan, story)
     out += check_cast_names(plan, story)
 
     # POV variety: a manuscript entirely in one head is legal but worth surfacing, since

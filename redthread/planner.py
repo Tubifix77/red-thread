@@ -24,7 +24,7 @@ import re
 from dataclasses import dataclass, field
 
 from . import checks
-from .llm import LLMError, Models, parse_json
+from .llm import LLMError, Models, parse_json, strip_reasoning
 from .models import (Beat, Character, SceneSpec, StorySpec, StyleContract, Thread, ThreadKind,
                      Transition, Violation, Severity)
 from .schedule import (DEFAULT_SCENE_WORDS, scene_count, schedule_threads, score_spec,
@@ -328,6 +328,10 @@ For each scene give:
 - "characters": ids of everyone present.
 - "beats": 2 to 4 beats, in order. Each is roughly half a page of story and must be an event or a
   turn, not a feeling. A beat that could be summarised as "she reflects on X" is not a beat.
+  A beat NAMES what happens; it is not the prose. Write "Dain refuses to hand over the vial",
+  never "Dain steps forward, his boots crunching over dry leaves, his voice steady and low" and
+  never a line of dialogue in quotation marks. The scene is written from the beat, so a beat
+  written as prose is prose the scene will copy back word for word.
 - "threads": for each thread id this scene must move, what the scene must BRING ABOUT ("post",
   1-3 concrete statements) and what it must NOT do ("forbid", 1-3 statements). Forbids are where
   premature reveals get prevented — use them.
@@ -664,6 +668,62 @@ def scrub_forbidden(plan: list[SceneSpec], story: StorySpec, models: Models) -> 
     return fixed
 
 
+DEPROSE_PROMPT = """Rewrite this outline beat so that it NAMES what happens instead of writing it.
+
+Rules:
+- No dialogue. If the beat has a character say something, say what they do by saying it:
+  "Varyn demands the years back", not "Varyn says, 'Return the years.'"
+- No sensory or physical description. Cut cloaks, boots, wind, glow, and how a voice sounds.
+- One clause if possible. Under fifteen words. Plain, flat, unliterary.
+
+BEAT: {beat}
+
+Reply with the rewritten beat only."""
+
+
+# ", his boots crunching over dry leaves" — the absolute-participial construction is the
+# signature of a beat that has stopped planning and started describing. Dialogue is the other
+# signature, and `checks.check_beats_are_intent` reports that one at plan level.
+_PARTICIPIAL = re.compile(r",\s+(?:his|her|its|their|the)\s+\w+\s+\w+(?:ing|ed)\b", re.I)
+
+
+def _is_written_out(beat: str) -> bool:
+    return bool(checks._BEAT_PROSE.search(beat) or _PARTICIPIAL.search(beat)
+                or len(beat.split()) > 18)
+
+
+def scrub_prose_beats(plan: list[SceneSpec], models: Models) -> int:
+    """Rewrite beats that were written as prose rather than as intent.
+
+    A beat is what the scene must accomplish; the scene is written from it. So a beat written as
+    finished prose is prose the writer copies back, and `check_brief_leak` is right to flag the
+    copy — which leaves a scene nothing can repair, because its brief is the scene. Scene 26 of a
+    live run had ten beats of the form "Dain steps forward, his boots crunching over dry leaves,
+    his voice steady and low" and never committed however many rounds it was given.
+
+    Each rewrite is code-verified: a replacement that still carries dialogue, or that grew, is
+    discarded, and `checks.check_beats_are_intent` remains the honest backstop.
+    """
+    fixed = 0
+    for spec in plan:
+        for beat in spec.beats:
+            if not _is_written_out(beat.summary):
+                continue
+            try:
+                reply = models.critic.complete(
+                    DEPROSE_PROMPT.format(beat=beat.summary), max_tokens=200, temperature=0.3)
+            except LLMError:
+                continue
+            line = strip_reasoning(reply.text).strip().strip('"').strip()
+            if not line or len(line.split()) > len(beat.summary.split()):
+                continue
+            if checks._BEAT_PROSE.search(line):
+                continue
+            beat.summary = line
+            fixed += 1
+    return fixed
+
+
 # ======================================================================================
 # 4. orchestration
 # ======================================================================================
@@ -728,6 +788,10 @@ def make_plan(premise: str, models: Models, total_words: int = 60000,
                      "filled" if ok else "PROPOSAL UNPARSEABLE — left blank"))
 
     result = PlanResult(story=story, plan=specs)
+    deprosed = scrub_prose_beats(specs, models)
+    if deprosed:
+        stage("beats", f"{deprosed} beat(s) were written as prose, not intent; rewritten")
+
     scrubbed = scrub_forbidden(specs, story, models)
     if scrubbed:
         stage("scrub", f"{scrubbed} line(s) used a phrase the plan itself forbids; rewritten")
