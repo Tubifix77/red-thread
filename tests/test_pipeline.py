@@ -550,6 +550,28 @@ class TestSeamRepair(PipelineCase):
 
         self.assertEqual(checks.check_seam(Scene(spec_id="s2", index=2, text=text), tail), [])
 
+    def test_a_cut_that_trades_a_seam_for_a_shortfall_is_kept(self):
+        """`_deseam` cut 155 copied words off scene 21 of a live run, cleared the seam, dropped
+        the scene under its target, and was discarded as "no improvement" — twice, then
+        sidelined, leaving the copy in the manuscript. Clearing the problem an action was chosen
+        for is progress even when the violation count ties."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(950))
+        first = write_scene(self.project, self.project.spec_at(1), models, Config(candidates=1))
+        self.assertTrue(first.committed)
+
+        tail = " ".join(first.scene.text.split()[-150:])
+        # Just over target, so cutting the copied opening lands it just under: one MAJOR either
+        # way, which is exactly the tie that used to throw the cut away.
+        backend.queue("draft", tail + " " + fakes.clean_prose(900, variant=7))
+        result = write_scene(self.project, self.project.spec_at(2), models,
+                             Config(candidates=1, max_repairs=4))
+
+        self.assertTrue(any("deseam: deleted" in n for n in result.notes), result.notes)
+        self.assertFalse(any("deseam attempt" in n and "discarded" in n for n in result.notes),
+                         result.notes)
+        self.assertNotIn("seam_echo", {v.kind for v in result.violations})
+
     def test_deletion_is_refused_when_it_would_gut_the_scene(self):
         """Past a few sentences the copy is not a seam artefact but an empty scene."""
         first = Scene(spec_id="s1", index=1, text=fakes.clean_prose(120))

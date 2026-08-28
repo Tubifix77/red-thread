@@ -114,6 +114,17 @@ DEDICATED_REPAIRS = {
 NO_REPAIR = {"seam"}
 """Emitted only for an empty scene. There is nothing to repair, only to draft again."""
 
+# What each repair action was chosen to fix. The repair loop accepts an action that cleared its
+# own target even when the total violation count ties, so a repair is never discarded for
+# trading the problem it was called for against one that has a repair of its own.
+ACTION_TARGETS = {
+    "expand": {"length"},
+    "trim": {"length_runaway"},
+    "snap": {"truncated_scene"},
+    "deseam": {"seam_echo", "seam_tail_copy"},
+    "reseam": {"seam_echo", "seam_tail_copy"},
+}
+
 SENTENCE_PROMPT = """One sentence in a novel scene must be rewritten.
 
 Problem with it: {detail}
@@ -721,20 +732,18 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
 
         candidate, new_det = run_deterministic(repaired)
         improved = _score(new_det) < _score(det_violations)
-        # Resolving the length problem is accepted even when the violation tuple ties — but it
-        # must never buy a BLOCKER in. Without that clause, an "expansion" carrying a markdown
-        # heading was accepted because it reached the word target, and the blocker it smuggled
-        # in held the scene anyway.
+        # An action that resolved the exact problem it was chosen for is accepted even when the
+        # violation tuple ties, because trading one MAJOR for another is progress when the new
+        # one has a repair and the old one has just exhausted its own. `_deseam` cut 155 copied
+        # words off scene 21, cleared the seam, dropped the scene under its target, and was
+        # discarded as "no improvement" — twice, then sidelined — leaving the copy in place.
+        # It must never buy a BLOCKER in, though: without that clause an "expansion" carrying a
+        # markdown heading was accepted for reaching the word target, and the blocker it
+        # smuggled in held the scene anyway.
         no_new_blockers = not any(v.severity is Severity.BLOCKER for v in new_det)
-        fixed_length = no_new_blockers and (
-            (action == "expand"
-             and any(v.kind == "length" for v in det_violations)
-             and not any(v.kind == "length" for v in new_det))
-            or (action in ("trim", "snap")
-                and any(v.kind in ("length_runaway", "truncated_scene")
-                        for v in det_violations)
-                and not any(v.kind in ("length_runaway", "truncated_scene")
-                            for v in new_det)))
+        targets = ACTION_TARGETS.get(action, set())
+        had = {v.kind for v in det_violations} & targets
+        fixed_length = no_new_blockers and bool(had) and not ({v.kind for v in new_det} & targets)
         if not (improved or fixed_length):
             failure_streak[action] = failure_streak.get(action, 0) + 1
             if failure_streak[action] >= 2:
