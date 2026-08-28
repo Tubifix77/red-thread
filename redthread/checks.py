@@ -15,8 +15,8 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from .models import (Scene, SceneSpec, Severity, StorySpec, ThreadKind, ThreadMove,
-                     Violation)
+from .models import (Scene, SceneSpec, Severity, StorySpec, Thread, ThreadKind,
+                     ThreadMove, Violation)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -1008,6 +1008,56 @@ def is_disclosure_prohibition(text: str) -> bool:
     return bool(_DISCLOSURE.search(text))
 
 
+_STATE_FILLER = {"reaches", "reach", "reached", "enters", "enter", "entered", "becomes",
+                 "become", "moves", "move", "shifts", "shift", "is", "are", "now", "to", "into",
+                 "state", "the", "a", "an", "at", "in", "of", "its", "this", "scene"}
+
+
+def is_state_restatement(text: str, thread: Thread) -> bool:
+    """Is this `post` line just the thread's name and a state label?
+
+    `verify.check_threads` already refuses to show the judge `op.to_state`, because state names
+    are this system's bookkeeping ("chosen", "paid_off") and a judge asked whether prose "ends
+    the thread in state paid_off" can only guess. A live planner then wrote the label into the
+    post line itself — `post: ["The Allegiance reaches 'reoriented'"]` — and the same
+    unanswerable question reached the judge through the other door. Scene 19 was held back for
+    missing two obligations that name no event at all.
+
+    The state change is applied by `Project.commit` regardless. What a post line is *for* is
+    saying what happens on the page.
+    """
+    # No apostrophes in the token class: the planner quotes the label — reaches 'reoriented' —
+    # and a token of "'reoriented'" matches nothing in `thread.states`.
+    word = re.compile(r"[a-z0-9]+")
+    tokens = set(word.findall(text.lower()))
+    if not tokens:
+        return False
+    allowed = set(_STATE_FILLER) | set(word.findall(thread.name.lower()))
+    for state in thread.states:
+        allowed |= set(word.findall(state.lower()))
+    return tokens <= allowed
+
+
+def check_post_is_an_event(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
+    """A scene obligation must name something that happens, not a state the bookkeeping enters."""
+    out: list[Violation] = []
+    for spec in plan:
+        for tid, op in spec.thread_ops.items():
+            thread = story.thread(tid)
+            if thread is None:
+                continue
+            for item in op.post:
+                if not is_state_restatement(item, thread):
+                    continue
+                out.append(Violation(
+                    "post_names_a_state", Severity.MAJOR,
+                    f"scene {spec.index} [{thread.name}] requires \"{item}\", which names a "
+                    f"state rather than an event. Nothing on the page can satisfy it, and no "
+                    f"repair can add it. Say what happens.",
+                    "check_post_is_an_event", item))
+    return out
+
+
 def check_stale_prohibitions(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
     """A scene forbidding a disclosure the plan has already scheduled.
 
@@ -1151,6 +1201,7 @@ def audit_plan(plan: list[SceneSpec], story: StorySpec,
     out += check_spec_self_consistency(plan, story)
     out += check_prohibition_phrasing(plan, story)
     out += check_stale_prohibitions(plan, story)
+    out += check_post_is_an_event(plan, story)
     out += check_cast_names(plan, story)
 
     # POV variety: a manuscript entirely in one head is legal but worth surfacing, since

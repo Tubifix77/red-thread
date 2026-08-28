@@ -236,6 +236,11 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
         thread: Thread | None = story.thread(tid)
         label = thread.name if thread else tid
         for item in op.post:
+            # A post line that only names a state asks the judge the very question `to_state` is
+            # withheld to avoid — whether the prose "reaches 'reoriented'". The commit applies
+            # the state change either way; an unanswerable obligation only costs a scene.
+            if thread and _checks.is_state_restatement(item, thread):
+                continue
             required.append((tid, f"[{label}] {item}"))
         # op.to_state is deliberately NOT given to the judge. State names are this system's
         # bookkeeping labels ("chosen", "paid_off"), not textual events — a judge asked whether

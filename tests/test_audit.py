@@ -299,5 +299,44 @@ class TestStaleProhibitions(unittest.TestCase):
         self.assertEqual(found, [])
 
 
+class TestPostNamesAnEvent(unittest.TestCase):
+    """`verify.check_threads` withholds `op.to_state` from the judge because state names are
+    bookkeeping and a judge asked whether prose "ends in state paid_off" can only guess. A live
+    planner then wrote the label into the post line itself and the same unanswerable question
+    reached the judge through the other door; scene 19 was held back for missing two obligations
+    that named no event at all."""
+
+    THREAD = Thread(id="T", name="The Allegiance",
+                    states=["dormant", "known", "compromised", "reoriented", "settled"])
+
+    def _plan(self, post: str) -> list[SceneSpec]:
+        return [SceneSpec(id="s", index=19, summary="x",
+                          thread_ops={"T": Transition(post=[post])})]
+
+    def _story(self) -> StorySpec:
+        return StorySpec(title="t", premise="p", threads=[self.THREAD])
+
+    def test_a_state_label_is_not_an_obligation(self):
+        found = checks.check_post_is_an_event(
+            self._plan("The Allegiance reaches 'reoriented'"), self._story())
+        self.assertIn("post_names_a_state", kinds(found))
+
+    def test_an_event_passes(self):
+        for post in ("Dain abandons his pursuit of Riven",
+                     "Dain's allegiance shifts to the enclave",
+                     "Dain is told who signed the order"):
+            with self.subTest(post=post):
+                self.assertEqual(checks.check_post_is_an_event(self._plan(post),
+                                                               self._story()), [])
+
+    def test_the_quoted_label_is_recognised(self):
+        """The planner quotes the label, so a token of "'reoriented'" must still match the
+        state "reoriented"."""
+        self.assertTrue(checks.is_state_restatement("The Allegiance reaches 'reoriented'",
+                                                    self.THREAD))
+        self.assertTrue(checks.is_state_restatement("The Allegiance is now compromised",
+                                                    self.THREAD))
+
+
 if __name__ == "__main__":
     unittest.main()
