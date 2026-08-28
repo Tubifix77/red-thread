@@ -96,6 +96,24 @@ REMEDIES = {
 # like "And she knew that no one else would ever see it." — usually the correct one.
 DELETE_KINDS = {"thematic_gloss", "tell_thematic_gloss"}
 
+# Violation kinds handled by a dedicated repair action rather than by a REMEDIES prompt line,
+# and the kinds no repair can address at all. Kept as data so `tests/test_repair_coverage.py`
+# can assert that every blocking kind a scene check emits has *some* route to a repair that can
+# reach it. That assertion is the one that was missing: `seam_tail_copy` had no REMEDIES entry
+# and no route of its own, so it fell through to sentence-local surgery, which rewrites the
+# sentence a quote lands in while the check compares a whole region. It could never converge,
+# and 292 green tests said nothing about it because the fixtures were built not to trip it.
+DEDICATED_REPAIRS = {
+    "length": "expand",
+    "length_runaway": "trim",
+    "truncated_scene": "snap",
+    "seam_echo": "deseam, then reseam",
+    "seam_tail_copy": "deseam, then reseam",
+}
+
+NO_REPAIR = {"seam"}
+"""Emitted only for an empty scene. There is nothing to repair, only to draft again."""
+
 SENTENCE_PROMPT = """One sentence in a novel scene must be rewritten.
 
 Problem with it: {detail}
@@ -109,6 +127,148 @@ It sits in this context:
 
 Write the replacement sentence only. No quotation marks around it, no commentary, no restating
 the context sentences. Match the voice of the context. One sentence, two at most."""
+
+
+RESEAM_PROMPT = """Rewrite the {position} of a novel scene. It currently reuses wording from the \
+previous scene, which the reader has just read.
+
+Every phrase and every image below must be replaced with a different one. Do not keep any run of
+words from it. Do not end on the same object, gesture, or thought it ends on.
+
+This is the passage to replace ({count} sentences, about {words} words):
+---
+{block}
+---
+
+It sits {adjacency}:
+---
+{context}
+---
+
+{guidance}
+
+Write the replacement passage only — about {words} words, same voice, same events. No commentary."""
+
+
+def _deseam(scene: Scene, previous_tail: str, violations: list[Violation],
+            notes: list[str]) -> str | None:
+    """Delete the copied block. No model call, and it cannot fail the way a rewrite can.
+
+    A copied seam is the one violation whose repair is provably safe to do in code: the offending
+    text is, by definition, something the reader has already read one scene ago, so deleting it
+    removes nothing they do not have. Rewriting it is the harder job and — on a live run — the
+    losing one. Handed the previous ending under a heading saying these words are forbidden, an
+    8B copied them into its replacement twice in a row, in about a second each time. Showing a
+    small model the text it must avoid is showing it the text to produce.
+
+    So: drop whole sentences from the offending end until the check that flagged it stops firing.
+    An ending that shrinks below the word target is a problem `_expand` already solves; an ending
+    identical to the previous scene's is one nothing else solves.
+    """
+    if not previous_tail:
+        return None
+    kinds = {v.kind for v in violations}
+    spans = checks.sentence_spans(scene.text)
+    if len(spans) < 4:
+        return None
+    from_end = "seam_tail_copy" in kinds
+    if not (from_end or "seam_echo" in kinds):
+        return None
+
+    original = len(scene.text.split())
+    # Bounded by how much of the scene is duplicated, not by a sentence count. The first cut of
+    # this stopped at four sentences and then met scene 7 of a live run, which reproduced the
+    # whole of scene 6's closing — seven sentences, 150 words — before starting its own story.
+    # Four sentences could not reach it, so nothing did. What actually matters is the fraction:
+    # a quarter of a scene can be duplicate and the rest still be a scene, and the shortfall is
+    # a job `_expand` already does. Past a quarter there is no scene here and a redraft is right.
+    for drop in range(1, max(2, len(spans) - 2)):
+        kept = spans[:-drop] if from_end else spans[drop:]
+        if len(kept) < 3:
+            return None
+        candidate = scene.text[kept[0][0]:kept[-1][1]].strip()
+        if len(candidate.split()) < original * 0.75:
+            return None
+        probe = Scene(spec_id=scene.spec_id, index=scene.index, text=candidate)
+        still = {v.kind for v in checks.check_seam(probe, previous_tail)}
+        if still & {"seam_tail_copy", "seam_echo"} or checks.check_truncated(probe):
+            continue
+        where = "ending" if from_end else "opening"
+        notes.append(f"deseam: deleted {drop} sentence(s) of copied {where}; "
+                     f"{original - len(candidate.split())} words removed")
+        return candidate
+    return None
+
+
+def _reseam(scene: Scene, previous_tail: str, violations: list[Violation], models: Models,
+            notes: list[str], round_no: int = 0) -> str | None:
+    """Rewrite a whole opening or closing block that copied the previous scene.
+
+    Sentence-surgical repair cannot fix a seam, and a real run proved it five rounds running:
+    the checks compare *regions* — the first 60 words against the previous ending, the last 25
+    against it — while a violation carries one n-gram, so `sentence_covering` rewrites one
+    sentence of a two-sentence copy and the check fires again on the remainder. Scene 4 of a
+    live book ended with two sentences lifted verbatim from scene 3 and could not be repaired.
+
+    So the unit of repair matches the unit of detection: the whole block, replaced in one go,
+    then verified with the very check that flagged it.
+    """
+    if not previous_tail:
+        return None
+    kinds = {v.kind for v in violations}
+    spans = checks.sentence_spans(scene.text)
+    if len(spans) < 3:
+        return None
+
+    if "seam_tail_copy" in kinds:
+        position, adjacency = "ending", "at the very end of the scene, after this"
+        block_spans = [s for s in spans if s[1] > len(scene.text) - 240][-3:]
+        guidance = ("End on something concrete — an action completed, an object, words spoken. "
+                    "Do not end on what anything means or on what the character knows.")
+    elif "seam_echo" in kinds or "seam_reset" in kinds:
+        position, adjacency = "opening", "at the very start of the scene, before this"
+        block_spans = [s for s in spans if s[0] < 320][:3]
+        guidance = ("Continue from the previous scene rather than re-establishing anything. Do "
+                    "not open with weather, waking, a time label, or a name plus a stance verb.")
+    else:
+        return None
+
+    if not block_spans:
+        return None
+    lo, hi = block_spans[0][0], block_spans[-1][1]
+    block = scene.text[lo:hi].strip()
+    if not block:
+        return None
+
+    context = (scene.text[max(0, lo - 400):lo].strip()[-380:] if position == "ending"
+               else scene.text[hi:hi + 400].strip()[:380])
+
+    prompt = RESEAM_PROMPT.format(
+        position=position,
+        count=len(block_spans), words=max(25, len(block.split())),
+        block=block, adjacency=adjacency, context=context or "(nothing)",
+        guidance=guidance)
+    try:
+        reply = models.writer.complete(prompt, system=WRITER_SYSTEM, max_tokens=700,
+                                       temperature=min(1.0, 0.7 + 0.1 * round_no))
+    except LLMError:
+        return None
+
+    replacement = strip_reasoning(reply.text).strip().strip('"').strip()
+    if not replacement or len(replacement.split()) < len(block.split()) * 0.4:
+        return None
+
+    candidate = (scene.text[:lo].rstrip() + " " + replacement + " "
+                 + scene.text[hi:].lstrip()).strip()
+    # Verified with the same check that flagged it: a model told not to reuse the previous
+    # ending will sometimes reuse it anyway, and splicing that in unchecked wastes the round.
+    probe = Scene(spec_id=scene.spec_id, index=scene.index, text=candidate)
+    still = {v.kind for v in checks.check_seam(probe, previous_tail)}
+    if still & {"seam_tail_copy", "seam_echo"}:
+        notes.append(f"reseam: the new {position} still echoes the previous scene; discarded")
+        return None
+    notes.append(f"reseam: rewrote the scene's {position} ({len(block_spans)} sentences)")
+    return candidate
 
 
 def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models: Models,
@@ -473,15 +633,33 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             return (scene.text[:complete[-1]] if complete else None), "snap"
         if any(v.kind == "length_runaway" for v in fixable) and "trim" not in sidelined:
             return _trim(scene, spec, models, round_no=result.repairs), "trim"
+        # Seams are region problems, not sentence problems, so surgical must never see one: it
+        # rewrites the sentence a quote falls in, while the check compares a whole region, and a
+        # live run spent five rounds nibbling one sentence off a two-sentence copy. Deletion
+        # first — it needs no model and cannot come back still copying — then the rewrite.
+        if any(v.kind in ("seam_tail_copy", "seam_echo") for v in fixable):
+            if "deseam" not in sidelined:
+                cut = _deseam(scene, previous_tail, fixable, result.notes)
+                if cut is not None:
+                    return cut, "deseam"
+            if "reseam" not in sidelined:
+                return (_reseam(scene, previous_tail, fixable, models, result.notes,
+                                round_no=result.repairs), "reseam")
         quoteless = [v for v in fixable
                      if not (v.quote and checks.locate_quote(scene.text, v.quote))]
-        if quoteless:
+        if quoteless and "repair" not in sidelined:
             return _repair(scene, fixable, models, config), "repair"
-        repaired = _surgical(scene, spec, fixable, models, result.notes,
-                             samples=project.story.style.samples, round_no=result.repairs)
-        if repaired is None:
+        if "surgical" not in sidelined:
+            repaired = _surgical(scene, spec, fixable, models, result.notes,
+                                 samples=project.story.style.samples,
+                                 round_no=result.repairs)
+            if repaired is not None:
+                return repaired, "surgical"
+        if "repair" not in sidelined:
             return _repair(scene, fixable, models, config), "repair"
-        return repaired, "surgical"
+        # Every action that could address these violations has failed twice. Spending the rest
+        # of the budget re-running them is how a scene burns five rounds changing nothing.
+        return None, "exhausted"
 
     for _ in range(config.max_repairs):
         fixable = [v for v in det_violations
@@ -489,6 +667,11 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         if not fixable:
             break
         repaired, action = attempt_fix(fixable)
+        if action == "exhausted":
+            result.notes.append("every repair action for these violations has been tried twice "
+                                "and failed; stopping early rather than spending the budget")
+            progress.stage("repairs", "all actions exhausted")
+            break
         if repaired is None:
             # Consume a round and try again with the temperature bumped, rather than forfeiting
             # the whole budget: a single unusable trim reply used to `break` here, leaving a

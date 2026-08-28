@@ -17,9 +17,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from redthread.models import (Beat, Character, SceneSpec, Severity, StorySpec, StyleContract,
+from redthread.models import (Beat, Character, Scene, SceneSpec, Severity, StorySpec,
+                              StyleContract,
                               Thread, ThreadKind, Transition)
-from redthread.pipeline import Config, write_all, write_scene
+from redthread import checks
+from redthread.pipeline import (Config, _deseam, _reseam, write_all, write_scene)
 from redthread.project import Project
 
 from tests import fakes
@@ -458,7 +460,9 @@ class TestSeamIsFedForward(PipelineCase):
         write_scene(self.project, self.project.spec_at(1), models, Config(candidates=1))
 
         tail_words = self.project.committed_scenes()[0].text.split()[-12:]
-        backend.queue("draft", fakes.clean_prose())
+        # A different closing, or scene 2 ends in scene 1's exact words and the seam repair —
+        # not the brief — becomes the last prompt the backend saw.
+        backend.queue("draft", fakes.clean_prose(variant=1))
         write_scene(self.project, self.project.spec_at(2), models, Config(candidates=1))
 
         drafts = [prompt for role, prompt in backend.calls if role == "draft"]
@@ -470,7 +474,7 @@ class TestSeamIsFedForward(PipelineCase):
         backend.queue("draft", fakes.clean_prose())
         write_scene(self.project, self.project.spec_at(1), models, Config(candidates=1))
 
-        backend.queue("draft", fakes.clean_prose())
+        backend.queue("draft", fakes.clean_prose(variant=1))
         write_scene(self.project, self.project.spec_at(2), models, Config(candidates=1))
 
         drafts = [prompt for role, prompt in backend.calls if role == "draft"]
@@ -479,6 +483,112 @@ class TestSeamIsFedForward(PipelineCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSeamRepair(PipelineCase):
+    """A seam is a region problem, so its repair replaces a region.
+
+    Scene 4 of a live 27-scene run ended in two sentences lifted verbatim from scene 3.
+    Surgical repair rewrote one of them per round; `check_seam` compares the whole last 25
+    words, so it kept firing and the scene burned all five rounds without ever committing.
+    """
+
+    def _commit_first(self, backend, models):
+        backend.queue("draft", fakes.clean_prose())
+        return write_scene(self.project, self.project.spec_at(1), models, Config(candidates=1))
+
+    def test_copied_ending_is_deleted_in_code(self):
+        models, backend = fakes.scripted_models()
+        self._commit_first(backend, models)
+
+        # Scene 2 ends in scene 1's exact words — the failure the live run hit.
+        backend.queue("draft", fakes.clean_prose())
+        result = write_scene(self.project, self.project.spec_at(2), models,
+                             Config(candidates=1, max_repairs=3))
+
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+        self.assertTrue(any("deseam: deleted" in n for n in result.notes), result.notes)
+        self.assertEqual(backend.count("surgical"), 0,
+                         "a seam must not be routed to sentence-local repair")
+        self.assertEqual(backend.count("reseam"), 0,
+                         "deleting a duplicated ending needs no model")
+
+    def test_a_long_copied_opening_is_still_reachable(self):
+        """Scene 7 of a live run reproduced the whole of scene 6's closing — eleven sentences,
+        172 words — before beginning its own story. A four-sentence cap could not reach it, so
+        nothing could. The bound is the fraction of the scene duplicated, not a sentence count."""
+        previous = fakes.clean_prose(400, variant=2)
+        tail = " ".join(previous.split()[-150:])
+        copied = Scene(spec_id="s2", index=2,
+                       text=tail + " " + fakes.clean_prose(750, variant=5))
+        flagged = checks.check_seam(copied, tail)
+        self.assertIn("seam_echo", {v.kind for v in flagged})
+
+        notes: list[str] = []
+        cut = _deseam(copied, tail, flagged, notes)
+
+        self.assertIsNotNone(cut, notes)
+        self.assertEqual(checks.check_seam(Scene(spec_id="s2", index=2, text=cut), tail), [])
+        self.assertTrue(any("deseam: deleted" in n for n in notes), notes)
+
+    def test_deletion_is_refused_when_it_would_gut_the_scene(self):
+        """Past a few sentences the copy is not a seam artefact but an empty scene."""
+        first = Scene(spec_id="s1", index=1, text=fakes.clean_prose(120))
+        tail = " ".join(first.text.split()[-25:])
+        short = Scene(spec_id="s2", index=2, text=" ".join(first.text.split()[-90:]))
+        notes: list[str] = []
+        flagged = checks.check_seam(short, tail)
+
+        self.assertTrue(any(v.kind == "seam_tail_copy" for v in flagged))
+        self.assertIsNone(_deseam(short, tail, flagged, notes))
+        self.assertEqual(notes, [])
+
+    def test_a_rewrite_that_still_echoes_is_discarded(self):
+        """The model is asked for fresh wording and hands back the copy anyway — as qwen3:8b
+        did twice in a row on the live run, in about a second each time."""
+        models, backend = fakes.scripted_models()
+        first = self._commit_first(backend, models)
+        tail = " ".join(first.scene.text.split()[-25:])
+        copy = Scene(spec_id="s2", index=2, text=fakes.clean_prose())
+        flagged = checks.check_seam(copy, tail)
+        backend.queue("reseam", " ".join(first.scene.text.split()[-40:]))
+
+        notes: list[str] = []
+        self.assertIsNone(_reseam(copy, tail, flagged, models, notes))
+        self.assertTrue(any("still echoes the previous scene" in n for n in notes), notes)
+
+    def test_the_rewrite_prompt_never_shows_the_forbidden_text(self):
+        """Handing a small model the words it must not reuse is handing it the words to
+        produce. The verification is in code; the prompt only needs the block to replace."""
+        models, backend = fakes.scripted_models()
+        first = self._commit_first(backend, models)
+        tail = " ".join(first.scene.text.split()[-25:])
+        copy = Scene(spec_id="s2", index=2, text=fakes.clean_prose())
+
+        _reseam(copy, tail, checks.check_seam(copy, tail), models, [])
+
+        prompts = [p for role, p in backend.calls if role == "reseam"]
+        self.assertEqual(len(prompts), 1)
+        # The block being replaced is itself the copy, so those words are unavoidably present
+        # once. What was removed is the second copy, under a heading announcing it as forbidden.
+        self.assertEqual(prompts[0].count(" ".join(tail.split()[:8])), 1)
+        self.assertNotIn("FROM THE PREVIOUS SCENE", prompts[0])
+
+    def test_exhausted_actions_stop_the_loop_early(self):
+        """Every action tried twice and failed means the remaining budget buys nothing."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(880)
+                      + " She finally saw the truth of the whole arrangement laid out plain.")
+        # Every surgical rewrite puts the forbidden phrase straight back, and whole-scene repair
+        # returns nothing usable. There is no round at which this starts working.
+        backend.queue("surgical", *["She saw the truth of it plain on the bench."] * 6)
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=8))
+
+        self.assertFalse(result.committed)
+        self.assertLess(result.repairs, 8, "the loop should stop before the budget runs out")
+        self.assertTrue(any("tried twice and failed" in n for n in result.notes), result.notes)
 
 
 class TestSurgicalRepair(PipelineCase):

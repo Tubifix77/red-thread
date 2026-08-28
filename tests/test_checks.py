@@ -331,6 +331,16 @@ class TestBriefLeakage(unittest.TestCase):
                   "number down, then goes home."), spec)
         self.assertIn("brief_leak", kinds(found))
 
+    def test_one_grammar_heavy_run_is_not_a_leak(self):
+        """From a live run: scene 4 was held back, unrepairably, for a single shared run —
+        "his back to the council the", four of whose six tokens are function words. The scene
+        was doing exactly what the beat told it to do."""
+        spec = make_spec(beats=[Beat("Dain turns his back to the council and walks out")])
+        found = checks.check_brief_leak(
+            scene("He turned his back to the council the way a man leaves a room he has already "
+                  "decided about, and the door took its time closing behind him."), spec)
+        self.assertEqual(found, [])
+
     def test_dramatised_beat_passes(self):
         spec = make_spec(beats=[Beat("She finds an unreachable branch in the founders' code "
                                      "and writes the line number down")])

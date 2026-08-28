@@ -331,6 +331,10 @@ For each scene give:
 - "threads": for each thread id this scene must move, what the scene must BRING ABOUT ("post",
   1-3 concrete statements) and what it must NOT do ("forbid", 1-3 statements). Forbids are where
   premature reveals get prevented — use them.
+  Every "forbid" entry NAMES THE EVENT THAT MUST NOT HAPPEN, as a positive statement. Write
+  "Dain learns who ordered the purge", never "Dain does not learn who ordered the purge".
+  A forbid containing "not", "never" or "no longer" says the opposite of what you mean and will
+  be rejected: read literally, "the purpose is not revealed" forbids concealing it.
 
 Hard rules:
 - A scene that only advances the main thread must not include subplot threads it was not given.
@@ -434,7 +438,13 @@ def _apply_scene_content(spec: SceneSpec, row: dict, story: StorySpec) -> None:
         if post:
             op.post = post[:4]
         if forbid:
-            op.forbid = forbid[:4]
+            # Repair the phrasing here rather than letting it into the plan. The prompt asks for
+            # positive forbids and a live 8B wrote every one of a 27-scene plan as a negation
+            # anyway — "the true purpose is not revealed" — which reads as a demand for the
+            # reveal. Inverting at parse time means the stored plan says what it means, so the
+            # brief, the judge and the author all read the same rule.
+            op.forbid = [checks.positive_prohibition(f) if checks.is_negated_prohibition(f)
+                         else f for f in forbid[:4]]
 
     spec.concreteness = score_spec(spec)
 

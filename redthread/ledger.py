@@ -37,6 +37,27 @@ def jaccard(a: set[str], b: set[str]) -> float:
     return len(a & b) / len(a | b)
 
 
+def same_claim(a: Fact, b: Fact) -> bool:
+    """Do these two quadruples assert the same thing, differently split?
+
+    Where the predicate ends and the object begins is an artefact of extraction, not of meaning.
+    A live run blocked scene 6 on `Dain Korr | has | read the records` against
+    `Dain Korr | has read | records` — one proposition, extracted twice, two scenes apart, with
+    the verb landing on opposite sides of the boundary. The judge was asked whether they
+    contradicted and answered "same action given twice", which is true and is not a
+    contradiction; the pair should never have reached it.
+
+    So compare the predicate and object together. If one fact's content words are a subset of
+    the other's, it is the same claim restated or narrowed — never a contradiction, which needs
+    two claims that differ.
+    """
+    ta = content_tokens(f"{a.predicate} {a.object}")
+    tb = content_tokens(f"{b.predicate} {b.object}")
+    if not ta or not tb:
+        return False
+    return ta <= tb or tb <= ta
+
+
 class Ledger:
     """Append-only store of facts, with conflict candidate detection and scoped retrieval."""
 
@@ -140,7 +161,7 @@ class Ledger:
             for old in by_key.get(nf.key(), []):
                 if old is nf or old.scene == nf.scene:
                     continue
-                if normalise(old.object) == normalise(nf.object):
+                if normalise(old.object) == normalise(nf.object) or same_claim(old, nf):
                     continue
                 mark = (id(old), id(nf))
                 if mark not in seen:
@@ -158,7 +179,7 @@ class Ledger:
                     continue
                 if jaccard(content_tokens(old.predicate), nf_pred) < similarity:
                     continue
-                if normalise(old.object) == normalise(nf.object):
+                if normalise(old.object) == normalise(nf.object) or same_claim(old, nf):
                     continue
                 mark = (id(old), id(nf))
                 if mark not in seen:

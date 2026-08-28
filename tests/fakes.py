@@ -20,6 +20,7 @@ ROLES = {
     "Before reading what happens next": "forecast",
     "Fix ONLY the problems listed": "repair",
     "One sentence in a novel scene must be rewritten": "surgical",
+    "It currently reuses wording from the": "reseam",
 }
 
 
@@ -80,6 +81,13 @@ class ScriptedBackend(Backend):
             "forecast": json.dumps({"prediction": "no idea", "closeness": 0.2}),
             "repair": "",
             "surgical": "She put the notebook away and said nothing about it.",
+        # Long enough to clear the length floor in `_reseam`, which discards a
+        # replacement shorter than 40% of the block it replaces.
+        "reseam": (
+            "She set the wrench down on the bench, threads up, and wiped her hands on "
+            "the rag hanging from the vice. Otto counted the washers back into their tin "
+            "and pressed the lid on with his thumb. The yard door stuck the way it "
+            "always stuck, and she put her shoulder to it and went out into the cold."),
             "draft": "",
         }
         self.defaults.update(defaults or {})

@@ -116,6 +116,30 @@ class TestConflictCandidates(unittest.TestCase):
         ledger.add(new)
         self.assertTrue(ledger.conflict_candidates([new]))
 
+    def test_the_same_claim_split_differently_is_not_a_candidate(self):
+        """From a live run: scene 6 was blocked by `Dain Korr | has | read the records` against
+        `Dain Korr | has read | records`. One proposition, extracted twice with the verb on
+        opposite sides of the predicate/object boundary. The judge answered "same action given
+        twice" — correct, and not a contradiction. The pair should never have reached it."""
+        ledger = Ledger([f("Dain Korr", "has", "read the records", 4, FactKind.KNOWLEDGE)])
+        new = f("Dain Korr", "has read", "records", 6, FactKind.KNOWLEDGE)
+        ledger.add(new)
+        self.assertEqual(ledger.conflict_candidates([new]), [])
+
+    def test_narrowing_a_claim_is_not_a_candidate(self):
+        ledger = Ledger([f("Siv", "carries", "a notebook", 1, FactKind.STATE)])
+        new = f("Siv", "carries", "a green canvas notebook", 5, FactKind.STATE)
+        ledger.add(new)
+        self.assertEqual(ledger.conflict_candidates([new]), [])
+
+    def test_a_genuinely_different_value_survives_the_filter(self):
+        """The filter must not swallow the case it sits next to: two claims that differ in a
+        content word are still a candidate, however similar the rest reads."""
+        ledger = Ledger([f("Siv", "has", "grey eyes", 1, FactKind.DETAIL)])
+        new = f("Siv", "has", "brown eyes", 6, FactKind.DETAIL)
+        ledger.add(new)
+        self.assertEqual(len(ledger.conflict_candidates([new])), 1)
+
     def test_different_subjects_are_never_candidates(self):
         ledger = Ledger([f("Siv", "eye colour", "grey", 1, FactKind.DETAIL)])
         new = f("Otto", "eye colour", "brown", 6, FactKind.DETAIL)

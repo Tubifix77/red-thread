@@ -116,6 +116,9 @@ def render_cohesion(spec: SceneSpec, story: StorySpec, previous_tail: str,
         "  - Do not re-establish anything the passage above already established.",
         "  - Do not restate or paraphrase its closing image. Move.",
         "  - Do not open with the weather, waking up, or a name and a verb of arrival.",
+        "  - The passage above is also off limits at the END of your scene. A scene that closes "
+        "on the previous scene's closing words reads as a loop, and one real run produced "
+        "exactly that: two sentences repeated verbatim, one scene later.",
     ]
     if names:
         lines.append(

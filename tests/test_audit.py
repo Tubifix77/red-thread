@@ -207,5 +207,60 @@ class TestReferencePlan(unittest.TestCase):
             self.assertEqual(seq[-1][1], t.states[-1], f"{t.id} is never paid off")
 
 
+class TestProhibitionPhrasing(unittest.TestCase):
+    """A Forbid says what must not happen. A live plan wrote every concealment as a negation
+    instead — "The fugitive's true purpose is not revealed" — and read literally that demands the
+    reveal. Scene 8 of a 27-scene run was blocked for finalising a decision its own post line
+    required, after seven scenes and an hour of generation had already been spent."""
+
+    def _spec(self, *forbid: str) -> SceneSpec:
+        return SceneSpec(id="s1", index=1, summary="x",
+                         thread_ops={"T": Transition(post=["something happens"],
+                                                     forbid=list(forbid))})
+
+    def _story(self) -> StorySpec:
+        return StorySpec(title="t", premise="p",
+                         threads=[Thread(id="T", name="The Allegiance")])
+
+    def test_a_negated_forbid_is_reported(self):
+        found = checks.check_prohibition_phrasing(
+            [self._spec("Dain's decision is not finalized")], self._story())
+        self.assertIn("negated_prohibition", kinds(found))
+
+    def test_a_positive_forbid_passes(self):
+        found = checks.check_prohibition_phrasing(
+            [self._spec("Dain learns who ordered the purge")], self._story())
+        self.assertEqual(found, [])
+
+    def test_an_empty_placeholder_is_not_a_negation(self):
+        for placeholder in ("none", "nothing", "-", "N/A"):
+            with self.subTest(placeholder=placeholder):
+                self.assertFalse(checks.is_negated_prohibition(placeholder))
+
+    def test_the_inversion_names_the_forbidden_event(self):
+        cases = {
+            "The fugitive's true purpose is not revealed.":
+                "The fugitive's true purpose is revealed.",
+            "The allegiance's full implications are not yet revealed.":
+                "The allegiance's full implications are revealed.",
+            "Dain is not told the full truth about his past":
+                "Dain is told the full truth about his past",
+            "The Bureau never explains its methods":
+                "The Bureau explains its methods",
+        }
+        for negated, expected in cases.items():
+            with self.subTest(negated=negated):
+                self.assertEqual(checks.positive_prohibition(negated), expected)
+
+    def test_a_positive_prohibition_is_left_alone(self):
+        text = "Dain learns who ordered the purge"
+        self.assertEqual(checks.positive_prohibition(text), text)
+
+    def test_audit_surfaces_it(self):
+        found = checks.audit_plan([self._spec("Riven's survival is not confirmed")],
+                                  self._story())
+        self.assertIn("negated_prohibition", kinds(found))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -129,6 +129,9 @@ Not a contradiction:
 - a state that legitimately changed over time (a door unlocked in scene 3, locked again in scene 9)
 - different facts that merely sound similar
 - a character learning something they did not know before
+- the SAME fact recorded twice in different words — "X | has | read the records" and
+  "X | has read | records" are one fact, not two, and repetition is never a contradiction
+- one fact being more specific than the other ("carries a notebook", "carries a green notebook")
 
 A contradiction:
 - the same unchanging detail given two different values (eye colour, a scar's location, a name)
@@ -240,6 +243,15 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
         # finale was held back on exactly that. The concrete post lines above are the checkable
         # rendering of the transition; the state change itself is applied by Project.commit.
         for item in op.forbid:
+            # A negated Forbid asks the judge an unanswerable question — "was 'X is not
+            # finalized' violated?" — and a live run blocked scene 8 for doing exactly what its
+            # own post line required. The planner means these as invariants, so strip the
+            # negation and hand over the event they actually forbid.
+            # `check_prohibition_phrasing` reports the plan so the next one is written right.
+            if _checks.is_negated_prohibition(item):
+                item = _checks.positive_prohibition(item)
+                if not item:
+                    continue
             forbidden.append((tid, f"[{label}] {item}"))
         if (thread and thread.concealment
                 and (thread.reveal_scene is None or spec.index < thread.reveal_scene)):

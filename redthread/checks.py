@@ -331,11 +331,26 @@ def check_style_leak(scene: Scene, story: StorySpec, n: int = 6) -> list[Violati
     return out
 
 
+# Function words carry no evidence of copying: a six-word run that is four of these and two
+# nouns is what any two sentences about the same event look like.
+_FUNCTION_WORDS = frozenset("""
+a an and as at be been but by for from had has have he her him his in into is it its of on
+or she that the their them then there they this to was were what when which who will with
+would you your not no had's it's""".split())
+
+
 def check_brief_leak(scene: Scene, spec: SceneSpec) -> list[Violation]:
     """The draft echoed its own beat summaries or scene summary back as prose.
 
-    The sibling failure to `check_style_leak`, and the more damaging one: a model that narrates
-    its instructions produces a scene that reads like its own outline.
+    The sibling failure to `check_style_leak` — but it needs a looser threshold than its sibling,
+    and originally did not have one. A style sample is text the scene has no business reproducing
+    at all, so one shared run is proof. A beat summary *describes the scene's own events*, and a
+    scene dramatising them will inevitably share content words with the sentence that ordered
+    them. A live run held scene 4 back for the single run "his back to the council the" — the
+    scene doing precisely what the beat told it to. Four of those six tokens are function words.
+
+    So two conditions, both learned the same way `check_seam` learned its own: the shared run has
+    to be substantive rather than grammar, and one of them is coincidence.
     """
     scene_grams = set(ngrams(words(scene.text), 6))
     sources = [spec.summary, spec.notes] + [b.summary for b in spec.beats]
@@ -343,13 +358,14 @@ def check_brief_leak(scene: Scene, spec: SceneSpec) -> list[Violation]:
     for source in sources:
         if not source:
             continue
-        shared = scene_grams & set(ngrams(words(source), 6))
-        if shared:
+        shared = [g for g in scene_grams & set(ngrams(words(source), 6))
+                  if sum(1 for w in g if w not in _FUNCTION_WORDS) >= 4]
+        if len(shared) >= 2:
             out.append(Violation(
                 "brief_leak", Severity.MAJOR,
-                "the draft reproduces wording from its own brief — it is narrating the "
-                "instruction rather than dramatising it",
-                "check_brief_leak", " ".join(next(iter(shared)))))
+                f"the draft reproduces {len(shared)} six-word run(s) of wording from its own "
+                f"brief — it is narrating the instruction rather than dramatising it",
+                "check_brief_leak", " ".join(sorted(shared)[0])))
     return out
 
 
@@ -902,6 +918,98 @@ def _spec_text(plan: list[SceneSpec], story: StorySpec) -> str:
     return " ".join(p for p in parts if p)
 
 
+_NEGATIONS = re.compile(
+    r"\b(?:not|n't|never|no longer|without|fails? to|refuses? to|cannot)\b",
+    re.IGNORECASE)
+
+# "nothing" and "none" are how a plan writes an *empty* forbid list, not how it writes a
+# negation. Flagging those reports a placeholder as a malformed rule.
+_EMPTY_FORBID = {"", "-", "n/a", "na", "none", "nothing", "no prohibitions"}
+
+
+def is_negated_prohibition(text: str) -> bool:
+    """Is this Forbid entry phrased as a negation, and therefore unenforceable?
+
+    A Forbid says what must not appear. Phrased as a negation it becomes a double negative and
+    inverts: a live plan wrote `forbid: "Dain's decision is not finalized"` alongside
+    `post: "Dain's allegiance shifts to the enclave"`. Read literally, the prohibition demands
+    the very thing the post demands, and the scene that correctly finalised the decision was
+    blocked for it — by a judge asked whether a negative statement had been violated, which is a
+    question no model answers reliably and this one answered wrong for eight scenes' worth of
+    generation before anyone saw it.
+    """
+    if text.strip().strip(".").lower() in _EMPTY_FORBID:
+        return False
+    return bool(_NEGATIONS.search(text))
+
+
+_UNNEGATE = [
+    (re.compile(r"\bis not yet\b", re.I), "is"),
+    (re.compile(r"\bare not yet\b", re.I), "are"),
+    (re.compile(r"\bis not\b", re.I), "is"),
+    (re.compile(r"\bare not\b", re.I), "are"),
+    (re.compile(r"\bwas not\b", re.I), "was"),
+    (re.compile(r"\bwere not\b", re.I), "were"),
+    (re.compile(r"\bhas not\b", re.I), "has"),
+    (re.compile(r"\bhave not\b", re.I), "have"),
+    (re.compile(r"\b(?:does|do|did) not\b", re.I), ""),
+    (re.compile(r"\bcannot\b|\bcan not\b|\bcan't\b", re.I), ""),
+    (re.compile(r"\b(?:is|are|was|were|does|do|did|has|have)n't\b", re.I), ""),
+    (re.compile(r"\b(?:never|no longer|without)\b", re.I), ""),
+    (re.compile(r"\b(?:fails?|failed|refuses?|refused) to\b", re.I), ""),
+    (re.compile(r"\bnot\b", re.I), ""),
+]
+
+
+def positive_prohibition(text: str) -> str:
+    """Turn a negated Forbid into the event it is actually forbidding.
+
+    The planner writes concealment as an invariant — "The fugitive's true purpose is not
+    revealed" — meaning *keep this true*. A Forbid list means the opposite: these things must not
+    happen. Strip the negation and the two say the same thing: the forbidden event is "the
+    fugitive's true purpose is revealed", which is a question a judge can answer by reading the
+    scene. Left as written, the judge is asked whether a negative statement was violated, and a
+    live run blocked scene 8 for finalising a decision its own `post` line required.
+
+    Rewriting is better than dropping. Dropping would discard a real constraint — most of these
+    entries are the only thing holding a reveal back — so the phrasing is repaired rather than
+    the rule discarded. `check_prohibition_phrasing` still reports the plan, so the next plan
+    is written correctly instead of repaired forever.
+    """
+    out = text
+    for pattern, replacement in _UNNEGATE:
+        new = pattern.sub(replacement, out)
+        if new != out:
+            out = new
+            break
+    return re.sub(r"\s+", " ", out).strip()
+
+
+def check_prohibition_phrasing(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
+    """Forbid entries must name what must not happen, positively.
+
+    Caught at plan time, this costs one re-plan. Caught at run time it costs however many scenes
+    were generated before the malformed prohibition's scene came up, and no repair can clear it:
+    the scene is not wrong, the rule is.
+    """
+    out: list[Violation] = []
+    for spec in plan:
+        for tid, op in spec.thread_ops.items():
+            thread = story.thread(tid)
+            label = thread.name if thread else tid
+            for item in op.forbid:
+                if not is_negated_prohibition(item):
+                    continue
+                out.append(Violation(
+                    "negated_prohibition", Severity.MAJOR,
+                    f"scene {spec.index} [{label}] forbids a negative — \"{item}\". A "
+                    f"prohibition must name the thing that must not happen; phrased this way it "
+                    f"reads as a requirement, and the scene that obeys the plan is the one that "
+                    f"gets blocked.",
+                    "check_prohibition_phrasing", item))
+    return out
+
+
 def check_spec_self_consistency(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
     """The plan must not violate its own style contract.
 
@@ -989,6 +1097,7 @@ def audit_plan(plan: list[SceneSpec], story: StorySpec,
     out += check_stakes_progression(plan, story, history)
     out += check_concealment(plan, story)
     out += check_spec_self_consistency(plan, story)
+    out += check_prohibition_phrasing(plan, story)
     out += check_cast_names(plan, story)
 
     # POV variety: a manuscript entirely in one head is legal but worth surfacing, since
