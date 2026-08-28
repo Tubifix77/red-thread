@@ -251,8 +251,17 @@ def propose_story(premise: str, models: Models, attempts: int = 3) -> StorySpec:
     for _ in range(max(1, attempts)):
         prompt = STORY_PROMPT.format(premise=premise.strip(), extra=extra,
                                      slop_names=", ".join(SLOP_NAMES), json_only=JSON_ONLY)
-        reply = models.critic.complete(prompt, max_tokens=6000, temperature=0.9)
-        data = parse_json(reply.text)
+        reply = models.critic.complete(prompt, max_tokens=6000, temperature=0.9,
+                                       json_mode=True)
+        # A parse failure must consume an attempt, not kill the run. This was the one parse in
+        # the planner outside its own retry loop, and a single bad sample at temperature 0.9
+        # crashed a real `plan` command straight through make_plan.
+        try:
+            data = parse_json(reply.text)
+        except LLMError:
+            extra = ("Your previous reply was not valid JSON. Return exactly the schema below, "
+                     "one JSON object, nothing else.")
+            continue
         if not isinstance(data, dict):
             extra = "Your previous reply was not a JSON object. Return the schema exactly."
             continue
@@ -417,7 +426,8 @@ def flesh_scenes(specs: list[SceneSpec], story: StorySpec, models: Models,
             context=context, scenes=_render_scene_slots(window, story),
             json_only=JSON_ONLY)
 
-        reply = models.critic.complete(prompt, max_tokens=8000, temperature=0.8)
+        reply = models.critic.complete(prompt, max_tokens=8000, temperature=0.8,
+                                       json_mode=True)
         try:
             data = parse_json(reply.text)
         except LLMError:
@@ -495,7 +505,8 @@ def expand_beats(specs: list[SceneSpec], story: StorySpec, models: Models,
         prompt = BEATS_PROMPT.format(title=story.title, premise=story.premise,
                                      cast=_render_cast(story), scenes=rendered,
                                      json_only=JSON_ONLY)
-        reply = models.critic.complete(prompt, max_tokens=6000, temperature=0.7)
+        reply = models.critic.complete(prompt, max_tokens=6000, temperature=0.7,
+                                       json_mode=True)
         try:
             data = parse_json(reply.text)
         except LLMError:
@@ -529,6 +540,81 @@ def expand_beats(specs: list[SceneSpec], story: StorySpec, models: Models,
         if on_batch:
             on_batch(window)
     return touched
+
+
+# ======================================================================================
+# 3b. forbidden-phrase scrub — the plan must obey its own style contract
+# ======================================================================================
+
+SCRUB_PROMPT = """Rewrite this one outline line so that it does not use the word or phrase {phrases} in any form. Keep the meaning and keep it the same length. Plain register, no synonym-of-the-week — just say the thing another way.
+
+LINE: {line}
+
+Reply with the rewritten line only."""
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    needle = phrase.strip().lower()
+    if not needle:
+        return False
+    if " " in needle:
+        return needle in text.lower()
+    return re.search(r"\b" + re.escape(needle) + r"\b", text.lower()) is not None
+
+
+def scrub_forbidden(plan: list[SceneSpec], story: StorySpec, models: Models) -> int:
+    """Rewrite plan text that violates the plan's own forbidden_phrases.
+
+    The story proposal is checked for self-consistency inside the retry loop, but the *scene
+    content* is filled afterwards, and a real run banned "fate" in its bible and then wrote
+    "the enclave's fate hangs in the balance" into a scene summary. Every brief is built from
+    this text, so a banned word here is injected into every scene of the book.
+
+    Each offending line gets one targeted rewrite, code-verified — a fix that still contains
+    the phrase is discarded, and the audit's `spec_self_violation` remains the honest backstop
+    for anything the scrub could not convert. Returns the number of lines fixed.
+    """
+    banned = [p for p in story.style.forbidden_phrases if p.strip()]
+    if not banned:
+        return 0
+
+    def fix(text: str) -> str | None:
+        hits = [p for p in banned if _contains_phrase(text, p)]
+        if not hits:
+            return None
+        prompt = SCRUB_PROMPT.format(
+            phrases=", ".join(f'"{h}"' for h in hits), line=text.strip())
+        try:
+            reply = models.critic.complete(prompt, max_tokens=200, temperature=0.4)
+        except LLMError:
+            return None
+        line = reply.text.strip().strip('"').strip()
+        if not line or len(line.split()) > 2 * max(6, len(text.split())):
+            return None
+        if any(_contains_phrase(line, p) for p in banned):
+            return None
+        return line
+
+    fixed = 0
+    for spec in plan:
+        for attr in ("summary", "setting", "time", "notes"):
+            replacement = fix(getattr(spec, attr) or "")
+            if replacement is not None:
+                setattr(spec, attr, replacement)
+                fixed += 1
+        for beat in spec.beats:
+            replacement = fix(beat.summary)
+            if replacement is not None:
+                beat.summary = replacement
+                fixed += 1
+        for op in spec.thread_ops.values():
+            for items in (op.pre, op.post, op.forbid):
+                for i, item in enumerate(items):
+                    replacement = fix(item)
+                    if replacement is not None:
+                        items[i] = replacement
+                        fixed += 1
+    return fixed
 
 
 # ======================================================================================
@@ -582,6 +668,10 @@ def make_plan(premise: str, models: Models, total_words: int = 60000,
                      "filled" if ok else "PROPOSAL UNPARSEABLE — left blank"))
 
     result = PlanResult(story=story, plan=specs)
+    scrubbed = scrub_forbidden(specs, story, models)
+    if scrubbed:
+        stage("scrub", f"{scrubbed} line(s) used a phrase the plan itself forbids; rewritten")
+
     result.beats_sharpened = expand_beats(
         specs, story, models, rounds=sharpen_rounds,
         on_batch=lambda window: stage(

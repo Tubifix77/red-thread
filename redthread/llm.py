@@ -403,29 +403,17 @@ def parse_json(text: str) -> dict | list:
     # an edge case with local models — a real extraction spent its entire 8000-token budget
     # enumerating facts and was cut off mid-object, and discarding it threw away 250 perfectly
     # good facts along with the broken tail.
-    salvaged = _salvage_truncated(text)
-    if salvaged is not None:
+    for salvaged in _salvage_candidates(text):
         try:
             return json.loads(salvaged)
         except json.JSONDecodeError:
-            pass
+            continue
 
     raise LLMError(f"no parseable JSON in reply: {text[:300]}")
 
 
-def _salvage_truncated(text: str) -> str | None:
-    """Close off JSON that was cut off mid-value, keeping every complete element.
-
-    Trims back to the last structurally complete element and appends the closing brackets the
-    prefix is missing. Bracket counting skips anything inside a string literal, so a `}` in a
-    fact's text does not confuse it; a prefix ending *inside* a string is unsalvageable and
-    returns None rather than guessing.
-    """
-    end = max(text.rfind("}"), text.rfind("]"))
-    if end < 0:
-        return None
-    prefix = text[:end + 1]
-
+def _scan(prefix: str) -> tuple[list[str], bool]:
+    """Bracket stack and in-string state at the end of `prefix`, string-literal aware."""
     stack: list[str] = []
     in_string = escaped = False
     for char in prefix:
@@ -442,10 +430,45 @@ def _salvage_truncated(text: str) -> str | None:
             stack.append(char)
         elif char in "]}" and stack:
             stack.pop()
+    return stack, in_string
 
-    if in_string or not stack:
-        return None
+
+def _close(prefix: str, stack: list[str], in_string: bool) -> str:
+    if in_string:
+        if prefix.endswith("\\"):
+            prefix = prefix[:-1]
+        prefix += '"'
     return prefix + "".join("]" if opener == "[" else "}" for opener in reversed(stack))
+
+
+def _salvage_candidates(text: str) -> list[str]:
+    """Repairs to try, in order, for JSON that was cut off mid-generation.
+
+    Two strategies, each validated by the caller's json.loads so a wrong guess costs nothing:
+
+    1. **Close in place.** Terminate an open string literal and append the missing brackets.
+       Keeps everything, at the cost of one clipped value — losing the tail of one world-rule is
+       strictly better than losing a whole story proposal, which is exactly how a real `plan`
+       run died. (A prefix ending on a dangling key still fails validation, correctly.)
+    2. **Trim to the last complete element, then close.** Drops the broken tail entirely — the
+       right repair when strategy 1 leaves a dangling `"key":` — and is how a truncated
+       258-fact extraction kept its 250 intact facts.
+    """
+    candidates: list[str] = []
+    stripped = text.rstrip()
+    if stripped:
+        stack, in_string = _scan(stripped)
+        if stack or in_string:
+            candidates.append(_close(stripped, stack, in_string))
+
+    end = max(text.rfind("}"), text.rfind("]"))
+    if end >= 0:
+        prefix = text[:end + 1]
+        stack, in_string = _scan(prefix)
+        if not in_string and stack:
+            candidates.append(_close(prefix, stack, False))
+
+    return candidates
 
 
 # --------------------------------------------------------------------------------------

@@ -85,11 +85,13 @@ def scenes_json(indices, threads_by_index=None) -> str:
 class PlannerBackend(ScriptedBackend):
     """Routes the planner's three prompt shapes on top of the pipeline roles."""
 
-    def __init__(self, story: str | None = None, scenes_reply=None, beats_reply=None) -> None:
+    def __init__(self, story: str | None = None, scenes_reply=None, beats_reply=None,
+                 scrub_reply=None) -> None:
         super().__init__()
         self._story = story if story is not None else story_json()
         self._scenes = scenes_reply
         self._beats = beats_reply
+        self._scrub = scrub_reply
         self.story_calls = 0
         self.scene_calls = 0
         self.beat_calls = 0
@@ -114,6 +116,12 @@ class PlannerBackend(ScriptedBackend):
             text = self._scenes(indices) if callable(self._scenes) else (
                 self._scenes or scenes_json(indices))
             return Reply(text, model="scripted")
+        if "Rewrite this one outline line" in prompt:
+            self.calls.append(("scrub", prompt))
+            from redthread.llm import Reply
+            return Reply(self._scrub if isinstance(self._scrub, str)
+                         else "Varen must choose between duty and morality as the enclave "
+                              "hangs in the balance.", model="scripted")
         if "under-specified" in prompt:
             self.beat_calls += 1
             indices = [int(m) for m in __import__("re").findall(r"^Scene (\d+) \(~",
@@ -428,6 +436,54 @@ class TestBeatExpansion(unittest.TestCase):
         story = propose_story("A premise.", models_with(backend))
         specs = to_scene_specs(schedule_threads(story.threads, 6), story.threads, 6600)
         self.assertEqual(expand_beats(specs, story, models_with(backend), rounds=2), 0)
+
+
+class TestScrub(unittest.TestCase):
+    """The plan must obey its own style contract, in the scene content too: a real run banned
+    "fate" in its bible and then wrote "the enclave's fate hangs in the balance" into a scene
+    summary, injecting the banned word into every brief built from it."""
+
+    def _story_with_ban(self):
+        return parse_story(json.loads(story_json(style={
+            "pov": "third limited", "tense": "past",
+            "samples": ["A.", "B.", "C."],
+            "forbidden_phrases": ["fate"], "notes": ""})))
+
+    def test_offending_lines_are_rewritten(self):
+        from redthread.planner import scrub_forbidden
+        from redthread.models import Beat, SceneSpec
+        story = self._story_with_ban()
+        specs = [SceneSpec(id="s01", index=1,
+                           summary="The enclave's fate hangs in the balance.",
+                           beats=[Beat("She reads the ledger at the bench.")])]
+        backend = PlannerBackend(
+            scrub_reply="The enclave's survival hangs in the balance.")
+        fixed = scrub_forbidden(specs, story, models_with(backend))
+        self.assertEqual(fixed, 1)
+        self.assertNotIn("fate", specs[0].summary.lower())
+        self.assertIn("survival", specs[0].summary)
+
+    def test_a_rewrite_that_keeps_the_phrase_is_discarded(self):
+        from redthread.planner import scrub_forbidden
+        from redthread.models import Beat, SceneSpec
+        story = self._story_with_ban()
+        specs = [SceneSpec(id="s01", index=1,
+                           summary="The enclave's fate hangs in the balance.",
+                           beats=[Beat("A beat.")])]
+        backend = PlannerBackend(scrub_reply="Their fate still hangs there.")
+        fixed = scrub_forbidden(specs, story, models_with(backend))
+        self.assertEqual(fixed, 0, "an unverified rewrite must not land")
+        self.assertIn("fate", specs[0].summary.lower())
+
+    def test_clean_plans_cost_no_calls(self):
+        from redthread.planner import scrub_forbidden
+        from redthread.models import Beat, SceneSpec
+        story = self._story_with_ban()
+        specs = [SceneSpec(id="s01", index=1, summary="She reads the ledger.",
+                           beats=[Beat("A beat.")])]
+        backend = PlannerBackend()
+        self.assertEqual(scrub_forbidden(specs, story, models_with(backend)), 0)
+        self.assertEqual(backend.count("scrub"), 0)
 
 
 class TestPlanShape(unittest.TestCase):

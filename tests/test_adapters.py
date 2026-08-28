@@ -114,11 +114,16 @@ class TestParseJson(unittest.TestCase):
     def test_salvage_ignores_brackets_inside_strings(self):
         """A closing brace inside a fact's text must not be mistaken for structure."""
         data = parse_json('{"facts": [{"object": "a note reading }] end"}, {"object": "cut')
-        self.assertEqual(data["facts"], [{"object": "a note reading }] end"}])
+        self.assertEqual(data["facts"][0], {"object": "a note reading }] end"},
+                         "the brace and bracket inside the string were treated as structure")
 
-    def test_a_prefix_ending_inside_a_string_is_not_guessed_at(self):
-        with self.assertRaises(LLMError):
-            parse_json('{"facts": [{"subject": "an unterminated stri')
+    def test_a_prefix_ending_inside_a_string_is_closed_in_place(self):
+        """The old contract refused this shape as unsalvageable — and a real `plan` run died on
+        exactly it, because a reply cut mid-string may contain no closing bracket at all for the
+        trim strategy to trim to. Keeping the proposal with one clipped value is strictly better
+        than losing it; the caller's schema handling tolerates the clip."""
+        data = parse_json('{"facts": [{"subject": "an unterminated stri')
+        self.assertTrue(data["facts"][0]["subject"].startswith("an unterminated"))
 
     def test_complete_json_is_not_touched_by_salvage(self):
         self.assertEqual(parse_json('{"facts": [{"a": 1}]}'), {"facts": [{"a": 1}]})
@@ -387,3 +392,17 @@ def _story():
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_truncation_inside_a_string_is_closed_in_place(self):
+        """The exact shape that killed a real `plan` run: cut mid-string, no closing bracket
+        anywhere in the reply, so trim-to-last-element had nothing to trim to."""
+        data = parse_json('{"title": "The Debt of Years", "world_rules": '
+                          '["Life-years can be transferred via a legal cont')
+        self.assertEqual(data["title"], "The Debt of Years")
+        self.assertTrue(data["world_rules"][0].startswith("Life-years"))
+
+    def test_truncation_on_a_dangling_key_trims_to_the_last_element(self):
+        data = parse_json('{"facts": [{"subject": "Siv", "predicate": "has", '
+                          '"object": "a notebook", "kind": "detail"}, {"subject": ')
+        self.assertEqual(len(data["facts"]), 1)
+        self.assertEqual(data["facts"][0]["subject"], "Siv")
