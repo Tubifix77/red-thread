@@ -144,7 +144,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`schedule.py`](redthread/schedule.py) | Deterministic thread scheduling — both markers by construction | CONCOCT |
 | [`planner.py`](redthread/planner.py) | Premise → threads, cast, world, voice, scene content | CONCOCT, DOME, StoryScope |
 | [`project.py`](redthread/project.py) | Plain-file state, diffable, resumable | — |
-| [`llm.py`](redthread/llm.py) | Anthropic + OpenAI-compatible backends, role split, reasoning-block stripping | — |
+| [`llm.py`](redthread/llm.py) | Native Ollama backend (thinking control, JSON mode), OpenAI-compat + Anthropic, role split, truncation salvage | — |
 | [`ollama.py`](redthread/ollama.py) | Discovery: what is installed, what plausibly fits, name resolution | — |
 | [`progress.py`](redthread/progress.py) | Orchestrator view — stages, timings, thread state | — |
 | [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` | — |
@@ -164,7 +164,7 @@ against any prose), `audit` (plan-level failures, before a word is generated).
 Plan a book from a premise:
 
 ```bash
-python -m redthread plan "A harbour inspector finds the tide tables have been altered." --out runs/tide --words 60000
+python -m redthread plan "A harbour inspector finds the tide tables have been altered." --out runs/tide --words 60000 --local qwen3:8b
 ```
 
 Or start from the hand-authored reference plan, which needs no model at all:
@@ -310,8 +310,17 @@ hypothesis, not an observation.**
 
 ## Next
 
-- **A real full run** end to end, then a manuscript long enough for the cross-corpus checks to bite.
+- **A planner-driven book.** The completed manuscript ran from the hand-authored reference plan;
+  the planner has produced audit-clean plans from a premise but has never had one written to the
+  end. Premise in, book out is the next full pass.
+- **A longer manuscript.** Ten scenes is one data point; at 60,000 words the cross-corpus checks
+  (`check_repetition`, cast-wide rhythm) start doing the work they were built for.
+- **A better local writer.** The structure held on an 8B; the sentence ceiling is the writer
+  model. Re-run `bench` as stronger models land that fit in 10GB — the swap is one flag.
 - **Sampler-level slop suppression** via `antislop-vllm` against a local endpoint, replacing the
   post-hoc phrase check — suppressing at sample time costs nothing, checking afterwards costs a
   repair round trip.
-- **The forecastability probe on midpoint scenes**, which is where under-tensioned writing hides.
+- **The forecastability probe on midpoint scenes** (`--forecast`), which is where under-tensioned
+  writing hides.
+- **Bottom-up amendment** — prose amending its own spec, the difference between an outline-filler
+  and a writing tool.

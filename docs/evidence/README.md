@@ -9,6 +9,9 @@ rather than taken on trust.
 | `scene01-qwen3-8b.txt` | 948 words. On target. Opens with the style contract's own sample sentence, verbatim |
 | `scene01-gemma3-12b.txt` | 542 words. Written entirely in the first person against a `third limited` contract |
 | `scene01-phi4-14b.txt` | 506 words. Complete but short; closes on thematic gloss |
+| `manuscript-run.md` | The first completed manuscript: seam audit and cross-scene repetition verdict |
+| `manuscript-status.txt` | `redthread status` after the run — every thread at its terminal state |
+| `manuscript-scene04-reveal.txt` | The committed reveal scene, exactly as the gate accepted it |
 
 Generated 2026-08-27 on an RTX 3080 10GB via Ollama, one draft per model, temperature 1.0, from
 `examples/build_inherited_glitch.py` scene 1 (900-word target).

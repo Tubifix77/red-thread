@@ -9,15 +9,17 @@ otherwise would be dishonest.
 ## First, what the test suite actually uses
 
 **No model.** `tests/fakes.py` provides a scripted backend returning canned JSON and fixture
-prose. That is why 127 tests run in under two seconds with no API key and no network.
+prose. That is why the full suite (285 tests at the time of writing) runs in seconds with no API
+key and no network.
 
 This is deliberate, not a shortcut. The tests verify that the machinery composes — briefs carry
 the seam forward, the commit gate holds, thread state advances, a rejection halts cleanly. None of
 that is a question about any model, and mixing a real model into it would make the suite slow,
 expensive, and flaky for reasons unrelated to what it is testing.
 
-The corollary is the honest limitation stated in the README: **nothing here has yet produced a
-scene worth reading.** The suite cannot tell you that.
+The corollary: the suite cannot tell you whether the prose is any good. That question is answered
+by running it — see "The night it finished" below for what a completed all-local manuscript
+actually looks like, structure and sentences both.
 
 ---
 
@@ -96,8 +98,12 @@ this is judgement rather than something a citation can carry:
   built on a ledger with a hole in it. `verify.extract_facts` treats extraction failure as a
   BLOCKER precisely because of this.
 
-So the answer is not one model. **Obedient-and-flat belongs in the critic seat. Good-prose-and-wilful
-belongs in the writer seat.** That is what `Models.local_writer()` already encodes.
+So the answer is not one model in principle. **Obedient-and-flat belongs in the critic seat.
+Good-prose-and-wilful belongs in the writer seat.** `Models.local(writer, critic)` encodes exactly
+that split across two local models — with the measured caveat that on a 10GB card two models
+thrash (an 8B writer beside a 14B critic ran the critic 18% spilled to CPU and evicted the writer
+between calls), so in practice the seats share one model that fits entirely, and the calibration
+policy below is what makes a single 8B safe in the judging seat.
 
 ### For the writer, instruction-following is a floor, not an axis to maximise
 

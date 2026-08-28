@@ -272,11 +272,12 @@ from "still concealed" to "THIS is the scene that discloses".
 3. **Whether bottom-up amendment improves quality.** DOME shows dynamic outlining beats rigid
    outlining on conflict rate; nothing found isolates *upward* revision (prose amending its own
    spec) as a quality win. Still unbuilt.
-4. **Local-model viability for the structured stages.** Partly answered by running it: see
-   [MODELS.md](MODELS.md). Word-target adherence, not prose quality, turned out to be the
-   discriminator between local models, and four checks exist because of what they did to a real
-   brief. Whether a local model can carry the *planner* — the most structured stage of all — is
-   the open half.
+4. **Local-model viability for the structured stages.** Answered by running it to completion:
+   an 8B carried every role — planner, writer, extractor, judge — through a full manuscript, with
+   two provisos that are now architecture. Extraction and planning work once reasoning is kept
+   out of the output channel and JSON is constrained at the decoder. Judging works only within
+   the calibrated envelope: binary verdicts block, graded and aesthetic ones advise. See
+   [MODELS.md](MODELS.md), "The night it finished".
 5. **Whether scheduling structure deterministically costs anything creatively.** Making both
    acceptance markers hold by construction (`schedule.py`) is our design, not a cited result. It
    removes a whole class of failure, but it also removes the model's freedom to put a turn where
