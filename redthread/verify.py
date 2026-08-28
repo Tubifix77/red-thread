@@ -241,6 +241,16 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
             # the state change either way; an unanswerable obligation only costs a scene.
             if thread and _checks.is_state_restatement(item, thread):
                 continue
+            # A post phrased as an absence is a prohibition wearing a requirement's clothes.
+            # Scene 24 of a live run was told to bring about "the allegiances are neither
+            # resolved nor abandoned", and no prose can evidence a thing not happening, so the
+            # judge reported it missed however the scene went. Inverted, it becomes the pair of
+            # events that must not happen — which is answerable, and is what it meant.
+            if _checks.is_absence_post(item):
+                inverted = _checks.positive_prohibition(item)
+                if inverted:
+                    forbidden.append((tid, f"[{label}] {inverted}"))
+                continue
             required.append((tid, f"[{label}] {item}"))
         # op.to_state is deliberately NOT given to the judge. State names are this system's
         # bookkeeping labels ("chosen", "paid_off"), not textual events — a judge asked whether

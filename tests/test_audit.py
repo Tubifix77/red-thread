@@ -329,6 +329,27 @@ class TestPostNamesAnEvent(unittest.TestCase):
                 self.assertEqual(checks.check_post_is_an_event(self._plan(post),
                                                                self._story()), [])
 
+    def test_a_post_that_is_only_an_absence_is_flagged(self):
+        found = checks.check_post_is_an_event(
+            self._plan("The allegiances of the bailiff and fugitive are neither resolved nor "
+                       "abandoned"), self._story())
+        self.assertIn("post_names_an_absence", kinds(found))
+
+    def test_an_event_with_a_negated_qualifier_is_left_alone(self):
+        """The first version of this check flagged any negation and caught four lines of the
+        reference plan on the spot. Each has a real event; the negation describes it."""
+        for post in ("Otto acts, and the action is neither betrayal nor rescue",
+                     "Beata commits to a course of action that does not depend on Siv",
+                     "the relationship reaches its end state through action, not conversation",
+                     "the cost of the road not taken is legible on the page"):
+            with self.subTest(post=post):
+                self.assertFalse(checks.is_absence_post(post))
+
+    def test_the_absence_is_inverted_into_the_events_it_forbids(self):
+        self.assertEqual(
+            checks.positive_prohibition("The allegiances are neither resolved nor abandoned"),
+            "The allegiances are resolved or abandoned")
+
     def test_the_quoted_label_is_recognised(self):
         """The planner quotes the label, so a token of "'reoriented'" must still match the
         state "reoriented"."""

@@ -919,8 +919,28 @@ def _spec_text(plan: list[SceneSpec], story: StorySpec) -> str:
 
 
 _NEGATIONS = re.compile(
-    r"\b(?:not|n't|never|no longer|without|fails? to|refuses? to|cannot)\b",
+    r"\b(?:not|n't|never|no longer|without|fails? to|refuses? to|cannot|neither)\b",
     re.IGNORECASE)
+
+_NEITHER_NOR = re.compile(r"\bneither\b(.*?)\bnor\b", re.IGNORECASE | re.DOTALL)
+
+
+def is_absence_post(text: str) -> bool:
+    """Is this `post` line entirely a thing not happening?
+
+    Deliberately narrow. The first version of this flagged any negation in a post and caught
+    four legitimate lines in the reference plan on the spot — "Otto acts, and the action is
+    neither betrayal nor rescue", "Beata commits to a course of action that does not depend on
+    Siv". Each has a real event and a qualifier, and each is perfectly dramatisable; the
+    negation is describing the event, not replacing it.
+
+    What is not dramatisable is a post whose whole predicate is an absence, with no event before
+    it — scene 24 of a live run required "the allegiances of the bailiff and fugitive are
+    neither resolved nor abandoned" and was reported missed however the scene went. The
+    distinguishing mark is a `neither … nor` reached without passing a clause boundary.
+    """
+    match = _NEITHER_NOR.search(text)
+    return bool(match) and "," not in text[:match.start()]
 
 # "nothing" and "none" are how a plan writes an *empty* forbid list, not how it writes a
 # negation. Flagging those reports a placeholder as a malformed rule.
@@ -976,7 +996,13 @@ def positive_prohibition(text: str) -> str:
     the rule discarded. `check_prohibition_phrasing` still reports the plan, so the next plan
     is written correctly instead of repaired forever.
     """
-    out = text
+    # "neither X nor Y" needs both halves rewritten together, so it is handled before the
+    # one-substitution loop below: scene 24 of a live run required "the allegiances are neither
+    # resolved nor abandoned", which is two forbidden events written as one absence.
+    out = _NEITHER_NOR.sub(lambda m: m.group(1).strip() + " or ", text)
+    if out != text:
+        return re.sub(r"\s+", " ", out).strip()
+
     for pattern, replacement in _UNNEGATE:
         new = pattern.sub(replacement, out)
         if new != out:
@@ -1047,14 +1073,20 @@ def check_post_is_an_event(plan: list[SceneSpec], story: StorySpec) -> list[Viol
             if thread is None:
                 continue
             for item in op.post:
-                if not is_state_restatement(item, thread):
-                    continue
-                out.append(Violation(
-                    "post_names_a_state", Severity.MAJOR,
-                    f"scene {spec.index} [{thread.name}] requires \"{item}\", which names a "
-                    f"state rather than an event. Nothing on the page can satisfy it, and no "
-                    f"repair can add it. Say what happens.",
-                    "check_post_is_an_event", item))
+                if is_state_restatement(item, thread):
+                    out.append(Violation(
+                        "post_names_a_state", Severity.MAJOR,
+                        f"scene {spec.index} [{thread.name}] requires \"{item}\", which names a "
+                        f"state rather than an event. Nothing on the page can satisfy it, and no "
+                        f"repair can add it. Say what happens.",
+                        "check_post_is_an_event", item))
+                elif is_absence_post(item):
+                    out.append(Violation(
+                        "post_names_an_absence", Severity.MAJOR,
+                        f"scene {spec.index} [{thread.name}] requires \"{item}\", which is a "
+                        f"thing not happening. No prose can evidence an absence, so the judge "
+                        f"reports it missed however the scene goes. This belongs in \"forbid\".",
+                        "check_post_is_an_event", item))
     return out
 
 
