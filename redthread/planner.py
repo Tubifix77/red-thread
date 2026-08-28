@@ -91,7 +91,10 @@ one. Drifting toward the familiar version of a premise is the specific failure t
 checked against, so read the premise for what it rules out as carefully as for what it asks for.
 
 STYLE: the samples must be NEW sentences you write in the target register, demonstrating rhythm \
-and diction. Do not quote the premise. Three sentences of varied length. Give the voice of each \
+and diction. Do not quote the premise, and DO NOT put any character or place name from this \
+story in them — a sample that reads like a line from the book gets absorbed into the prose \
+verbatim; write them about something unrelated (weather on a road, a tool being cleaned, a queue \
+at a counter) in the book's voice. Three sentences of varied length. Give the voice of each \
 character as how they speak and evade, not as an adjective.
 
 {json_only}
@@ -231,6 +234,17 @@ def story_problems(story: StorySpec) -> list[str]:
     if len(story.style.samples) < 2:
         problems.append("Give at least three style samples: new sentences you write in the "
                         "target register, of varied length.")
+    name_tokens = {t for c in story.characters
+                   for t in re.split(r"[^a-z]+", c.name.lower()) if len(t) > 2}
+    if any(name_tokens & set(re.split(r"[^a-z]+", sample.lower()))
+           for sample in story.style.samples):
+        # A sample naming the cast reads as a line from the book, and the writer absorbs it
+        # verbatim: a real scene shared twelve 6-word runs with one. Register, not content.
+        problems.append(
+            "Your style samples mention story characters or places. Rewrite all samples about "
+            "something unrelated to this story (weather, a tool, a queue at a counter) in the "
+            "same voice — samples demonstrate register, and anything story-shaped in them ends "
+            "up copied into the prose.")
 
     # A retry can fix these, and fixing them here is far better than catching them at audit:
     # every scene brief is built from this text, so a self-violation propagates everywhere.
@@ -373,10 +387,28 @@ def _apply_scene_content(spec: SceneSpec, row: dict, story: StorySpec) -> None:
     spec.setting = str(row.get("setting") or spec.setting).strip()
     spec.time = str(row.get("time") or spec.time).strip()
 
-    pov = str(row.get("pov") or "").strip()
-    if pov in valid_ids:
+    def to_id(value) -> str | None:
+        # The schema asks for ids, but a model answers with names ("Dain Korr") or fragments
+        # ("dain") as readily — and a real plan silently lost POV and cast on all 27 scenes
+        # because unmatched values were dropped without a sound. Match ids exactly first, then
+        # names by token overlap.
+        value = str(value or "").strip()
+        if not value:
+            return None
+        if value in valid_ids:
+            return value
+        value_tokens = {t for t in re.split(r"[^a-z]+", value.lower()) if t}
+        for c in story.characters:
+            name_tokens = {t for t in re.split(r"[^a-z]+", c.name.lower()) if t}
+            if value.lower() == c.name.lower() or (value_tokens & name_tokens):
+                return c.id
+        return None
+
+    pov = to_id(row.get("pov"))
+    if pov:
         spec.pov = pov
-    present = [c for c in (row.get("characters") or []) if c in valid_ids]
+    present = [cid for cid in (to_id(c) for c in (row.get("characters") or [])) if cid]
+    present = list(dict.fromkeys(present))
     if spec.pov and spec.pov not in present:
         present.insert(0, spec.pov)
     if present:

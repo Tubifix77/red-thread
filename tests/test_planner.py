@@ -55,7 +55,7 @@ def story_json(threads=None, characters=None, style=None, **kwargs) -> str:
         "style": style if style is not None else {
             "pov": "third limited", "tense": "past",
             "samples": ["The tide was out by four inches more than the sheet allowed.",
-                        "Ardo did not look up from the case.",
+                        "The typesetter did not look up from the case.",
                         "Two days to the press. She counted it twice."],
             "forbidden_phrases": ["the truth", "everything changed"],
             "notes": "Maritime industrial register. Emotion as behaviour.",

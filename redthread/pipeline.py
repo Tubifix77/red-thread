@@ -451,10 +451,16 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     # measures. This is also most of the scene's latency: one LLM verify instead of 1+N.
     story_so_far = "\n\n".join(t[-800:] for t in committed_texts[-3:])
 
+    # Two consecutive failures of one action sideline it, so it cannot monopolise the budget.
+    # A real scene burned all five rounds on expansions that came back unusable while two
+    # style leaks — surgically fixable in one pass — never got a turn.
+    sidelined: set[str] = set()
+    failure_streak: dict[str, int] = {}
+
     def attempt_fix(fixable: list[Violation]) -> str | None:
         short = next((v for v in fixable if v.kind == "length"
                       and scene.word_count() < spec.word_target), None)
-        if short is not None:
+        if short is not None and "expand" not in sidelined:
             return _expand(scene, spec, models, round_no=result.repairs), "expand"
         if any(v.kind == "truncated_scene" for v in fixable):
             # Snap to the last complete sentence, in code. A truncated draft is the budget cap
@@ -465,7 +471,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             complete = [hi for _, hi in checks.sentence_spans(scene.text)
                         if scene.text[:hi].rstrip()[-1:] in terminal]
             return (scene.text[:complete[-1]] if complete else None), "snap"
-        if any(v.kind == "length_runaway" for v in fixable):
+        if any(v.kind == "length_runaway" for v in fixable) and "trim" not in sidelined:
             return _trim(scene, spec, models, round_no=result.repairs), "trim"
         quoteless = [v for v in fixable
                      if not (v.quote and checks.locate_quote(scene.text, v.quote))]
@@ -488,6 +494,11 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             # the whole budget: a single unusable trim reply used to `break` here, leaving a
             # runaway scene unrepaired with three rounds still in hand.
             result.repairs += 1
+            failure_streak[action] = failure_streak.get(action, 0) + 1
+            if failure_streak[action] >= 2:
+                sidelined.add(action)
+                result.notes.append(f"{action} sidelined after {failure_streak[action]} "
+                                    f"failures; other repairs get the remaining rounds")
             result.notes.append(f"{action} attempt {result.repairs} unusable; retrying")
             progress.stage(f"{action} {result.repairs}", "call failed or unusable · retrying")
             continue
@@ -510,9 +521,14 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                 and not any(v.kind in ("length_runaway", "truncated_scene")
                             for v in new_det)))
         if not (improved or fixed_length):
+            failure_streak[action] = failure_streak.get(action, 0) + 1
+            if failure_streak[action] >= 2:
+                sidelined.add(action)
             result.notes.append(f"{action} attempt {result.repairs} did not improve; discarded")
             progress.stage(f"{action} {result.repairs}", "no improvement · discarded")
             continue
+        failure_streak[action] = 0
+        sidelined.discard(action)
         scene, result.scene = candidate, candidate
         det_violations = new_det
         blockers, majors, minors = _score(new_det)
