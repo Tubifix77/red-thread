@@ -263,21 +263,71 @@ requires and forbids the same disclosure, which no writer can satisfy and which 
 correctly flags from both sides. `Thread.reveal_scene` bounds it; the reveal scene's brief flips
 from "still concealed" to "THIS is the scene that discloses".
 
+## What the second book settled (2026-08-29)
+
+*The Debt of Years* — 27 scenes, 30,046 words, planner-driven, one 8B — was two and a half times
+longer than the first run and, unlike it, was not clean. Twelve defects. Two findings generalise
+past this codebase.
+
+**Section 4's "localised repair" needs a second qualifier: the repair must be sized like the check
+that raised it.** The first run established that repair should be local rather than regenerative.
+This one established that *local* is not one size. `check_seam` compares a scene's last
+twenty-five words against the previous scene's ending; sentence-local surgery rewrites the one
+sentence a violation's quote falls in. Scene 4 copied two sentences forward, surgery rewrote one
+per round, the check re-fired on the remainder, and the scene exhausted a five-round budget five
+times over without converging. The same mismatch appeared four more times in the same run — a
+check counting seven copied n-grams and reporting one; a deletion capped at four sentences meeting
+a 172-word copy; a missed obligation with no quote and therefore no repair at all. ConWriter's
+formulation does not distinguish sentence-scoped from region-scoped conflicts, and the distinction
+turns out to decide whether the loop terminates.
+
+The mitigation that generalises is not a better repair but a structural assertion:
+`tests/test_repair_coverage.py` parses the checks' own source, enumerates every blocking violation
+kind they can emit, and fails if any lacks a repair route. A check added without one now breaks
+the suite rather than a book.
+
+**A constraint a judge cannot answer is worse than no constraint.** Section 4's `Forbid` operators
+are symbolic in ConWriter and natural language here, and that gap has a cost nothing in the
+literature names. A planner writing `forbid: "the decision is not finalized"` means *keep this
+true*; read as a prohibition it demands the very thing it prevents, and the scene obeying the plan
+is the one that gets blocked. Fifty of this plan's prohibitions were phrased that way. Three
+sibling failures share the shape — an obligation naming a thread state ("reaches 'reoriented'"), an
+obligation naming an absence ("neither resolved nor abandoned", "left unspoken"), and a
+"do not reveal X" surviving past the scene where the schedule discloses X. In every case the prose
+was fine and the rule was broken, which is invisible to a scene-level check and diagnosable only
+at plan level. The audit now carries all four, and inverts the ones whose intent is unambiguous.
+
+A third, smaller: **a beat written as prose is prose.** The planner produced beats like "Dain steps
+forward, his boots crunching over dry leaves, his voice steady and low", the writer wrote what it
+was given, and `check_brief_leak` correctly found seven copied runs. CONCOCT's vaguest-first
+expansion (section 8) sharpens beats toward specificity with no ceiling on it; the ceiling is that
+a beat must stay an instruction. Beats are now de-prosed at plan time.
+
 ## Open questions the research did not settle
 
 1. **Optimal generation-unit size for prose quality.** Re3 drafts 256-token passages; ConWriter
    works at scene level; no source found compares unit sizes for *reader-perceived* quality. Our
    choice of scene-sized units with beat-sized specs is reasoning, not a cited result.
-2. **Whether the chunk-buffer prefix trick helps prose.** Validated in a different modality only.
+2. **Whether the chunk-buffer prefix trick helps prose.** Validated in a different modality only —
+   and the second run showed it has a cost the source does not mention. Handing a small model the
+   previous scene's last 150 words as continuity context makes that text an attractor: five of 27
+   scenes opened or closed on it verbatim, one reproducing 172 words before starting its own
+   story. The prefix is still fed forward, because the alternative is scenes that do not join,
+   but it now arrives with an explicit prohibition on both ends and a deterministic repair behind
+   that.
 3. **Whether bottom-up amendment improves quality.** DOME shows dynamic outlining beats rigid
    outlining on conflict rate; nothing found isolates *upward* revision (prose amending its own
    spec) as a quality win. Still unbuilt.
-4. **Local-model viability for the structured stages.** Answered by running it to completion:
-   an 8B carried every role — planner, writer, extractor, judge — through a full manuscript, with
-   two provisos that are now architecture. Extraction and planning work once reasoning is kept
-   out of the output channel and JSON is constrained at the decoder. Judging works only within
-   the calibrated envelope: binary verdicts block, graded and aesthetic ones advise. See
-   [MODELS.md](MODELS.md), "The night it finished".
+4. **Local-model viability for the structured stages.** Answered by running it to completion
+   twice, the second time from a premise rather than a hand-authored plan: an 8B carried every
+   role — planner, writer, extractor, judge — through 27 scenes and 30,046 words, with three
+   provisos that are now architecture. Extraction and planning work once reasoning is kept out of
+   the output channel and JSON is constrained at the decoder. Judging works only within the
+   calibrated envelope: binary verdicts block, graded and aesthetic ones advise. And *rewriting*
+   works only when the model is not shown the text it must avoid — asked to replace a copied
+   ending, and given that ending under a heading marking it forbidden, it returned the forbidden
+   text twice in a row. Prefer a repair that needs no model at all. See
+   [MODELS.md](MODELS.md), "The night it finished" and "The second book".
 5. **Whether scheduling structure deterministically costs anything creatively.** Making both
    acceptance markers hold by construction (`schedule.py`) is our design, not a cited result. It
    removes a whole class of failure, but it also removes the model's freedom to put a turn where

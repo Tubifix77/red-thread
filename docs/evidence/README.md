@@ -12,6 +12,7 @@ rather than taken on trust.
 | `manuscript-run.md` | The first completed manuscript: seam audit and cross-scene repetition verdict |
 | `manuscript-status.txt` | `redthread status` after the run — every thread at its terminal state |
 | `manuscript-scene04-reveal.txt` | The committed reveal scene, exactly as the gate accepted it |
+| `debt-of-years-run.md` | The second manuscript: planner-driven, 27 scenes, and the twelve defects it found with 292 tests green |
 
 Generated 2026-08-27 on an RTX 3080 10GB via Ollama, one draft per model, temperature 1.0, from
 `examples/build_inherited_glitch.py` scene 1 (900-word target).
@@ -26,3 +27,8 @@ Four checks — `check_pov`, `check_style_leak`, `check_brief_leak`, and the wor
 `check_slop` — exist because of what these three files did. That is the argument for the `bench`
 command: the failures that mattered were in the interaction between this project's brief and a
 specific model, and no external benchmark could have surfaced them.
+
+`debt-of-years-run.md` is the same argument at manuscript scale, and the more important document
+of the two. The manuscripts themselves are not committed — `runs/` is gitignored, and the premises
+behind them are the author's — so what is kept here is the record: which scene failed, what the
+violation actually said, and which commit answered it.

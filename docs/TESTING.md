@@ -51,6 +51,57 @@ No model call and no reading required.
 
 ---
 
+## The other half of the audit: rules a judge can answer
+
+The two markers are about whether the *story* is shaped right. Seven more plan checks exist for a
+different reason, and they came entirely from running a book: a malformed **rule** produces a scene
+that cannot be written and cannot be repaired. The prose is fine; the requirement is broken. No
+scene-level check can see this, because nothing is wrong with the scene.
+
+| check | catches | what it cost before it existed |
+|---|---|---|
+| `check_prohibition_phrasing` | a `forbid` phrased as a negation | "the decision is not finalized" reads as a demand for the reveal; 50 of one 27-scene plan's rules were written this way, and the scene obeying the plan was the one blocked |
+| `check_post_is_an_event` | a `post` naming a thread state, or naming an absence | "The Allegiance reaches 'reoriented'" asks the judge about bookkeeping the prose cannot contain; "neither resolved nor abandoned" and "left unspoken" can never be evidenced, so they are reported missed however the scene goes |
+| `check_stale_prohibitions` | "do not reveal X" after the schedule discloses X | a scene held back for revealing an enclave the plan itself unsealed three scenes earlier |
+| `check_beats_are_intent` | a beat written as finished prose | the writer copies it back and `check_brief_leak` is right to flag the copy; one scene had ten such beats and never committed at any repair budget |
+| `check_spec_self_consistency` | the plan using a phrase it forbids | every brief is built from this text, so a banned word here is injected into all of them |
+| `check_concealment` | a thread with nothing withheld | tension is downstream of hidden information |
+| `check_cast_names` | names measured as over-represented in machine fiction | `check_slop` must exempt character names, so this is where that exemption is paid for |
+
+Where the intent is unambiguous the plan is repaired rather than merely reported — a negated
+prohibition is inverted into the event it forbids, and prose beats are rewritten into intent — but
+the check still fires, so the next plan is written correctly instead of repaired forever.
+
+The general rule these share is worth stating on its own: **a constraint the judge cannot answer is
+worse than no constraint at all.** An absent rule costs you the thing it would have prevented. An
+unanswerable rule costs you the scene, the repair budget, and — because `write_all` halts at the
+first rejection — the rest of the book.
+
+## What a fixture suite cannot test
+
+Every check in this project is tested by injecting the defect it exists to find, and that is worth
+doing. It is also not sufficient, for a reason that took a second manuscript to surface.
+
+The fixtures in `tests/fakes.py` are prose written to pass the checks. One comment in that file
+says so directly: the fixture closings are kept distinct *so `check_seam` does not fire on the
+fixture's own filler*. Test data shaped around a failure mode cannot detect that failure mode. The
+first manuscript did not help either — it was a clean run, so almost no check fired, so almost no
+**repair path** ever executed. Every defect the second book found lives in a repair path.
+
+Two practices came out of that, and both are cheap:
+
+1. **Assert structural properties of the checks, not only their behaviour.**
+   `tests/test_repair_coverage.py` parses `checks.py` with `ast`, enumerates every BLOCKER/MAJOR
+   kind the scene-level checks can emit, and fails if any of them has no repair that can reach it.
+   That assertion is fixture-independent, and it caught a real gap on its first run.
+
+2. **Before calling a pipeline change done, write at least two consecutive scenes on a real model
+   against a plan that was not tuned to pass.** Read the held-back scene's `scenes/NNNN.json` for
+   the actual violations rather than inferring from the progress line. A green suite tells you the
+   machinery composes; only this tells you the repairs converge.
+
+---
+
 ## Designing a premise that actually tests something
 
 Choose premises **adjacent to** shapes the models have seen thousands of times without being those
@@ -91,6 +142,14 @@ established.
 ---
 
 ## Running it
+
+From a premise of your own:
+
+```bash
+python -m redthread plan my-premise.md --out runs/mystory --words 30000 --local qwen3:8b
+```
+
+Or from the hand-authored reference plan, which needs no model at all:
 
 ```bash
 python examples/build_inherited_glitch.py runs/mystory

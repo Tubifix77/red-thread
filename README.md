@@ -98,12 +98,67 @@ A model that misbehaves — reassigning thread states, inventing thread ids, ret
 degrade the plan's *content* and cannot touch its structure. That is asserted directly in
 [`tests/test_planner.py`](tests/test_planner.py).
 
-### Repair is local, not regenerative
+### Repair is a ladder, and its rungs are sized like the checks
 
-A failing scene is not rewritten. Each violation carries the offending span verbatim, and repair
-rewrites only those spans, within a bounded retry budget, and is **reverted if it does not
-measurably improve the violation score**. Regeneration throws away the good prose with the bad and
-resamples every check you had already passed.
+A failing scene is not rewritten. Each violation carries the offending span verbatim, repair
+touches only what the check complained about, and it is reverted if it does not measurably improve
+the violation score. Regeneration throws away the good prose with the bad and resamples every
+check you had already passed.
+
+Which rung matters as much as the locality, because **a repair whose reach is narrower than its
+check's scope can never converge.** `check_seam` compares a scene's last twenty-five words against
+the previous scene's ending; sentence-local surgery rewrites the one sentence a quote falls in.
+Point the first at the second and a scene that copied two sentences forward spends its whole
+repair budget having one of them rewritten, round after round. That is exactly what happened, in a
+real book, at scene 4.
+
+So each kind is routed to a repair sized like the check that raised it, cheapest first:
+
+| rung | model calls | for |
+|---|---|---|
+| `deseam` | none | a copied seam — delete the duplicated block, verify with `check_seam` itself |
+| delete | none | narrator gloss, which lives in self-contained sentences |
+| `snap` | none | a truncated draft — cut back to the last complete sentence |
+| `surgical` | one per sentence | anything carrying a quote that locates in the text |
+| `reseam` | one | a seam that deletion could not clear |
+| `trim` | one | a runaway draft |
+| `expand` | one | an under-length scene — grow the thinnest passage, splice it back |
+| `fulfil` | one | a missed obligation, which has no quote to point at — write the beat |
+| `repair` | one | last resort: the whole scene, which a small model does badly |
+
+The three that need no model are the ones that cannot fail in the interesting way. Asked not to
+reuse the previous scene's ending — and shown that ending under a heading saying so — an 8B handed
+it straight back, twice, in about a second each time. Showing a small model the text it must avoid
+is showing it the text to produce, so the copied block is deleted in code instead.
+
+Once every action that could address the remaining violations has failed twice, the loop stops
+rather than spending the rest of its budget re-running them.
+
+[`tests/test_repair_coverage.py`](tests/test_repair_coverage.py) keeps this honest. It reads
+`checks.py` with `ast`, collects every BLOCKER/MAJOR kind the scene-level checks can emit, and
+asserts each one has a route to a repair that can reach it. A new check without a repair fails the
+suite the day it is added rather than the day a book runs into it.
+
+### A rule the judge cannot answer is worse than no rule
+
+The plan audit is not only about structure. Half its checks exist because a malformed *rule*
+produces a scene that cannot be written and cannot be repaired — the scene is fine, the
+requirement is broken:
+
+- a prohibition phrased as a negation (`forbid: "the decision is not finalized"`) reads as a
+  demand for the very thing it means to prevent;
+- an obligation that names a thread state (`post: "The Allegiance reaches 'reoriented'"`) asks the
+  judge about bookkeeping the prose cannot contain;
+- an obligation that names an absence (`post: "the past is left unspoken"`) can never be evidenced,
+  so it is reported missed however the scene goes;
+- a beat written as finished prose is prose the writer copies back, and `check_brief_leak` is right
+  to flag the copy;
+- a "do not reveal X" on a thread whose concealment the schedule already lifted contradicts the
+  schedule.
+
+Each is caught by `python -m redthread audit` before a word is generated, and where the intent is
+unambiguous it is repaired rather than reported — a negated prohibition is inverted into the event
+it forbids, prose beats are rewritten into intent at plan time.
 
 ---
 
@@ -138,7 +193,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`models.py`](redthread/models.py) | Threads, transitions, specs, quadruple facts, violations | ConWriter, DOME |
 | [`ledger.py`](redthread/ledger.py) | Fact store, scoped retrieval, character knowledge, conflict candidates | DOME |
 | [`brief.py`](redthread/brief.py) | The scene brief — the most important file here | Liu et al., STORYTELLER, StoryScope |
-| [`checks.py`](redthread/checks.py) | 16 scene checks + a 3-part plan audit. No model calls | StoryScope, Antislop |
+| [`checks.py`](redthread/checks.py) | 15 scene checks + a 9-part plan audit. No model calls | StoryScope, Antislop |
 | [`verify.py`](redthread/verify.py) | 5 single-purpose LLM probes: extraction, contradiction, thread satisfaction, anti-tells, tension | DOME, ConWriter, Re3 |
 | [`pipeline.py`](redthread/pipeline.py) | The state machine and the commit gate | ConWriter, Re3 |
 | [`schedule.py`](redthread/schedule.py) | Deterministic thread scheduling — both markers by construction | CONCOCT |
@@ -149,9 +204,17 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`progress.py`](redthread/progress.py) | Orchestrator view — stages, timings, thread state | — |
 | [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` | — |
 
-**285 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**335 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
+
+They still cannot be the last word, and it is worth saying why. The fixtures in `tests/fakes.py`
+are prose *I* wrote, and I wrote it to pass the checks — one comment in there says outright that
+the fixture closings are kept distinct so `check_seam` does not fire on the fixture's own filler.
+Test data built around a failure mode cannot detect it. The suite proves the machinery composes;
+only running a book on a real model proves the repairs converge, and the second book found twelve
+defects with 292 green tests behind it. `tests/test_repair_coverage.py` exists because a
+*structural* assertion about the checks is the part that generalises.
 
 Three commands need no API key, and they are the ones that tell you whether the architecture is
 sound: `brief` (read what a session will actually be told), `check` (run the deterministic checks
@@ -161,7 +224,13 @@ against any prose), `audit` (plan-level failures, before a word is generated).
 
 ## Try it
 
-Plan a book from a premise:
+It is two commands, and they are separable on purpose. `plan` turns a premise into a run directory
+— the bible, the schedule, and every scene's spec — and costs a few minutes. `write` walks that
+plan scene by scene and costs hours. In between, `audit` and `brief` tell you whether the plan is
+worth the hours, without spending them. A run directory holds one book; run `plan` twice with
+different `--out` values and both sit there until you write them.
+
+Plan a book from a premise (text on the command line, or a path to a file):
 
 ```bash
 python -m redthread plan "A harbour inspector finds the tide tables have been altered." --out runs/tide --words 60000 --local qwen3:8b
@@ -272,36 +341,53 @@ accumulates and survives reload, threads reach their final states, the seam is f
 verbatim, a mid-run rejection halts cleanly with nothing from the failed scene in dynamic memory,
 and a re-run resumes from the gap. Every check catches its defect.
 
-**Proven by running it to completion, all local, zero API calls:** a full manuscript exists.
-*The Inherited Glitch* — 10 scenes, 12,169 words, generated end to end on `qwen3:8b` in every role
-on a 10GB card. Every thread walked its state machine to its terminal state on schedule; 148 facts
-accumulated in the ledger and fed every later brief; concealments were enforced and released at
-their declared reveal scenes; the commit gate refused twenty-odd bad versions along the way and
-nothing it refused ever contaminated dynamic memory. The run record, seam audit, and a sample
-scene are in [docs/evidence/](docs/evidence/manuscript-run.md).
+**Proven by running it to completion, all local, zero API calls:** two full manuscripts exist.
 
-Getting there surfaced roughly twenty defects no test had caught — every one is now a test, and
-the mechanism-level findings (judge calibration, phased repair, surgical splicing, bounded output
-budgets) are written up in [docs/MODELS.md](docs/MODELS.md) and the addendum in
-[docs/RESEARCH.md](docs/RESEARCH.md). The one worth repeating: a scene reported `0 facts
-extracted`, which read exactly like "an 8B can't do structured output" — the same model on the
-same text extracts 18 clean facts, and the bug was ours. **"The local model can't do it" is a
-hypothesis, not an observation.**
+*The Inherited Glitch* — 10 scenes, 12,169 words, from the hand-authored reference plan, generated
+end to end on `qwen3:8b` in every role on a 10GB card. Every thread walked its state machine to its
+terminal state on schedule; 148 facts accumulated in the ledger and fed every later brief;
+concealments were enforced and released at their declared reveal scenes; the commit gate refused
+twenty-odd bad versions along the way and nothing it refused ever contaminated dynamic memory. The
+run record, seam audit, and a sample scene are in
+[docs/evidence/manuscript-run.md](docs/evidence/manuscript-run.md).
+
+*The Debt of Years* — **27 scenes, 30,046 words, premise in and book out.** The planner wrote the
+bible, the cast, the voice and every scene's content from one page of premise; the scheduler laid
+out the structure; the pipeline wrote it. 397 facts in the ledger, 75 of them character knowledge,
+all four threads at their terminal state. This is the run that mattered, because it was two and a
+half times longer than the first and — unlike the first — it was *not* clean. Full record in
+[docs/evidence/debt-of-years-run.md](docs/evidence/debt-of-years-run.md).
+
+Between them the two runs surfaced about thirty defects no test had caught, every one now a test.
+The mechanism-level findings are written up in [docs/MODELS.md](docs/MODELS.md) and the addenda in
+[docs/RESEARCH.md](docs/RESEARCH.md). Two are worth repeating here:
+
+**"The local model can't do it" is a hypothesis, not an observation.** A scene reported `0 facts
+extracted`, which read exactly like "an 8B can't do structured output". The same model on the same
+text extracts 18 clean facts. The bug was ours.
+
+**A green suite against fixtures you wrote proves less than one book against a real model.** Six
+of the second run's twelve defects are one mistake in different places — a check whose scope is
+wider than its repair's reach — and `check_somatic` had already been fixed for exactly that shape,
+earlier in the same project, without the lesson generalising. It generalises now, as an assertion
+rather than as a habit.
 
 **Not proven, and the honest list:**
 
-1. **Whether the prose is *good*.** The structure held; the sentences are an 8B's. The system's
-   own cross-corpus audit says so: 27 five-word phrases recur in three or more scenes ("she
-   didn't need to…" ×5), and eight of ten scenes opened on name-plus-stance before that became a
-   check. Committed-with-minors is the designed behaviour — the per-scene reports carry the
-   full list for a human pass. A better local writer slots in with one flag.
+1. **Whether the prose is *good*.** The structure held; the sentences are an 8B's, and the longer
+   book made that plainer rather than less so — most of its scenes committed carrying six or
+   seven minors, and one draft repeated "he had no right" four times inside a single scene. The
+   system's own cross-corpus audit is where this shows up, by design: committed-with-minors is
+   the intended behaviour and the per-scene reports carry the full list for a human pass. A
+   better local writer slots in with one flag.
 2. **Whether scheduling structure costs anything creatively.** Making both markers hold by
    construction removes a class of failure and also removes the model's freedom to put a turn
    where it wants one. No source compares scheduled against proposed structure for
    reader-perceived quality. This is the largest unexamined assumption in the project.
-3. **Whether the seams actually disappear for a reader.** Mechanically they held — the audit
-   shows every scene opening against the right prior state. Whether a reader *feels* the joins
-   is a different question, and one committed manuscript is one data point.
+3. **Whether the seams actually disappear for a reader.** Mechanically they hold, and the second
+   run put real pressure on that: five of its 27 scenes opened or closed on the previous scene's
+   words and were repaired. Whether a reader *feels* the joins in the repaired result is a
+   different question, and two manuscripts are two data points.
 4. **Whether bottom-up amendment helps.** Prose amending its own spec — the difference between an
    outline-filler and a writing tool. Unbuilt.
 5. **The generation-unit size.** Re3 drafts 256-token passages, ConWriter works at scene level; no
@@ -310,11 +396,13 @@ hypothesis, not an observation.**
 
 ## Next
 
-- **A planner-driven book.** The completed manuscript ran from the hand-authored reference plan;
-  the planner has produced audit-clean plans from a premise but has never had one written to the
-  end. Premise in, book out is the next full pass.
-- **A longer manuscript.** Ten scenes is one data point; at 60,000 words the cross-corpus checks
-  (`check_repetition`, cast-wide rhythm) start doing the work they were built for.
+- **A 60,000-word manuscript.** Thirty thousand words across 27 scenes is where the cross-corpus
+  checks started earning their keep; at twice that, `check_repetition` and the cast-wide rhythm
+  check are doing the work they were built for rather than sampling it.
+- **Candidate selection that can see a repair coming.** Selection currently ranks drafts by
+  violation score alone, so it picked a 995-word draft over a 1,519-word one and then watched
+  `deseam` cut it under its target. The cost of the repair a violation implies belongs in the
+  score.
 - **A better local writer.** The structure held on an 8B; the sentence ceiling is the writer
   model. Re-run `bench` as stronger models land that fit in 10GB — the swap is one flag.
 - **Sampler-level slop suppression** via `antislop-vllm` against a local endpoint, replacing the

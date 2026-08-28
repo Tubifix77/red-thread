@@ -9,7 +9,7 @@ otherwise would be dishonest.
 ## First, what the test suite actually uses
 
 **No model.** `tests/fakes.py` provides a scripted backend returning canned JSON and fixture
-prose. That is why the full suite (285 tests at the time of writing) runs in seconds with no API
+prose. That is why the full suite (335 tests at the time of writing) runs in seconds with no API
 key and no network.
 
 This is deliberate, not a shortcut. The tests verify that the machinery composes — briefs carry
@@ -20,6 +20,14 @@ expensive, and flaky for reasons unrelated to what it is testing.
 The corollary: the suite cannot tell you whether the prose is any good. That question is answered
 by running it — see "The night it finished" below for what a completed all-local manuscript
 actually looks like, structure and sentences both.
+
+A second corollary, learned the hard way and worth stating plainly: **the fixtures are prose I
+wrote, and I wrote them to pass the checks.** `_CLOSINGS` in that file still carries a comment
+explaining that the closings are kept distinct so `check_seam` does not fire on the fixture's own
+filler. Test data shaped around a failure mode cannot detect it, and the second manuscript found
+twelve defects with 292 of these tests green behind it — every one of them in a repair path, which
+a clean run barely exercises. `tests/test_repair_coverage.py` is the response: it asserts a
+structural property of the checks rather than a behaviour of any fixture.
 
 ---
 
@@ -300,6 +308,41 @@ them as MINOR per the calibration policy, and two of them became deterministic c
 night. That is the designed division of labour: the machine guarantees the book's *shape* and
 surfaces its prose debt scene by scene; raising the sentence ceiling is a writer-model upgrade,
 one `--local` flag away.
+
+## The second book: what changes when the run is not clean
+
+2026-08-29: *The Debt of Years*, 27 scenes, 30,046 words, planner-driven from a one-page premise,
+`qwen3:8b` in every role again. Two and a half times the first book, and the first run where the
+checks fired constantly. Twelve defects, all of them in repair paths — which the first, cleaner
+run had barely executed. The full record is in
+[evidence/debt-of-years-run.md](evidence/debt-of-years-run.md); three findings are about the model
+rather than about our code.
+
+**Showing a small model the text it must not reuse is showing it the text to produce.** The first
+seam repair rewrote a copied ending, and its prompt included the previous scene's ending under a
+heading saying none of these words may appear. qwen3:8b returned that ending, near-verbatim, twice
+in a row, in about a second each time — faster than it writes anything original, which is the tell.
+The working repair deletes the copied block in code and verifies with the check that flagged it.
+Generalised: on an 8B, prefer the repair that needs no model; where one is needed, do not put the
+negative example in front of it.
+
+**Whole-output operations keep failing, at every size.** The first run established that whole-scene
+*repair* fails on an 8B and moved to sentence splicing. This run found the same thing for
+whole-scene *expansion*: asked to reproduce 876 words verbatim and add 270 more, the model rewrote
+and came back shorter, twice, and the attempt was discarded both times. Expansion is now one
+paragraph — the interior one closest in size to the shortfall — rewritten between two the model can
+see but must not touch, and spliced back. Same shape as surgical repair, same reason it works.
+
+**Growth needs a ceiling as much as a floor.** Given a large shortfall and the thinnest paragraph
+in the scene, the model turned 47 words into 467, and the padding tripped three other checks. A
+passage may now at most double, and a scene needing more gets it over two rounds.
+
+The prose verdict is unchanged and, if anything, clearer at length: the structure held completely
+across 27 scenes and 397 ledger facts, and the sentences are an 8B's. Most scenes committed
+carrying six or seven MINOR violations; one draft repeated "he had no right" four times inside a
+single scene. That is the designed division of labour — the machine guarantees the book's shape and
+itemises its prose debt scene by scene — and raising the sentence ceiling remains one `--local`
+flag away.
 
 ## Measuring adherence yourself
 
