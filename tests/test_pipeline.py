@@ -800,6 +800,64 @@ class TestLeakedProhibition(PipelineCase):
         self.assertNotIn("second hand in the book", result.scene.text)
 
 
+class TestRedraftWhenEveryRepairFails(PipelineCase):
+    """Some violations are properties of the draft rather than of a span inside it.
+
+    Scene 7 of a clean-slate run opened on a long stretch resembling the previous scene:
+    deletion could not reach it inside its bounds, rewriting came back echoing twice, and the
+    remaining budget could buy nothing more of the same. The scene had only ever been attacked
+    from the candidates drawn at the start.
+    """
+
+    def _leaky_beat(self, spec):
+        beat = ("She copies the altered column into the spare ledger and initials the bottom "
+                "of the page")
+        spec.beats = [Beat(beat)]
+        return beat
+
+    def test_a_better_fresh_draft_replaces_the_scene(self):
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        beat = self._leaky_beat(spec)
+        backend.queue("draft", fakes.clean_prose(870) + " " + beat + ".")
+        backend.queue("surgical", *[beat + "."] * 4)
+        # The redraft is clean.
+        backend.queue("draft", fakes.clean_prose(900, variant=3))
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=8))
+
+        self.assertTrue(any("drafted again" in n for n in result.notes), result.notes)
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+
+    def test_a_worse_fresh_draft_is_discarded(self):
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        beat = self._leaky_beat(spec)
+        backend.queue("draft", fakes.clean_prose(870) + " " + beat + ".")
+        backend.queue("surgical", *[beat + "."] * 4)
+        backend.queue("draft", fakes.prose_with_heading())
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=8))
+
+        self.assertTrue(any("no better and was discarded" in n for n in result.notes),
+                        result.notes)
+        self.assertNotIn("format", {v.kind for v in result.violations})
+
+    def test_it_happens_at_most_once(self):
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        beat = self._leaky_beat(spec)
+        backend.queue("draft", fakes.clean_prose(870) + " " + beat + ".")
+        backend.queue("surgical", *[beat + "."] * 8)
+        backend.queue("draft", *[fakes.clean_prose(870, variant=2) + " " + beat + "."] * 4)
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=8))
+
+        self.assertEqual(sum(1 for n in result.notes if "redrafted once" in n
+                             or "drafted again" in n), 1, result.notes)
+
+
 class TestPartialLengthProgress(PipelineCase):
     """`_expand_passage` caps how far one passage may grow, so closing a large shortfall is meant
     to take two rounds. Scene 12 of a live run added 101 of the 121 words it needed, scored

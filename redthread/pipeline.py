@@ -688,6 +688,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     # style leaks — surgically fixable in one pass — never got a turn.
     sidelined: set[str] = set()
     failure_streak: dict[str, int] = {}
+    redrafted = False
 
     def attempt_fix(fixable: list[Violation]) -> str | None:
         short = next((v for v in fixable if v.kind == "length"
@@ -742,6 +743,41 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             break
         repaired, action = attempt_fix(fixable)
         if action == "exhausted":
+            # One fresh draft before giving up. Every repair has failed twice, so the remaining
+            # budget buys nothing more of the same — but the scene has only ever been attacked
+            # from the candidates drawn at the start, and some violations are properties of the
+            # draft rather than of a span in it. Scene 7 of a clean-slate run opened on a long
+            # stretch resembling the previous scene: deletion could not reach it inside its
+            # bounds, rewriting it came back echoing twice, and nothing left could help. A new
+            # draft can, and it is the same operation the scene began with.
+            if not redrafted and result.repairs < config.max_repairs:
+                redrafted = True
+                try:
+                    reply = models.writer.complete(
+                        brief, system=WRITER_SYSTEM,
+                        max_tokens=_prose_budget(spec.word_target, models.writer),
+                        temperature=min(1.2, config.temperature + 0.2))
+                except LLMError as exc:
+                    result.notes.append(f"redraft failed: {exc}")
+                else:
+                    result.repairs += 1
+                    result.candidates_drafted += 1
+                    fresh, fresh_det = run_deterministic(reply.text)
+                    b, m, n = _score(fresh_det)
+                    if _score(fresh_det) < _score(det_violations):
+                        scene, result.scene = fresh, fresh
+                        det_violations = fresh_det
+                        result.violations = fresh_det
+                        sidelined.clear()
+                        failure_streak.clear()
+                        result.notes.append(
+                            "every repair had failed twice, so the scene was drafted again; "
+                            "the new draft scores better and replaces it")
+                        progress.stage("redraft", f"{fresh.word_count()}w · {b}B/{m}M/{n}m")
+                        continue
+                    result.notes.append("redrafted once after every repair failed; the new "
+                                        "draft was no better and was discarded")
+                    progress.stage("redraft", f"no better · {b}B/{m}M/{n}m")
             result.notes.append("every repair action for these violations has been tried twice "
                                 "and failed; stopping early rather than spending the budget")
             progress.stage("repairs", "all actions exhausted")
