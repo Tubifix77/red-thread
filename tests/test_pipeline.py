@@ -715,7 +715,9 @@ class TestForbiddenPhraseRepair(PipelineCase):
         no progress at all; the shortfall a deletion creates has `_expand` waiting for it."""
         models, backend = fakes.scripted_models()
         spec = self.project.spec_at(1)
-        spec.word_target = 1400
+        # Just under target: no length violation to route elsewhere, but `can_delete` is false,
+        # which is the state scene 12 was in.
+        spec.word_target = 780
         backend.queue("draft", fakes.clean_prose(700) + self.OFFENDER)
         backend.queue("surgical", *["She saw the truth of it on the bench."] * 4)
 
