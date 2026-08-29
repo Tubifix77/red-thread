@@ -1579,3 +1579,94 @@ class TestSomaticRepair(PipelineCase):
 
         self.assertNotIn("stomach knotted", result.scene.text,
                          "the somatic rewrite must not be spliced")
+
+
+class TestRecapRepair(PipelineCase):
+    """`summary_distance` was measured for a week with nothing able to act on it.
+
+    The register really is unrepairable — switching one sentence to simple past leaves the other
+    forty alone — but that was the whole of the analysis, and it hid the half that is reachable.
+    Past perfect arrives in blocks, and a block has edges.
+    """
+
+    def test_a_block_of_recap_is_rewritten_as_scene(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.recap_prose(900, 0))
+        backend.queue("unrecap", "She set the second ledger on the bench and opened it to the "
+                                 "middle. The spine cracked. Otto looked over and said nothing, "
+                                 "which was an answer of a kind, and she wrote the date at the "
+                                 "top of the page before she lost her nerve about it.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=3))
+
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+        self.assertEqual(backend.count("unrecap"), 1)
+        self.assertTrue(any("unrecap: rewrote" in n for n in result.notes), result.notes)
+        self.assertEqual(checks.recap_blocks(result.scene.text), [],
+                         "the block the check found is the block that was replaced")
+
+    def test_a_recap_block_never_reaches_sentence_surgery(self):
+        """The seam lesson, restated. A run of five sentences cannot be repaired by rewriting
+        the one a quote lands in: four remain and the check fires again next round."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.recap_prose(900, 0))
+        backend.queue("unrecap", "She set the ledger down and opened it. The spine cracked. "
+                                 "Otto looked over and said nothing at all, which was an answer "
+                                 "of a kind, and she wrote the date at the top of the page.")
+
+        write_scene(self.project, self.project.spec_at(1), models,
+                    Config(candidates=1, max_repairs=3))
+
+        self.assertEqual(backend.count("surgical"), 0,
+                         "a passage-scoped check must not be routed to sentence-local repair")
+
+    def test_a_replacement_still_in_past_perfect_is_refused(self):
+        """A model told to stop using past perfect will hand back past perfect. Splicing that in
+        spends the round and leaves the block, so the check that flagged it verifies the fix."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.recap_prose(900, 0))
+        backend.queue("unrecap", "She had set the ledger down and had opened it. The spine had "
+                                 "cracked in her hands. Otto had looked over and had said "
+                                 "nothing. She had written the date at the top of the page.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertTrue(any("still narrated in past perfect" in n for n in result.notes),
+                        result.notes)
+
+    def test_clearing_one_of_two_blocks_counts_as_progress(self):
+        """The bug this repair found on its first live scene.
+
+        Scene 9 of a real run carried two blocks of recap. `_unrecap` rewrote one — verified
+        against Ollama, two blocks down to one, summary distance .415 to .36 — and the pipeline
+        threw the result away, because it asked whether the target *kind* had disappeared rather
+        than whether there was less of it. Any check that emits one violation per occurrence has
+        the same problem, so the test is written against the counting rule, not against recap.
+        """
+        models, backend = fakes.scripted_models()
+        doubled = fakes.recap_prose(900, 0)
+        block = " ".join(fakes._RECAP_BLOCK[:5])
+        # A second, separate block, so one repair cannot reach both.
+        doubled = doubled.replace(". ", ". " + block + " ", 1) if block not in doubled else doubled
+        backend.queue("draft", fakes.recap_prose(900, 0, sentences=5))
+
+        before = checks.check_recap_block(Scene(spec_id="s", index=1, text=doubled))
+        self.assertGreaterEqual(len(before), 1)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=3))
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+
+    def test_the_diffuse_register_stays_advisory(self):
+        """The distinction is the point. A scene at 30% past perfect with no run of four is a
+        register, has no repair, and must not hold the gate."""
+        text = fakes.clean_prose(900, 0)
+        scene = Scene(spec_id="s", index=1, text=text + " " + " ".join(
+            f"She had checked the {n} before the shift." for n in
+            ("log", "roster", "docket", "chart", "slip", "folder")))
+        found = checks.check_summary_distance(scene)
+        self.assertTrue(all(v.severity is Severity.MINOR for v in found))

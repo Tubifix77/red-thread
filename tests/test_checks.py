@@ -7,10 +7,13 @@ here injects the specific defect the check exists to find and asserts it comes b
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from redthread import checks
 from redthread.models import (Beat, Character, Scene, SceneSpec, Severity, StorySpec,
                               StyleContract, Transition)
+
+from . import fakes
 
 
 def make_story(**kwargs) -> StorySpec:
@@ -821,3 +824,71 @@ class TestSeamTailCopy(unittest.TestCase):
             scene("Siv Alderman stood in the maintenance yard with the notebook."),
             "some previous text here")
         self.assertIn("seam_reset", kinds(found))
+
+
+class TestRecapBlock(unittest.TestCase):
+    """The repairable half of summary distance.
+
+    `check_summary_distance` measures a register and stays advisory, which was correct and was
+    also the end of the analysis for a week: the number moved .28 to .25 across a whole prose
+    pass while the brief named it and quoted the target. Measuring the distribution instead of
+    the density splits the problem — past perfect arrives in blocks, and a block has edges.
+    """
+
+    def _scene(self, text):
+        return Scene(spec_id="s", index=1, text=text)
+
+    def test_a_run_of_four_is_a_block(self):
+        text = ("The kettle clicked off. She had come to the depot in the spring. The office had "
+                "been three rooms then. Nobody had told her what the second ledger was for. She "
+                "had asked twice and been given the same answer. He put the cup down.")
+        blocks = checks.recap_blocks(text)
+        self.assertEqual([c for _, _, c in blocks], [4])
+        lo, hi, _ = blocks[0]
+        self.assertTrue(text[lo:hi].strip().startswith("She had come"))
+        self.assertTrue(text[lo:hi].strip().endswith("same answer."))
+
+    def test_three_in_a_row_is_not_a_block(self):
+        """The reference drafts reach two. Three is the median committed scene, so the floor
+        sits above it — a check that fires on the median is a check that fires on everything."""
+        text = ("The kettle clicked off. She had come to the depot in the spring. The office had "
+                "been three rooms then. Nobody had told her about it. He put the cup down.")
+        self.assertEqual(checks.recap_blocks(text), [])
+
+    def test_a_run_broken_by_scene_is_two_short_runs(self):
+        text = ("She had come in spring. The office had been three rooms. She opened the door. "
+                "Nobody had told her. She had asked twice. It had stayed that way. He waited.")
+        self.assertEqual(checks.recap_blocks(text), [])
+
+    def test_the_violation_is_major_and_quotes_the_whole_block(self):
+        scene = self._scene(fakes.recap_prose(700, 0))
+        found = checks.check_recap_block(scene)
+        self.assertEqual(len(found), 1)
+        self.assertIs(found[0].severity, Severity.MAJOR)
+        self.assertEqual(found[0].kind, "recap_block")
+        # The quote must locate, or the repair cannot find what to replace.
+        self.assertIsNotNone(checks.locate_quote(scene.text, found[0].quote))
+        self.assertGreaterEqual(len(checks.sentence_spans(found[0].quote)), 4)
+
+    def test_clean_prose_carries_no_block(self):
+        for variant in (0, 1, 2):
+            with self.subTest(variant=variant):
+                scene = self._scene(fakes.clean_prose(900, variant))
+                self.assertEqual(checks.check_recap_block(scene), [])
+
+    def test_the_reference_drafts_carry_no_block(self):
+        """The threshold's whole justification. gemma3:12b, phi4:14b and qwen3:8b writing one
+        cold scene each reach runs of 1, 1 and 2 — none of them reaches three, while 41 of 99
+        scenes this project committed carry a run of four or more."""
+        drafts = sorted(Path("docs/evidence").glob("scene01-*.txt"))
+        self.assertEqual(len(drafts), 3, "the reference corpus moved; re-measure the threshold")
+        for draft in drafts:
+            with self.subTest(draft=draft.name):
+                text = draft.read_text(encoding="utf-8")
+                self.assertEqual(checks.recap_blocks(text, run=3), [],
+                                 "a reference draft reached three in a row")
+
+    def test_it_runs_as_part_of_the_scene_checks(self):
+        found = checks.run_all(self._scene(fakes.recap_prose(700, 0)),
+                               make_spec(word_target=700), make_story())
+        self.assertIn("recap_block", {v.kind for v in found})

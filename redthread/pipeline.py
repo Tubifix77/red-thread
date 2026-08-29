@@ -120,6 +120,7 @@ DEDICATED_REPAIRS = {
     "truncated_scene": "snap",
     "seam_echo": "deseam, then reseam",
     "seam_tail_copy": "deseam, then reseam",
+    "recap_block": "unrecap, then cutrecap",
 }
 
 # Kinds where the rule is a contract rather than a matter of craft: the phrase must not appear,
@@ -136,6 +137,15 @@ best-effort on the way past, because a scene that landed its obligation is bette
 did not — but a small model's opinion of a story does not get to stop the book.
 """
 
+PASSAGE_SCOPED = {"seam_echo", "seam_tail_copy", "recap_block"}
+"""Kinds whose unit of detection is a run of sentences, not a sentence.
+
+Sentence-local repair can never converge on one of these: it rewrites the sentence a quote falls
+in while the check spans the whole run, so the run survives one sentence shorter and fires again.
+Each has a repair whose reach matches its scope; this set is what keeps them out of the ones
+whose reach does not, however the ladder gets there.
+"""
+
 NO_REPAIR = {"seam"}
 """Emitted only for an empty scene. There is nothing to repair, only to draft again."""
 
@@ -148,6 +158,8 @@ ACTION_TARGETS = {
     "snap": {"truncated_scene"},
     "deseam": {"seam_echo", "seam_tail_copy"},
     "reseam": {"seam_echo", "seam_tail_copy"},
+    "unrecap": {"recap_block"},
+    "cutrecap": {"recap_block"},
 }
 
 SENTENCE_PROMPT = """One sentence in a novel scene must be rewritten.
@@ -163,6 +175,32 @@ It sits in this context:
 
 Write the replacement sentence only. No quotation marks around it, no commentary, no restating
 the context sentences. Match the voice of the context. One sentence, two at most."""
+
+
+UNRECAP_PROMPT = """Rewrite one passage of a novel scene. It has slipped out of the scene and into summary.
+
+Every sentence in it is narrated in past perfect — "he had known", "the years had found a home" — which is the grammar of reporting things that are already over. The reader is supposed to be watching this happen.
+
+This is the passage to replace ({count} sentences, about {words} words):
+---
+{block}
+---
+
+It sits here in the scene:
+
+  before it:  …{before}
+  after it:   {after}…
+
+Rules:
+1. Write in simple past. Not one sentence of the replacement may use "had" plus a past participle.
+2. Whatever backstory the passage carries, the reader needs at most one clause of it. Say it once,
+   in passing, inside a sentence about something happening now.
+3. Spend the rest of the words on the present of the scene: what the character does, touches,
+   says, or notices in the room, in this minute.
+4. Do not summarise the passage you are replacing and do not explain what it meant.
+
+Write only the replacement prose. No commentary, no quotation marks around it, no restating the
+context lines. About {words} words."""
 
 
 RESEAM_PROMPT = """Rewrite the {position} of a novel scene. It currently reuses wording from the \
@@ -838,12 +876,34 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             if "reseam" not in sidelined:
                 return (_reseam(scene, previous_tail, fixable, models, result.notes,
                                 round_no=result.repairs), "reseam")
+        # A recap block is a passage, so surgical must never see one, for the reason seams must
+        # not: the check spans a run of sentences and surgery rewrites the one a quote lands in,
+        # which leaves the rest of the run and fires again next round.
+        if any(v.kind == "recap_block" for v in fixable):
+            if "unrecap" not in sidelined:
+                return (_unrecap(scene, fixable, models, result.notes,
+                                 round_no=result.repairs), "unrecap")
+            # The rewrite is the good outcome and the model is not always able to produce it:
+            # asked to replace a block without using past perfect, qwen3:8b handed back past
+            # perfect twice on one live scene and `unrecap` was sidelined. Cutting is the
+            # fallback for the same reason `deseam` precedes `reseam` — a block of pure recap is
+            # by definition not the scene, so removing it loses length, not story, and length
+            # has a repair of its own.
+            if "cutrecap" not in sidelined:
+                return _cut_recap(scene, fixable, result.notes), "cutrecap"
         quoteless = [v for v in fixable
                      if not (v.quote and checks.locate_quote(scene.text, v.quote))]
         if quoteless and "repair" not in sidelined:
             return _repair(scene, fixable, models, config), "repair"
-        if "surgical" not in sidelined:
-            repaired = _surgical(scene, spec, fixable, models, result.notes,
+        # Surgery rewrites the sentence a quote lands in, so a check whose unit is a run of
+        # sentences must never reach it: on a live scene `unrecap` was sidelined, `recap_block`
+        # fell through to here, and surgical "fixed" a six-sentence block three times by
+        # rewriting one sentence of it. Seams have been guarded by an early return since the
+        # same failure; this is the general form of that guard.
+        local = [v for v in fixable if v.kind not in PASSAGE_SCOPED]
+        if "surgical" not in sidelined and local:
+            repaired = _surgical(scene, spec, local,
+                                 models, result.notes,
                                  samples=project.story.style.samples,
                                  forbidden=project.story.style.forbidden_phrases,
                                  round_no=result.repairs)
@@ -911,8 +971,23 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         # discarded, twice, then sidelined, on a live scene. At least one target kind gone is
         # what "this action did its job" means.
         targets = ACTION_TARGETS.get(action, set())
-        had = {v.kind for v in det_violations} & targets
-        fixed_length = no_new_blockers and bool(had - {v.kind for v in new_det})
+        # Counted per kind, not merely present-or-absent. The set version of this test says an
+        # action did its job only when its target kind disappears entirely, which is wrong for
+        # any check that emits one violation per occurrence: a scene carrying two blocks of
+        # recap had one of them correctly rewritten by `_unrecap` -- verified against Ollama,
+        # 2 blocks to 1, summary distance .415 to .36 -- and the repair was discarded as "no
+        # improvement" because `recap_block` was still in the set. This is the same mistake as
+        # the one recorded just below for `_deseam` and one layer further in: there the action
+        # cleared one of two *kinds*, here it clears one of two *instances*.
+        def _counts(vs: list[Violation]) -> dict[str, int]:
+            out: dict[str, int] = {}
+            for v in vs:
+                if v.kind in targets:
+                    out[v.kind] = out.get(v.kind, 0) + 1
+            return out
+        before_counts, after_counts = _counts(det_violations), _counts(new_det)
+        fixed_length = no_new_blockers and any(
+            after_counts.get(kind, 0) < count for kind, count in before_counts.items())
         # A repair that fixes one thing and breaks another is not a repair. Whole-scene `_repair`
         # regenerates the prose, so it can undo work a dedicated action already did: on a live
         # run it cleared a style leak and handed back an ending copied from the previous scene,
@@ -1279,6 +1354,98 @@ def _excise_leak(scene: Scene, violations: list[Violation], models: Models,
         return None
     notes.append(f"excise: cut the sentence the judge named as the disclosure "
                  f"({hi - lo} characters)")
+    return candidate
+
+
+def _unrecap(scene: Scene, violations: list[Violation], models: Models,
+             notes: list[str], round_no: int = 0) -> str | None:
+    """Replace a block of consecutive past-perfect sentences with prose that happens.
+
+    `summary_distance` has been measurable since the corpus audit and had no repair, because the
+    thing it measures is a register: a scene narrated at distance is narrated that way
+    throughout, and rewriting one sentence into simple past leaves the other forty alone. That
+    was true and it was also the whole of the analysis, so the check sat advisory while the
+    number refused to move — .42 to .38 across an entire prose pass, with the brief naming it
+    and quoting the target.
+
+    Measuring the *distribution* rather than the density splits it. Past perfect arrives in
+    blocks: 68 of 107 committed scenes carry a run of four or more consecutive past-perfect
+    sentences, one carries forty-six, and the three reference drafts top out at two. A run has
+    edges. So the diffuse half stays advisory, and this repairs the half that does not need the
+    whole scene rewritten to reach it.
+
+    Same unit-of-repair rule as `_reseam`: the block that was detected is the block that is
+    replaced, and the check that flagged it verifies the replacement.
+    """
+    blocks = [v for v in violations if v.kind == "recap_block"]
+    if not blocks:
+        return None
+    located = checks.locate_quote(scene.text, blocks[0].quote)
+    if located is None:
+        return None
+    lo, hi = located
+    block = scene.text[lo:hi].strip()
+    if not block:
+        return None
+
+    before = scene.text[max(0, lo - 400):lo].strip()[-300:]
+    after = scene.text[hi:hi + 400].strip()[:300]
+    words = max(30, len(block.split()))
+    try:
+        reply = models.writer.complete(
+            UNRECAP_PROMPT.format(count=len(checks.sentence_spans(block)), words=words,
+                                  block=block, before=before or "(the scene opens here)",
+                                  after=after or "(the scene ends here)"),
+            system=WRITER_SYSTEM, max_tokens=900,
+            temperature=min(1.0, 0.7 + 0.1 * round_no))
+    except LLMError:
+        return None
+
+    replacement = strip_reasoning(reply.text).strip().strip('"').strip()
+    if not replacement or len(replacement.split()) < words * 0.5:
+        return None
+
+    candidate = (scene.text[:lo].rstrip() + " " + replacement + " "
+                 + scene.text[hi:].lstrip()).strip()
+    # A model told to stop using past perfect will hand back a paragraph of past perfect. The
+    # replacement only has to be clean where it was spliced, not everywhere in the scene, so
+    # check the block itself rather than re-running the whole scene and blaming this repair for
+    # a run it never touched.
+    probe = Scene(spec_id=scene.spec_id, index=scene.index, text=replacement)
+    if checks.recap_blocks(probe.text):
+        notes.append("unrecap: the replacement is still narrated in past perfect; discarded")
+        return None
+    notes.append(f"unrecap: rewrote a {len(block.split())}-word block of recap as scene")
+    return candidate
+
+
+def _cut_recap(scene: Scene, violations: list[Violation], notes: list[str]) -> str | None:
+    """Delete a block of recap outright. No model call, so it cannot fail on the model's ear.
+
+    `_unrecap` is the repair that keeps the words; this is the one that always converges. It
+    exists because the rewrite is a harder instruction than it looks — told in four numbered
+    rules not to use past perfect, qwen3:8b returned a paragraph of past perfect twice on one
+    live scene, and with `unrecap` sidelined the block fell through the ladder to sentence
+    surgery, which cannot reach it.
+
+    Cutting is defensible here in a way it would not be for most checks: the block is by
+    definition narration of things already over, so what is lost is length rather than story,
+    and the shortfall has `_expand_passage` waiting for it.
+    """
+    blocks = [v for v in violations if v.kind == "recap_block"]
+    if not blocks:
+        return None
+    located = checks.locate_quote(scene.text, blocks[0].quote)
+    if located is None:
+        return None
+    lo, hi = located
+    candidate = (scene.text[:lo].rstrip() + " " + scene.text[hi:].lstrip()).strip()
+    # A scene that is mostly recap would be cut to nothing one block at a time. At that point
+    # the draft is the problem, not the block, and the redraft path is the right answer.
+    if len(candidate.split()) < scene.word_count() * 0.75:
+        notes.append("cutrecap: the block is too much of the scene to cut; left for a redraft")
+        return None
+    notes.append(f"cutrecap: deleted a {hi - lo}-character block of recap")
     return candidate
 
 

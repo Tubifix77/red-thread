@@ -7,6 +7,8 @@ depends on it would break for the wrong reasons.
 
 from __future__ import annotations
 
+import re as _re
+
 import json
 
 from redthread.llm import Backend, Models, Reply
@@ -21,6 +23,7 @@ ROLES = {
     "Fix ONLY the problems listed": "repair",
     "One sentence in a novel scene must be rewritten": "surgical",
     "It currently reuses wording from the": "reseam",
+    "It has slipped out of the scene and": "unrecap",
     "One passage in a novel scene is too thin": "passage",
     "is missing something it was required to make happen": "fulfil",
     "discloses something the reader is not meant to know": "excise",
@@ -98,6 +101,10 @@ class ScriptedBackend(Backend):
             "the rag hanging from the vice. Otto counted the washers back into their tin "
             "and pressed the lid on with his thumb. The yard door stuck the way it "
             "always stuck, and she put her shoulder to it and went out into the cold."),
+        "unrecap": (
+            "She set the second ledger on the bench and opened it to the middle. The "
+            "spine cracked. Otto looked over and said nothing at all, and she wrote the "
+            "date at the top of the page before she lost her nerve about it."),
         "draft": "",
         }
         self.defaults.update(defaults or {})
@@ -212,7 +219,7 @@ _OPENINGS = [
 # it is used to test for.
 _SUBJECTS = [
     "The night crew",
-    "Whoever had the shift before her",
+    "Whoever worked the shift before her",
     "The relief driver",
     "Somebody in the office upstairs",
     "The man from the depot",
@@ -230,14 +237,14 @@ _SUBJECTS = [
 ]
 
 _VERBS = [
-    "had signed off on",
-    "had left a pencil note beside",
+    "signed off on",
+    "left a pencil note beside",
     "queried",
     "stopped bothering with",
-    "had re-taped the corner of",
-    "had filed a duplicate of",
-    "had crossed out and reinstated",
-    "had pinned a reminder over",
+    "re-taped the corner of",
+    "filed a duplicate of",
+    "crossed out and reinstated",
+    "pinned a reminder over",
     "mislaid",
     "photocopied",
     "once scribbled a date on",
@@ -256,7 +263,7 @@ _OBJECTS = [
     "the calibration slip in the drawer",
     "the delivery docket from Tuesday",
     "the noticeboard behind the kettle",
-    "the folder nobody had opened since spring",
+    "the folder nobody opened all spring",
     "a stack of weighbridge tickets",
     "the maintenance card taped inside the lid",
     "last quarter's fuel returns",
@@ -268,13 +275,13 @@ _OBJECTS = [
 ]
 
 _TAILS = [
-    "and nobody had asked about it since.",
+    "and nobody asked about it since.",
     "which explained nothing and was filed anyway.",
-    "and the ink had gone brown at the edges.",
+    "and the ink went brown at the edges.",
     "without writing down why.",
     "and the entry stayed where it was.",
     "which was how these things usually went.",
-    "and it had stayed that way.",
+    "and it stayed that way.",
     "before the end of the month.",
     "then put it back exactly where it lived.",
     "and said so to nobody in particular.",
@@ -296,7 +303,7 @@ _NOUNS = [
 
 _QUALIFIERS = [
     "for that week", "from the back office", "by the door", "in the second drawer",
-    "nobody had signed", "from the Tuesday run", "with the corner torn", "kept above the sink",
+    "nobody signed", "from the Tuesday run", "with the corner torn", "kept above the sink",
     "from before the changeover", "that lived on the nail", "under the till",
     "the auditor had asked for", "pinned to the frame", "in the green folder",
     "from the previous quarter", "wedged behind the pipe",
@@ -390,6 +397,48 @@ _CLOSINGS = [
     "A splice she had made herself in her first year still held tight. She walked the last "
     "stretch of wire without stopping and let herself out.",
 ]
+
+
+_RECAP_BLOCK = [
+    "She had come to the depot in the spring, before the changeover.",
+    "The office had been three rooms then, and the third had been full of chairs.",
+    "Nobody had told her what the second ledger was for.",
+    "She had asked twice and had been given the same answer both times.",
+    "The answer had been that it was not her ledger.",
+]
+
+
+_RECAP_BLOCK_B = [
+    "The tide table had hung by the door since before her time.",
+    "Someone had pencilled corrections down the margin of it.",
+    "Nobody had ever rubbed them out or written them up properly.",
+    "The corrections had been right, which was the awkward part of it.",
+    "She had checked them once against the harbour record and said nothing.",
+]
+
+
+def recap_prose(words: int = 900, variant: int | None = None, sentences: int = 5,
+                blocks: int = 1) -> str:
+    """Clean prose with one block of consecutive past-perfect sentences buried in the middle.
+
+    The shape `check_recap_block` exists for, and the shape `clean_prose` deliberately does not
+    have: a paragraph of backstory dictated into a scene, with edges a repair can find.
+    """
+    body = clean_prose(words, variant)
+    spans = _re.compile(r"[.!?]+\s+").split(body)
+    n = max(1, sentences)
+    first = " ".join(_RECAP_BLOCK[:n])
+    if blocks < 2:
+        cut = max(1, len(spans) // 2)
+        return ". ".join(spans[:cut]) + ". " + first + " " + ". ".join(spans[cut:])
+    # Two blocks far enough apart that one repair cannot reach both, and worded differently so
+    # they are separately locatable — a scene that repeats the *same* recap verbatim is a real
+    # thing (scene 9 of a live run did it) but makes a poor fixture, because both violations
+    # then carry one quote.
+    second = " ".join(_RECAP_BLOCK_B[:n])
+    a, b = max(1, len(spans) // 3), max(2, 2 * len(spans) // 3)
+    return (". ".join(spans[:a]) + ". " + first + " " + ". ".join(spans[a:b]) + ". "
+            + second + " " + ". ".join(spans[b:]))
 
 
 def clean_prose(words: int = 900, variant: int | None = None) -> str:

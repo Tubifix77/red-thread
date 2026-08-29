@@ -907,9 +907,21 @@ def check_internal_repetition(scene: Scene, n: int = 4, max_repeats: int = 1,
                       "check_internal_repetition", " ".join(dupes[0][0]))]
 
 
+# Two gaps, found by a fixture that deliberately wrote past perfect and was not detected: an
+# adverb between the auxiliary and the participle ("had never seen", "had already gone"), and
+# irregular participles missing from the list ("had hung", "had held", "had stood" — the last of
+# which is what a live scene repeated nine times). Both mean the corpus figures published before
+# this widening understate past perfect rather than overstating it.
+_ADVERB = r"(?:\w+ly|just|never|ever|already|also|not|still|long|once|almost|nearly|only)\s+"
+_PARTICIPLE = (
+    r"been|had|got|gone|come|seen|known|taken|written|made|left|kept|run|begun|put|set|told|"
+    r"said|done|felt|found|given|hung|held|stood|sat|brought|thought|caught|meant|lost|won|"
+    r"spoken|broken|driven|drawn|grown|thrown|worn|torn|shaken|risen|fallen|forgotten|chosen|"
+    r"eaten|drunk|sung|swum|sunk|struck|stuck|sent|spent|built|bent|lent|dealt|slept|swept|"
+    r"wept|crept|led|fed|bled|met|shut|split|spread|cut|hit|let|cost|hurt|beaten|bitten|"
+    r"hidden|ridden|laid|paid|sold|understood|withdrawn|\w+ed")
 _PAST_PERFECT = re.compile(
-    r"\bhad\s+(?:been|had|got|gone|come|seen|known|taken|written|made|left|kept|run|begun|"
-    r"put|set|told|said|done|felt|found|given|\w+ed)\b", re.IGNORECASE)
+    rf"\bhad\s+(?:{_ADVERB})?(?:{_PARTICIPLE})\b", re.IGNORECASE)
 
 
 def summary_distance(text: str) -> float:
@@ -920,8 +932,9 @@ def summary_distance(text: str) -> float:
     and a page made mostly of it is a summary wearing a scene's clothes.
 
     It discriminates like the duplication ratio does, on the same corpus: the reference drafts in
-    `docs/evidence` sit at 0.07 (gemma3:12b), 0.10 (phi4:14b) and 0.13 (qwen3:8b), while the
-    scenes this project has committed run to a median of 0.27 and a maximum of 0.60. StoryScope's
+    `docs/evidence` sit at 0.085 (gemma3:12b), 0.100 (phi4:14b) and 0.129 (qwen3:8b), while the
+    107 scenes this project has committed run to a median of 0.382 and a maximum of 0.979 — one
+    scene in which every sentence but one is narrated at distance. StoryScope's
     "narrated at summary distance" tell was firing on every scene of a live book and only the
     LLM probe could see it, which by policy makes it advisory — this is the countable half.
     """
@@ -947,6 +960,64 @@ def check_summary_distance(scene: Scene, heavy: float = 0.35) -> list[Violation]
         f"{density:.0%} of sentences are in past perfect — the scene is largely recapping "
         f"rather than happening (the cleanest drafts measured sit near 10%)",
         "check_summary_distance")]
+
+
+def recap_blocks(text: str, run: int = 4) -> list[tuple[int, int, int]]:
+    """Spans of `run` or more consecutive sentences narrated in past perfect.
+
+    `summary_distance` measures the register and cannot be repaired, because switching one
+    sentence to simple past leaves the other forty untouched. But the register is not uniform.
+    Measured across 107 committed scenes, past perfect arrives in *blocks*: the median scene has
+    a run of 4 consecutive past-perfect sentences, 68 of 107 reach 4 or more, and the worst has
+    46 in a row — a page of backstory dictated into the middle of a scene, which in that case
+    also repeated "she had not asked" 77 times in 1,490 words.
+
+    The three reference drafts in `docs/evidence` reach runs of 2, 1 and 2. None of them has
+    three in a row. So a run of four is nothing a clean draft does, and unlike the diffuse
+    register it occupies a contiguous span a passage repair can replace.
+
+    Returns (start, end, sentences) character spans, longest first.
+    """
+    spans = sentence_spans(text)
+    out: list[tuple[int, int, int]] = []
+    start = count = 0
+    for i, (lo, hi) in enumerate(spans + [(len(text), len(text))]):
+        hit = i < len(spans) and bool(_PAST_PERFECT.search(text[lo:hi]))
+        if hit:
+            if count == 0:
+                start = lo
+            count += 1
+            end = hi
+        else:
+            if count >= run:
+                out.append((start, end, count))
+            count = 0
+    out.sort(key=lambda b: -b[2])
+    return out
+
+
+def check_recap_block(scene: Scene, run: int = 4) -> list[Violation]:
+    """The repairable half of summary distance: a paragraph of recap inside a scene.
+
+    Its sibling `check_summary_distance` stays advisory on purpose — a whole scene narrated at
+    distance is the model's register and no local edit reaches it. This one is the opposite
+    case and is the reason that distinction is worth drawing rather than shrugging at: the
+    block has edges, so it can be cut out and rewritten, and the check that found it can verify
+    the replacement.
+    """
+    # Uncapped, unlike the other per-occurrence checks here, because the repair loop measures
+    # progress by counting a kind's violations: a live scene held seven blocks, the check
+    # reported the first three, and `cutrecap` deleting one correctly left three — so a repair
+    # that had done exactly its job was discarded as "no improvement", twice, then sidelined.
+    # A capped check cannot be used to tell whether there is less of something than there was.
+    out: list[Violation] = []
+    for lo, hi, count in recap_blocks(scene.text, run):
+        out.append(Violation(
+            "recap_block", Severity.MAJOR,
+            f"{count} sentences in a row are narrated in past perfect — this is a block of "
+            f"recap, not a passage of scene. Nothing the reader is watching happens in it.",
+            "check_recap_block", scene.text[lo:hi].strip()))
+    return out
 
 
 _ANAPHORA = re.compile(
@@ -1064,6 +1135,7 @@ def run_all(
     out += check_repetition(scene, committed_texts or [])
     out += check_rhythm(scene)
     out += check_summary_distance(scene)
+    out += check_recap_block(scene)
     out += check_anaphora(scene)
     out += check_absolute_stack(scene)
     return out
