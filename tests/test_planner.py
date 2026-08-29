@@ -131,6 +131,8 @@ class PlannerBackend(ScriptedBackend):
         if "Rewrite this one outline line" in prompt:
             self.calls.append(("scrub", prompt))
             from redthread.llm import Reply
+            if self._scrub is not None and not isinstance(self._scrub, str):
+                return Reply(next(self._scrub, "A neutral line."), model="scripted")
             return Reply(self._scrub if isinstance(self._scrub, str)
                          else "Varen must choose between duty and morality as the enclave "
                               "hangs in the balance.", model="scripted")
@@ -492,6 +494,27 @@ class TestScrub(unittest.TestCase):
         self.assertEqual(fixed, 1)
         self.assertNotIn("fate", story.characters[0].description.lower())
         self.assertEqual(checks.check_spec_self_consistency(specs, story), [])
+
+    def test_a_failed_rewrite_is_retried_with_the_failure_named(self):
+        """Two live plans banned "truth" and kept beats saying "truth", because every silent
+        retry reached for the word again. Naming the failure is what breaks the loop."""
+        from redthread.planner import scrub_forbidden
+        from redthread.models import Beat, SceneSpec
+        story = self._story_with_ban()
+        specs = [SceneSpec(id="s01", index=1, summary="A summary.",
+                           beats=[Beat("The villagers react to the fate of the pass.")])]
+        backend = PlannerBackend(scrub_reply=iter([
+            "The villagers react to the fate of it.",
+            "The villagers react to what the register says."]))
+
+        fixed = scrub_forbidden(specs, story, models_with(backend))
+
+        self.assertEqual(fixed, 1)
+        self.assertEqual(specs[0].beats[0].summary,
+                         "The villagers react to what the register says.")
+        prompts = [p for role, p in backend.calls if role == "scrub"]
+        self.assertEqual(len(prompts), 2)
+        self.assertIn("still uses", prompts[1], "the retry was not told what went wrong")
 
     def test_a_rewrite_that_keeps_the_phrase_is_discarded(self):
         from redthread.planner import scrub_forbidden

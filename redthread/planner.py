@@ -622,6 +622,10 @@ def expand_beats(specs: list[SceneSpec], story: StorySpec, models: Models,
 
 SCRUB_PROMPT = """Rewrite this one outline line so that it does not use the word or phrase {phrases} in any form. Keep the meaning and keep it the same length. Plain register, no synonym-of-the-week — just say the thing another way.
 
+Name the concrete thing instead of the abstraction. "the villagers react to the truth" becomes
+"the villagers react to what the register says"; the banned word is usually standing in for an
+object, a document, or a sentence somebody spoke, and that object is what belongs in the line.
+{feedback}
 LINE: {line}
 
 Reply with the rewritten line only."""
@@ -656,23 +660,33 @@ def scrub_forbidden(plan: list[SceneSpec], story: StorySpec, models: Models) -> 
         hits = [p for p in banned if _contains_phrase(text, p)]
         if not hits:
             return None
-        prompt = SCRUB_PROMPT.format(
-            phrases=", ".join(f'"{h}"' for h in hits), line=text.strip())
-        # Two attempts, at rising temperature. The verification here is strict on purpose — a
-        # rewrite that still carries the phrase is discarded rather than accepted — and one shot
-        # at it leaves the plan carrying the word: a live run banned "truth" and kept the beat
-        # "She sees truth as shared burden rather than threat" because the single rewrite it got
-        # said "truth" again. A retry costs one small call and clears most of them.
-        for attempt in range(2):
+        # Three attempts, at rising temperature, each told what the last one got wrong. The
+        # verification is strict on purpose — a rewrite that still carries the phrase is
+        # discarded rather than accepted — so a single shot leaves the plan carrying the word,
+        # and a silent retry repeats the same mistake: two live plans banned "truth" and kept
+        # beats saying "truth" because every attempt reached for it again. Naming the failure
+        # is what breaks the loop, which is the same reason `REMEDIES` exists for scene repair.
+        feedback = ""
+        for attempt in range(3):
+            prompt = SCRUB_PROMPT.format(
+                phrases=", ".join(f'"{h}"' for h in hits), line=text.strip(),
+                feedback=feedback)
             try:
                 reply = models.critic.complete(prompt, max_tokens=200,
-                                               temperature=0.4 + 0.3 * attempt)
+                                               temperature=0.3 + 0.3 * attempt)
             except LLMError:
                 return None
             line = strip_reasoning(reply.text).strip().strip('"').strip()
             if not line or len(line.split()) > 2 * max(6, len(text.split())):
+                feedback = ("\nYour last attempt was empty or far too long. Stay close to the "
+                            "original length.\n")
                 continue
-            if any(_contains_phrase(line, p) for p in banned):
+            still = [p for p in banned if _contains_phrase(line, p)]
+            if still:
+                quoted = ", ".join(repr(p) for p in still)
+                feedback = (f"\nYour last attempt was {line!r}, which still uses {quoted}. "
+                            f"That word cannot appear in any form. Replace it with the "
+                            f"thing it refers to.\n")
                 continue
             return line
         return None
