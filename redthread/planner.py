@@ -335,6 +335,10 @@ For each scene give:
 - "threads": for each thread id this scene must move, what the scene must BRING ABOUT ("post",
   1-3 concrete statements) and what it must NOT do ("forbid", 1-3 statements). Forbids are where
   premature reveals get prevented — use them.
+  Every "post" entry NAMES SOMETHING THAT HAPPENS ON THE PAGE. Never a thread state: write
+  "Dain hands the vial back", never "The Allegiance reaches 'reoriented'", which names our
+  bookkeeping rather than an event. Never an absence either — "the past is left unspoken",
+  "neither resolved nor abandoned" — because nothing a scene shows can satisfy them.
   Every "forbid" entry NAMES THE EVENT THAT MUST NOT HAPPEN, as a positive statement. Write
   "Dain learns who ordered the purge", never "Dain does not learn who ordered the purge".
   A forbid containing "not", "never" or "no longer" says the opposite of what you mean and will
@@ -440,7 +444,20 @@ def _apply_scene_content(spec: SceneSpec, row: dict, story: StorySpec) -> None:
         post = [str(p).strip() for p in (payload.get("post") or []) if str(p).strip()]
         forbid = [str(p).strip() for p in (payload.get("forbid") or []) if str(p).strip()]
         if post:
-            op.post = post[:4]
+            # An "obligation" phrased as an absence is a prohibition wearing a requirement's
+            # clothes — "Mira remains uncertain about the logs' authenticity" names nothing a
+            # scene can show, so the judge reports it missed however the scene goes. Move it to
+            # where it belongs, for the same reason a negated forbid is inverted below: the
+            # stored plan should say what it means, once, rather than be reinterpreted by every
+            # reader of it.
+            kept = []
+            for item in post[:4]:
+                if checks.is_absence_post(item):
+                    forbid.append(checks.positive_prohibition(item))
+                else:
+                    kept.append(item)
+            if kept:
+                op.post = kept
         if forbid:
             # Repair the phrasing here rather than letting it into the plan. The prompt asks for
             # positive forbids and a live 8B wrote every one of a 27-scene plan as a negation
@@ -519,9 +536,15 @@ SCENES:
 {scenes}
 
 For each scene, rewrite its beats so that a writer with no other context could produce the scene. \
-Each beat must name a place, an object, an action, or a specific thing said. Replace any beat that \
+Each beat must name a place, an object, an action, or what is settled by something said. Replace any beat that \
 describes an interior state with the behaviour that shows it. Keep the same number of beats and \
 the same events — you are specifying, not re-plotting.
+
+Specific is not the same as written. A beat still NAMES what happens; the scene is written
+from it, so anything you write here comes back word for word in the prose and is flagged as a
+leak. No dialogue in quotation marks, no cloaks or boots or wind, no describing how a voice
+sounds. Write "Varyn demands the years back", never "Varyn says, 'Return the years.'"
+Under fifteen words each.
 
 {json_only}
 Schema:
@@ -788,6 +811,16 @@ def make_plan(premise: str, models: Models, total_words: int = 60000,
                      "filled" if ok else "PROPOSAL UNPARSEABLE — left blank"))
 
     result = PlanResult(story=story, plan=specs)
+    result.beats_sharpened = expand_beats(
+        specs, story, models, rounds=sharpen_rounds,
+        on_batch=lambda window: stage(
+            "sharpen", f"scenes {', '.join(str(s.index) for s in window)}"))
+    if result.beats_sharpened:
+        stage("sharpen", f"{result.beats_sharpened} scene(s) improved")
+
+    # After sharpening, not before. Sharpening is the step that pushes beats toward specificity,
+    # so it is also the step that turns them into prose — running the scrub first leaves its work
+    # to be undone by the very next call, which is how it was ordered when written.
     deprosed = scrub_prose_beats(specs, models)
     if deprosed:
         stage("beats", f"{deprosed} beat(s) were written as prose, not intent; rewritten")
@@ -795,13 +828,6 @@ def make_plan(premise: str, models: Models, total_words: int = 60000,
     scrubbed = scrub_forbidden(specs, story, models)
     if scrubbed:
         stage("scrub", f"{scrubbed} line(s) used a phrase the plan itself forbids; rewritten")
-
-    result.beats_sharpened = expand_beats(
-        specs, story, models, rounds=sharpen_rounds,
-        on_batch=lambda window: stage(
-            "sharpen", f"scenes {', '.join(str(s.index) for s in window)}"))
-    if result.beats_sharpened:
-        stage("sharpen", f"{result.beats_sharpened} scene(s) improved")
 
     result.violations = checks.audit_plan(specs, story)
     stage("audit", "clean" if result.is_clean()

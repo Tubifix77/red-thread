@@ -86,12 +86,13 @@ class PlannerBackend(ScriptedBackend):
     """Routes the planner's three prompt shapes on top of the pipeline roles."""
 
     def __init__(self, story: str | None = None, scenes_reply=None, beats_reply=None,
-                 scrub_reply=None) -> None:
+                 scrub_reply=None, deprose_reply=None) -> None:
         super().__init__()
         self._story = story if story is not None else story_json()
         self._scenes = scenes_reply
         self._beats = beats_reply
         self._scrub = scrub_reply
+        self._deprose = deprose_reply
         self.story_calls = 0
         self.scene_calls = 0
         self.beat_calls = 0
@@ -116,6 +117,11 @@ class PlannerBackend(ScriptedBackend):
             text = self._scenes(indices) if callable(self._scenes) else (
                 self._scenes or scenes_json(indices))
             return Reply(text, model="scripted")
+        if "Rewrite this outline beat" in prompt:
+            self.calls.append(("deprose", prompt))
+            from redthread.llm import Reply
+            return Reply(self._deprose if isinstance(self._deprose, str)
+                         else "Varyn demands the years back.", model="scripted")
         if "Rewrite this one outline line" in prompt:
             self.calls.append(("scrub", prompt))
             from redthread.llm import Reply
@@ -484,6 +490,90 @@ class TestScrub(unittest.TestCase):
         backend = PlannerBackend()
         self.assertEqual(scrub_forbidden(specs, story, models_with(backend)), 0)
         self.assertEqual(backend.count("scrub"), 0)
+
+
+class TestRulesAreRepairedAtParseTime(unittest.TestCase):
+    """A rule the judge cannot answer costs a scene, its repair budget, and — because `write_all`
+    halts at the first rejection — the rest of the book. Where the intent is unambiguous the plan
+    is repaired as it is parsed, so the stored plan says what it means once rather than being
+    reinterpreted by every reader of it."""
+
+    def _op(self, post=None, forbid=None):
+        from redthread.planner import _apply_scene_content
+        from redthread.models import SceneSpec, StorySpec, Transition
+        spec = SceneSpec(id="s01", index=1, thread_ops={"T-A": Transition()})
+        _apply_scene_content(spec, {"index": 1, "threads": {"T-A": {
+            "post": post or [], "forbid": forbid or []}}},
+            StorySpec(title="t", premise="p"))
+        return spec.thread_ops["T-A"]
+
+    def test_a_negated_forbid_is_inverted(self):
+        op = self._op(forbid=["The enclave is not revealed"])
+        self.assertEqual(op.forbid, ["The enclave is revealed"])
+
+    def test_an_absence_post_moves_to_forbid(self):
+        """From a fresh planner run: "Mira remains uncertain about the logs' authenticity"."""
+        op = self._op(post=["Mira remains uncertain about the logs' authenticity",
+                            "Mira photographs both entries"])
+        self.assertEqual(op.post, ["Mira photographs both entries"])
+        self.assertIn("Mira is certain about the logs' authenticity", op.forbid)
+
+    def test_ordinary_rules_are_left_exactly_as_written(self):
+        op = self._op(post=["Mira photographs both entries"],
+                      forbid=["Mira learns who wrote the second hand"])
+        self.assertEqual(op.post, ["Mira photographs both entries"])
+        self.assertEqual(op.forbid, ["Mira learns who wrote the second hand"])
+
+
+class TestBeatsSurviveSharpening(unittest.TestCase):
+    """`scrub_prose_beats` has to run AFTER `expand_beats`, not before.
+
+    Sharpening is the step that pushes beats toward specificity, so it is also the step that turns
+    them into prose — and when the scrub ran first, the very next call undid it. Scene 26 of a live
+    book carried ten beats like "Dain steps forward, his boots crunching over dry leaves, his voice
+    steady and low", the writer wrote what it was given, `check_brief_leak` found seven copied
+    runs, and the scene never committed at any repair budget.
+    """
+
+    PROSE = ("Dain steps forward, his boots crunching over dry leaves, and says, "
+             "'You will not take these years.'")
+
+    def _sharpener_returns_prose(self, indices):
+        return json.dumps({"scenes": [
+            {"index": i, "beats": [self.PROSE, self.PROSE],
+             "setting": "the enclave", "time": "midnight"} for i in indices]})
+
+    def _vague_scenes(self, indices):
+        """Beats too vague to write from, so the sharpener actually has a frontier to work on."""
+        return json.dumps({"scenes": [
+            {"index": i, "summary": "Something happens.", "setting": "", "time": "",
+             "pov": "siv", "characters": ["siv"], "beats": ["it develops", "it deepens"],
+             "threads": {}} for i in indices]})
+
+    def test_prose_beats_from_sharpening_are_rewritten_before_the_plan_is_returned(self):
+        backend = PlannerBackend(scenes_reply=self._vague_scenes,
+                                 beats_reply=self._sharpener_returns_prose)
+        result = make_plan("A premise.", models_with(backend), total_words=4000,
+                           sharpen_rounds=1)
+
+        self.assertTrue(backend.beat_calls, "the sharpener never ran; the test proves nothing")
+
+        self.assertTrue(backend.count("deprose"),
+                        "the scrub never saw the sharpened beats")
+        offenders = [b.summary for spec in result.plan for b in spec.beats
+                     if checks._BEAT_PROSE.search(b.summary)]
+        self.assertEqual(offenders, [], "prose beats survived into the finished plan")
+
+    def test_the_audit_reports_any_that_survive(self):
+        """The scrub is best-effort — a rewrite that still carries dialogue is discarded — so the
+        check behind it has to stay the honest backstop."""
+        backend = PlannerBackend(scenes_reply=self._vague_scenes,
+                                 beats_reply=self._sharpener_returns_prose,
+                                 deprose_reply=self.PROSE)
+        result = make_plan("A premise.", models_with(backend), total_words=4000,
+                           sharpen_rounds=1)
+
+        self.assertIn("beat_is_prose", {v.kind for v in result.violations})
 
 
 class TestPlanShape(unittest.TestCase):
