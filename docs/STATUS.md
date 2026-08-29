@@ -127,7 +127,15 @@ The same spec, the same brief, the same orchestrator, one draft, `gemma3:12b` in
 | outcome | held back after 4 drafts and 6 repairs | committed, 2 minors |
 
 Reference quality, on the spec that destroyed the 8B, from a model that fits the same 10GB card.
-The plan was not inert and the brief was not at fault: the writer model was at its ceiling.
+Scene 10 went the same way: one draft, zero majors, zero repairs, duplication .002. The plan was
+not inert and the brief was not at fault — the writer model was at its ceiling.
+
+Scene 11 then held back on `gemma3:12b` with 35 first-person uses against a third-limited
+contract, which is this model's signature failure and was already in `docs/MODELS.md` from the
+scene-1 bench. So both models fail; the difference is that recap is a MAJOR a scene can commit
+carrying, and a POV break is a BLOCKER nothing gets past. A loud failure the gate catches is
+worth more than a quiet one it half-catches. The full comparison, including the eight-fold speed
+cost, is in [MODELS.md](MODELS.md).
 
 That reframes what "close to shippable" means. The orchestrator's job is to catch this and it
 did — the collapse never reached the manuscript, which is exactly what the commit gate is for.

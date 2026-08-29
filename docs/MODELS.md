@@ -421,3 +421,68 @@ No API key and no judge model, so it costs nothing but GPU time.
 It measures adherence, **not** prose quality. Read the drafts it saves. A model that scores well
 here and writes lifelessly is the wrong choice, and no automated check will tell you that — which
 is the honest limit of the whole approach.
+
+---
+
+## The writer model is the prose ceiling (29 August 2026)
+
+Scene 9 of a live plan would not commit on `qwen3:8b`. Four drafts, six repairs, every one
+unusable: "she had not asked" 77 times in 1,490 words, a 46-sentence run of past perfect, 97.9%
+of the scene narrated at summary distance. The obvious reading was that the beats gave the model
+nothing to dramatise — three of scene 9's four are *watches and notes*, *reflects on*, *is
+revealed to be*.
+
+That reading is wrong, and measuring it said so twice.
+
+**First, across the corpus.** Correlating the share of a scene's beats that use a cognition or
+state verb against its recap density, over all 108 scenes with both a spec and prose: **r =
+0.141**. Against duplication, r = 0.006. The group means lean the right way (.378 → .410 → .466)
+but the top group is n = 3. Nothing to build a check on, so nothing was built.
+
+**Second, by swapping one flag.** Same plan, same brief, same orchestrator, one draft each:
+
+| | qwen3:8b | gemma3:12b |
+|---|---:|---:|
+| scene 9 — repeated phrasing | .29 | **.015** |
+| scene 9 — recap grammar | .979 | **.046** |
+| scene 9 — longest past-perfect run | 46 sentences | **1 sentence** |
+| scene 9 — outcome | held back, 4 drafts, 6 repairs | committed, 1 draft, 2 minors |
+| scene 10 — repeated phrasing | — | **.002** |
+| scene 10 — recap grammar | — | **.058** |
+| scene 10 — outcome | — | committed, 1 draft, **0 majors, 0 repairs** |
+| scene 11 — outcome | — | **held back: 35 first-person uses** |
+
+For comparison, the five `qwen3:8b` scenes written under the full check set run .051–.316 on
+duplication and .143–.590 on recap, with up to five blocks of recap in a single scene. The two
+committed `gemma3:12b` scenes sit at .002–.015 and .046–.058 with none. That is the reference
+band in `docs/evidence`, reached inside the orchestrator rather than by a cold single scene.
+
+### Both models fail, and the failures are not equally safe
+
+Scene 11 is the same defect the scene-1 bench found in this document months ago: `gemma3:12b`
+drifts into first person against a third-limited contract. It is not an anomaly, it is the
+model's signature failure, and any plan to switch writers has to account for it.
+
+But the two failure modes are not equivalent to a manuscript:
+
+- `qwen3:8b` fails by **recapping**. That is a MAJOR and a register, so a scene can commit
+  carrying some of it and the book degrades quietly.
+- `gemma3:12b` fails by **breaking POV**. That is a BLOCKER, detected in code with no model call,
+  and nothing carrying it can ever reach the manuscript.
+
+A loud failure the gate catches is worth more than a quiet one it half-catches. That is an
+argument for the swap, not against it.
+
+### What this costs
+
+`gemma3:12b` took 2–3 minutes per draft against 15–18 seconds for `qwen3:8b` on the same card —
+roughly **eight times slower**. A 27-scene book goes from about half an hour to four hours. For
+an unattended overnight run that is affordable; for iterating on the machinery it is not, which
+is why the test suite and the fixture work stay where they are.
+
+### What is not settled
+
+Three scenes. One plan. One card. The candidate count was 1 rather than the measured default of
+3, so these are single draws rather than best-of-three, which flatters neither model in
+particular but makes every figure noisier than the tables suggest. `bench` across a full book,
+and a POV-drift rate measured over more than one scene, are what would settle it.
