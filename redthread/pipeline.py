@@ -829,9 +829,14 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         # markdown heading was accepted for reaching the word target, and the blocker it
         # smuggled in held the scene anyway.
         no_new_blockers = not any(v.severity is Severity.BLOCKER for v in new_det)
+        # Cleared *one* of its targets, not all of them. `_deseam` fixes one end per call by
+        # design, so a scene echoing at both ends has `seam_echo` still present after the tail
+        # copy is cut — and requiring every target gone meant the cut was judged a failure and
+        # discarded, twice, then sidelined, on a live scene. At least one target kind gone is
+        # what "this action did its job" means.
         targets = ACTION_TARGETS.get(action, set())
         had = {v.kind for v in det_violations} & targets
-        fixed_length = no_new_blockers and bool(had) and not ({v.kind for v in new_det} & targets)
+        fixed_length = no_new_blockers and bool(had - {v.kind for v in new_det})
         # A repair that fixes one thing and breaks another is not a repair. Whole-scene `_repair`
         # regenerates the prose, so it can undo work a dedicated action already did: on a live
         # run it cleared a style leak and handed back an ending copied from the previous scene,

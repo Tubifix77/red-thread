@@ -572,6 +572,26 @@ class TestSeamRepair(PipelineCase):
                          result.notes)
         self.assertNotIn("seam_echo", {v.kind for v in result.violations})
 
+    def test_clearing_one_end_counts_even_when_the_other_remains(self):
+        """`_deseam` fixes one end per call by design, so a scene echoing at both ends still has
+        `seam_echo` after the tail copy is cut. Requiring every target kind gone judged that cut
+        a failure and discarded it — twice, then sidelined — on a live scene."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(950))
+        first = write_scene(self.project, self.project.spec_at(1), models, Config(candidates=1))
+        self.assertTrue(first.committed)
+
+        tail = " ".join(first.scene.text.split()[-150:])
+        both_ends = tail + " " + fakes.clean_prose(700, variant=5) + " " + tail
+        backend.queue("draft", both_ends)
+        result = write_scene(self.project, self.project.spec_at(2), models,
+                             Config(candidates=1, max_repairs=3))
+
+        cuts = [n for n in result.notes if "deseam: deleted" in n]
+        self.assertTrue(cuts, result.notes)
+        self.assertFalse(any("deseam attempt" in n and "introduced" in n
+                             for n in result.notes), result.notes)
+
     def test_deletion_is_bounded_by_sentence_count_as_well(self):
         """A live run cut 34 sentences — a quarter of the scene — off one opening to clear a
         single echo. The word fraction allowed it; the largest genuine case needed eleven."""
