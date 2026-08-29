@@ -187,6 +187,21 @@ def cmd_write(args) -> int:
     from .progress import Progress
 
     project = _load(args.project)
+
+    # `audit` sits between planning and writing precisely so a structural failure is found
+    # before the hours are spent, and nothing was enforcing that. A live plan came back with one
+    # thread and no subplot — the audit said so, `plan` exited non-zero, and `write` started
+    # anyway and spent three scenes on it. Generating a manuscript against a plan the audit has
+    # already rejected is the expensive way to learn what it told you for free.
+    findings = [v for v in checks.audit_plan(project.plan, project.story, project.history)
+                if v.severity is not Severity.MINOR]
+    if findings and not args.force:
+        _print_violations(findings, f"Plan audit — {project.story.title}")
+        print()
+        print("The plan has unresolved structural findings. Fix them, re-plan, or pass "
+              "--force to write anyway.")
+        return 2
+
     models, writer_name, critic_name = _build_models(args)
 
     config = Config(candidates=args.candidates, max_repairs=args.repairs,
