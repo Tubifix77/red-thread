@@ -947,11 +947,14 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                         # change is what lets the next pass see a different sentence. Deleting
                         # one of two leaking sentences ties on the score and is the whole of the
                         # progress available.
+                        # Minors are advisory by policy, so they do not get to veto progress
+                        # on a blocker: a deletion that removes a leak and leaves one more
+                        # repetition behind is still the only step available.
                         was_blocked = any(v.severity is Severity.BLOCKER
                                           for v in result.violations)
                         if (_score(new_all) < _score(result.violations)
                                 or (was_blocked
-                                    and _score(new_all) <= _score(result.violations))):
+                                    and _score(new_all)[:2] <= _score(result.violations)[:2])):
                             scene, result.scene = candidate, candidate
                             det_violations = new_det
                             result.violations = new_all
