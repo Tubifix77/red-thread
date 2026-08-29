@@ -15,6 +15,10 @@ them, rather than one long generation hoping to stay consistent.
 Every architectural decision traces to a cited source in **[docs/RESEARCH.md](docs/RESEARCH.md)**,
 fetched live under the zero-assumption contract. Nothing here is from model memory.
 
+How close this is to being an unassisted writer — measured, not estimated — is in
+**[docs/STATUS.md](docs/STATUS.md)**. Short version: the orchestrator is close to shippable, the
+writer is not, and the gap is everything no check can see.
+
 ---
 
 ## The shape
@@ -341,7 +345,11 @@ accumulates and survives reload, threads reach their final states, the seam is f
 verbatim, a mid-run rejection halts cleanly with nothing from the failed scene in dynamic memory,
 and a re-run resumes from the gap. Every check catches its defect.
 
-**Proven by running it to completion, all local, zero API calls:** two full manuscripts exist.
+**Proven by running it to completion, all local, zero API calls:** five manuscripts exist —
+65 scenes and 74,156 words drafted on `qwen3:8b`. Two are written up in full below; the other
+three (*The Book of Safe Days*, *The List*, *The Night Baker's Schedule*) were regression runs
+against fresh premises, and each one cost between one and three code fixes. That number is the
+real measure of how unattended this is, and it is not yet zero.
 
 *The Inherited Glitch* — 10 scenes, 12,169 words, from the hand-authored reference plan, generated
 end to end on `qwen3:8b` in every role on a 10GB card. Every thread walked its state machine to its
@@ -395,6 +403,21 @@ rather than as a habit.
    specs is a judgement call.
 
 ## Next
+
+The two items measurement actually points at, in order:
+
+- **A repair for recap grammar.** `summary_distance` is measured, the brief names it with the
+  numbers attached, and it moved .28 → .25 across the whole prose pass — the only measured axis
+  with no route to fix what it finds. Every other check that fires has a repair sized to its
+  scope; this one has an opinion and nothing else.
+- **Dramatic planning.** The planner emits beats that are structurally valid and dramatically
+  inert. Want, obstacle and cost are not modelled anywhere, so a beat that says *she checks the
+  register* and a beat that says *she checks the register knowing what she will find* are
+  indistinguishable to every test in the suite. This is where the unmeasured half of
+  [docs/STATUS.md](docs/STATUS.md) has to be attacked, because it cannot be attacked with a
+  checker without breaking the rule that keeps the orchestrator honest.
+
+Then:
 
 - **A 60,000-word manuscript.** Thirty thousand words across 27 scenes is where the cross-corpus
   checks started earning their keep; at twice that, `check_repetition` and the cast-wide rhythm
