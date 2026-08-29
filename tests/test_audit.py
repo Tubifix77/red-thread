@@ -419,6 +419,23 @@ class TestPostNamesAnEvent(unittest.TestCase):
         text = "Sofie hands the list to the harbourmaster"
         self.assertEqual(checks.verifiable_post(text), text)
 
+    def test_an_obligation_to_ignore_something_is_dropped_not_inverted(self):
+        """"Nils ignores the thermometer's reading" cannot be confirmed by reading, and unlike
+        "avoids discussing X" there is no phrase to hand to the prohibition list — forwarding it
+        as a forbid would prohibit the ignoring, which is the opposite of the intent."""
+        text = "Nils ignores the thermometer's reading"
+        self.assertTrue(checks.is_absence_post(text))
+        self.assertEqual(checks.positive_prohibition(text), "")
+
+    def test_a_withholding_staged_as_behaviour_is_dramatisable(self):
+        """From the reference plan, which this caught for one commit: a withholding a reader
+        watches is exactly the thing to write, and so is a refusal."""
+        for post in ("Siv withholds what she found, and the withholding is visible as behaviour "
+                     "rather than stated",
+                     "Ingrid refuses to sign the haulage sheet"):
+            with self.subTest(post=post):
+                self.assertFalse(checks.is_absence_post(post))
+
     def test_an_ordinary_leaving_is_not_an_absence(self):
         self.assertFalse(checks.is_absence_post("Dain leaves the vial on the ground"))
 

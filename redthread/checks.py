@@ -1081,6 +1081,23 @@ def verifiable_post(text: str) -> str:
     return stripped if len(stripped.split()) >= 3 else text
 
 
+_IGNORING = re.compile(
+    r"\b(?:ignor\w+|overlook\w*|disregard\w*)\b", re.IGNORECASE)
+"""An obligation whose whole content is a not-noticing, with nothing to invert it into.
+
+"Nils ignores the thermometer's reading" cannot be confirmed by reading — the judge would have
+to find an absence — and unlike "avoids discussing X" there is no gerund phrase to hand to the
+prohibition list either. `positive_prohibition` returns nothing for these, and the caller drops
+them: an obligation always reported missed, with no repair that can satisfy it, blocks a scene
+permanently while pretending to be a requirement.
+
+Deliberately three verbs. "withhold" was here for one commit and caught the reference plan's
+"Siv withholds what she found, and the withholding is visible as behaviour rather than stated"
+— a withholding staged as behaviour is exactly the thing a reader watches, and a refusal is
+too. Only a character failing to register something has nothing to show.
+"""
+
+
 def is_absence_post(text: str) -> bool:
     """Is this `post` line entirely a thing not happening?
 
@@ -1102,7 +1119,8 @@ def is_absence_post(text: str) -> bool:
     # left unspoken", "the question remains unanswered", "Ingrid avoids discussing the register".
     # A scene cannot be shown not saying something, so the judge reports it missed — as it did
     # for the finale of one live run and scene 5 of another.
-    return bool(_LEFT_UNDONE.search(text) or _AVOIDANCE.search(text))
+    return bool(_LEFT_UNDONE.search(text) or _AVOIDANCE.search(text)
+                or _IGNORING.search(text))
 
 # "nothing" and "none" are how a plan writes an *empty* forbid list, not how it writes a
 # negation. Flagging those reports a placeholder as a malformed rule.
@@ -1167,6 +1185,12 @@ def positive_prohibition(text: str) -> str:
 
     # "Ingrid avoids discussing the register" forbids "discussing the register" — exactly, and
     # with no grammar needed, which is why this one is tried before the others.
+    # Nothing to invert an ignoring into: "Nils ignores the reading" forbids no event, and
+    # forwarding it as a prohibition would forbid the ignoring itself — the opposite of the
+    # intent. Reported as unenforceable so the caller drops it.
+    if _IGNORING.search(text):
+        return ""
+
     avoidance = _AVOIDANCE.search(text)
     if avoidance:
         return re.sub(r"\s+", " ", avoidance.group(1)).strip().rstrip(".")
