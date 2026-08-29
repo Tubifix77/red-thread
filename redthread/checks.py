@@ -1280,14 +1280,14 @@ def check_post_is_an_event(plan: list[SceneSpec], story: StorySpec) -> list[Viol
             for item in op.post:
                 if is_state_restatement(item, thread):
                     out.append(Violation(
-                        "post_names_a_state", Severity.MAJOR,
+                        "post_names_a_state", Severity.MINOR,
                         f"scene {spec.index} [{thread.name}] requires \"{item}\", which names a "
                         f"state rather than an event. Nothing on the page can satisfy it, and no "
                         f"repair can add it. Say what happens.",
                         "check_post_is_an_event", item))
                 elif is_absence_post(item):
                     out.append(Violation(
-                        "post_names_an_absence", Severity.MAJOR,
+                        "post_names_an_absence", Severity.MINOR,
                         f"scene {spec.index} [{thread.name}] requires \"{item}\", which is a "
                         f"thing not happening. No prose can evidence an absence, so the judge "
                         f"reports it missed however the scene goes. This belongs in \"forbid\".",
@@ -1322,7 +1322,7 @@ def check_beats_are_intent(plan: list[SceneSpec], story: StorySpec) -> list[Viol
             if not _BEAT_PROSE.search(beat.summary):
                 continue
             out.append(Violation(
-                "beat_is_prose", Severity.MAJOR,
+                "beat_is_prose", Severity.MINOR,
                 f"scene {spec.index} has a beat containing written dialogue — \"{beat.summary}\". "
                 f"A beat names what happens so the scene can dramatise it; written out, the "
                 f"scene copies it back and `check_brief_leak` is right to flag the copy.",
@@ -1375,7 +1375,7 @@ def check_prohibition_phrasing(plan: list[SceneSpec], story: StorySpec) -> list[
                 if not is_negated_prohibition(item):
                     continue
                 out.append(Violation(
-                    "negated_prohibition", Severity.MAJOR,
+                    "negated_prohibition", Severity.MINOR,
                     f"scene {spec.index} [{label}] forbids a negative — \"{item}\". A "
                     f"prohibition must name the thing that must not happen; phrased this way it "
                     f"reads as a requirement, and the scene that obeys the plan is the one that "
@@ -1415,7 +1415,7 @@ def check_ban_is_avoidable(plan: list[SceneSpec], story: StorySpec) -> list[Viol
         if not is_unavoidable_ban(phrase):
             continue
         out.append(Violation(
-            "unavoidable_ban", Severity.MAJOR,
+            "unavoidable_ban", Severity.MINOR,
             f'the style contract forbids "{phrase}", which is a word a novel needs. Every scene '
             f'will trip it and every trip costs a repair round. Ban the vocabulary of the thing '
             f'the premise is avoiding, not the words the prose is made of.',

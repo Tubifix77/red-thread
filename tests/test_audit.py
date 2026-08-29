@@ -207,6 +207,51 @@ class TestReferencePlan(unittest.TestCase):
             self.assertEqual(seq[-1][1], t.states[-1], f"{t.id} is never paid off")
 
 
+class TestWhatGatesAndWhatAdvises(unittest.TestCase):
+    """The audit answers two different questions and they carry different weight.
+
+    A structural failure — no subplot, a thread that never pays off, a midpoint that stalls — is
+    a fact about the plan, checkable, and worth stopping for. A rule *shape* finding — an
+    obligation phrased as an absence, a ban on a word the prose needs — is a note about
+    writability. The author reads it and decides. Gating on the second kind is how a plan ends up
+    edited until a checker is happy with it, which is the failure this whole layer was corrected
+    for.
+    """
+
+    ADVISORY = {"negated_prohibition", "post_names_a_state", "post_names_an_absence",
+                "unavoidable_ban", "beat_is_prose", "stale_prohibition"}
+    # "decorative_subplots" (plural) is the plan-wide verdict and gates; the singular is the
+    # per-thread note beside it.
+    GATING = {"no_subplots", "decorative_subplots", "state_repeat", "state_regression",
+              "midpoint_stall", "unpaid_thread", "missed_deadline", "spec_self_violation"}
+
+    def _severity_of(self, kind: str):
+        import ast
+        from pathlib import Path
+        source = Path(checks.__file__).read_text(encoding="utf-8")
+        levels = set()
+        for call in ast.walk(ast.parse(source)):
+            if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
+                    and call.func.id == "Violation" and len(call.args) >= 2):
+                continue
+            if isinstance(call.args[0], ast.Constant) and call.args[0].value == kind:
+                levels |= {n.attr for n in ast.walk(call.args[1])
+                           if isinstance(n, ast.Attribute)}
+        return levels
+
+    def test_rule_shape_findings_never_gate(self):
+        for kind in self.ADVISORY:
+            with self.subTest(kind=kind):
+                self.assertEqual(self._severity_of(kind), {"MINOR"},
+                                 f"{kind} can stop a run over a matter of phrasing")
+
+    def test_structural_failures_still_gate(self):
+        for kind in self.GATING:
+            with self.subTest(kind=kind):
+                self.assertTrue(self._severity_of(kind) & {"MAJOR", "BLOCKER"},
+                                f"{kind} is a structural failure and must be reported as one")
+
+
 class TestBanIsAvoidable(unittest.TestCase):
     """A forbidden phrase must be avoidable, or the book fights it in every scene."""
 

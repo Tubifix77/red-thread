@@ -539,11 +539,17 @@ class TestScrub(unittest.TestCase):
         self.assertEqual(backend.count("scrub"), 0)
 
 
-class TestRulesAreRepairedAtParseTime(unittest.TestCase):
-    """A rule the judge cannot answer costs a scene, its repair budget, and — because `write_all`
-    halts at the first rejection — the rest of the book. Where the intent is unambiguous the plan
-    is repaired as it is parsed, so the stored plan says what it means once rather than being
-    reinterpreted by every reader of it."""
+class TestPlanRulesAreStoredAsWritten(unittest.TestCase):
+    """The plan is not edited so a checker can cope with it.
+
+    Earlier versions rewrote scene rules at parse time — absences moved to the forbid list,
+    negations inverted, bans on common words dropped — and the cost was paid by the writer,
+    because the brief is built from this text. A live plan lost "Nils ignores the thermometer's
+    reading", a perfectly writable beat, because a judge could not confirm it afterwards.
+
+    The audit reports rules that look unwritable. The author decides. `verify` narrows what it
+    asks the judge, which is its own business and does not touch the plan.
+    """
 
     def _op(self, post=None, forbid=None):
         from redthread.planner import _apply_scene_content
@@ -554,111 +560,48 @@ class TestRulesAreRepairedAtParseTime(unittest.TestCase):
             StorySpec(title="t", premise="p"))
         return spec.thread_ops["T-A"]
 
-    def test_a_negated_forbid_is_inverted(self):
+    def test_a_negated_forbid_survives_verbatim(self):
         op = self._op(forbid=["The enclave is not revealed"])
-        self.assertEqual(op.forbid, ["The enclave is revealed"])
+        self.assertEqual(op.forbid, ["The enclave is not revealed"])
 
-    def test_an_absence_post_moves_to_forbid(self):
-        """From a fresh planner run: "Mira remains uncertain about the logs' authenticity"."""
+    def test_an_obligation_to_ignore_something_survives_verbatim(self):
+        """The beat a live plan lost."""
+        op = self._op(post=["Nils ignores the thermometer's reading"])
+        self.assertEqual(op.post, ["Nils ignores the thermometer's reading"])
+
+    def test_an_absence_post_stays_where_the_author_put_it(self):
         op = self._op(post=["Mira remains uncertain about the logs' authenticity",
                             "Mira photographs both entries"])
-        self.assertEqual(op.post, ["Mira photographs both entries"])
-        self.assertIn("Mira is certain about the logs' authenticity", op.forbid)
+        self.assertEqual(op.post, ["Mira remains uncertain about the logs' authenticity",
+                                   "Mira photographs both entries"])
+        self.assertEqual(op.forbid, [])
 
-    def test_ordinary_rules_are_left_exactly_as_written(self):
-        op = self._op(post=["Mira photographs both entries"],
-                      forbid=["Mira learns who wrote the second hand"])
-        self.assertEqual(op.post, ["Mira photographs both entries"])
-        self.assertEqual(op.forbid, ["Mira learns who wrote the second hand"])
-
-
-class TestStatePostsAreRestated(unittest.TestCase):
-    """`verify.check_threads` already skips an obligation that names a thread state, because
-    asking a judge whether prose "becomes unreliable again" can only produce a guess. Skipping it
-    at run time is safe and dishonest: the stored line still reads as a requirement and the audit
-    still reports a MAJOR. A live plan had one on its final scene."""
-
-    def _fixture(self):
+    def test_the_audit_is_what_reports_them(self):
         from redthread.models import SceneSpec, StorySpec, Thread, Transition
-        thread = Thread(id="T", name="The Weather",
-                        states=["dormant", "unreliable", "predictable", "unreliable again"])
-        spec = SceneSpec(id="s15", index=15, summary="Ingrid exposes the alterations.",
-                         thread_ops={"T": Transition(
-                             post=["The weather becomes unreliable again",
-                                   "The villagers learn to trust the register"])})
-        return [spec], StorySpec(title="t", premise="p", threads=[thread])
-
-    def test_a_descriptive_absolute_phrase_counts_as_written_out(self):
-        """Scene 9 of a live run carried "Ingrid looks out the window, her breath visible in the
-        cold air" and the prose copied thirteen six-word runs out of its own beats. The detector
-        wanted a participle, and "visible" is an adjective."""
-        from redthread.planner import _is_written_out
-        for beat in ("Ingrid looks out the window, her breath visible in the cold air.",
-                     "Dain steps forward, his boots crunching over dry leaves."):
-            with self.subTest(beat=beat):
-                self.assertTrue(_is_written_out(beat))
-        for beat in ("Ingrid refuses to sign the haulage sheet",
-                     "Torvald takes the register away from her"):
-            with self.subTest(beat=beat):
-                self.assertFalse(_is_written_out(beat))
-
-    def test_the_state_line_is_replaced_by_an_event(self):
-        from redthread.planner import scrub_state_posts
-        plan, story = self._fixture()
-        backend = PlannerBackend(restate_reply="The snow gauge climbs past the mark.")
-
-        fixed = scrub_state_posts(plan, story, models_with(backend))
-
-        self.assertEqual(fixed, 1)
-        self.assertEqual(plan[0].thread_ops["T"].post,
-                         ["The snow gauge climbs past the mark.",
-                          "The villagers learn to trust the register"])
-        self.assertEqual(checks.check_post_is_an_event(plan, story), [])
-
-    def test_a_rewrite_that_is_still_a_state_is_dropped(self):
-        """An obligation nothing can satisfy is worse than no obligation; the thread state is
-        applied by the commit either way."""
-        from redthread.planner import scrub_state_posts
-        plan, story = self._fixture()
-        backend = PlannerBackend(restate_reply="The weather is unreliable again")
-
-        scrub_state_posts(plan, story, models_with(backend))
-
-        self.assertEqual(plan[0].thread_ops["T"].post,
-                         ["The villagers learn to trust the register"])
-
-    def test_real_obligations_cost_no_calls(self):
-        from redthread.planner import scrub_state_posts
-        plan, story = self._fixture()
-        plan[0].thread_ops["T"].post = ["The villagers learn to trust the register"]
-        backend = PlannerBackend()
-
-        self.assertEqual(scrub_state_posts(plan, story, models_with(backend)), 0)
-        self.assertEqual(backend.count("restate"), 0)
+        spec = SceneSpec(id="s01", index=1, summary="x",
+                         thread_ops={"T": Transition(post=["The Allegiance reaches 'settled'"])})
+        story = StorySpec(title="t", premise="p",
+                          threads=[Thread(id="T", name="The Allegiance",
+                                          states=["dormant", "settled"])])
+        self.assertIn("post_names_a_state",
+                      {v.kind for v in checks.check_post_is_an_event([spec], story)})
 
 
-class TestUnavoidableBansAreDropped(unittest.TestCase):
-    """A ban the prose cannot honour is dropped as the plan is parsed, the same way a negated
-    forbid is inverted. One fresh plan banned "truth", "right", "memory" and "silence" in a story
-    about a recipe nobody wrote down — four running battles, one per scene, each costing a repair
-    round."""
+class TestBansAreReportedNotDropped(unittest.TestCase):
+    """A ban on a word the prose is made of is the author's to reconsider, not ours to delete."""
 
     def _story(self, *phrases):
         return parse_story(json.loads(story_json(style={
             "pov": "third limited", "tense": "past", "samples": ["A.", "B.", "C."],
             "forbidden_phrases": list(phrases), "notes": ""})))
 
-    def test_common_abstractions_do_not_survive_parsing(self):
-        story = self._story("truth", "memory", "conspiracy", "hacker")
-        self.assertEqual(story.style.forbidden_phrases, ["conspiracy", "hacker"])
+    def test_the_ban_survives_parsing(self):
+        story = self._story("truth", "conspiracy")
+        self.assertEqual(story.style.forbidden_phrases, ["truth", "conspiracy"])
 
-    def test_a_phrase_survives(self):
-        story = self._story("the truth of it", "sentient")
-        self.assertEqual(story.style.forbidden_phrases, ["the truth of it", "sentient"])
-
-    def test_the_audit_is_clean_afterwards(self):
-        story = self._story("truth", "villain")
-        self.assertEqual(checks.check_ban_is_avoidable([], story), [])
+    def test_the_audit_reports_it(self):
+        found = checks.check_ban_is_avoidable([], self._story("truth", "conspiracy"))
+        self.assertEqual([v.quote for v in found], ["truth"])
 
 
 class TestBeatsSurviveSharpening(unittest.TestCase):

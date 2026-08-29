@@ -203,15 +203,8 @@ def parse_story(data: dict) -> StorySpec:
         pov=str(style_raw.get("pov") or "third limited").strip(),
         tense=str(style_raw.get("tense") or "past").strip(),
         samples=[str(s).strip() for s in (style_raw.get("samples") or []) if str(s).strip()],
-        # A ban the prose cannot honour is dropped as the plan is parsed, the same way a negated
-        # forbid is inverted: keeping it buys nothing and costs a repair round in every scene
-        # that needs the word. One fresh plan banned "truth", "right", "memory" and "silence" in
-        # a story about a recipe nobody wrote down. `check_ban_is_avoidable` stays as the
-        # backstop for anything this misses.
-        forbidden_phrases=[phrase for phrase in
-                           (str(s).strip().lower()
-                            for s in (style_raw.get("forbidden_phrases") or []) if str(s).strip())
-                           if not checks.is_unavoidable_ban(phrase)],
+        forbidden_phrases=[str(s).strip().lower()
+                           for s in (style_raw.get("forbidden_phrases") or []) if str(s).strip()],
         notes=str(style_raw.get("notes") or "").strip(),
     )
 
@@ -455,29 +448,17 @@ def _apply_scene_content(spec: SceneSpec, row: dict, story: StorySpec) -> None:
             continue
         post = [str(p).strip() for p in (payload.get("post") or []) if str(p).strip()]
         forbid = [str(p).strip() for p in (payload.get("forbid") or []) if str(p).strip()]
+        # Stored exactly as proposed. Earlier versions rewrote these here — absences moved to
+        # the forbid list, negations inverted — so that a checker could cope, and the cost was
+        # paid by the writer: the brief is built from this text, and a live plan lost "Nils
+        # ignores the thermometer's reading", which is a perfectly writable beat, because a
+        # judge could not confirm it afterwards. The audit reports rules that look unwritable;
+        # the author decides. `verify` narrows what it asks the judge, which is its own business
+        # and invisible here.
         if post:
-            # An "obligation" phrased as an absence is a prohibition wearing a requirement's
-            # clothes — "Mira remains uncertain about the logs' authenticity" names nothing a
-            # scene can show, so the judge reports it missed however the scene goes. Move it to
-            # where it belongs, for the same reason a negated forbid is inverted below: the
-            # stored plan should say what it means, once, rather than be reinterpreted by every
-            # reader of it.
-            kept = []
-            for item in post[:4]:
-                if checks.is_absence_post(item):
-                    forbid.append(checks.positive_prohibition(item))
-                else:
-                    kept.append(item)
-            if kept:
-                op.post = kept
+            op.post = post[:4]
         if forbid:
-            # Repair the phrasing here rather than letting it into the plan. The prompt asks for
-            # positive forbids and a live 8B wrote every one of a 27-scene plan as a negation
-            # anyway — "the true purpose is not revealed" — which reads as a demand for the
-            # reveal. Inverting at parse time means the stored plan says what it means, so the
-            # brief, the judge and the author all read the same rule.
-            op.forbid = [checks.positive_prohibition(f) if checks.is_negated_prohibition(f)
-                         else f for f in forbid[:4]]
+            op.forbid = forbid[:4]
 
     spec.concreteness = score_spec(spec)
 
@@ -777,61 +758,6 @@ BEAT: {beat}
 Reply with the rewritten beat only."""
 
 
-RESTATE_PROMPT = """Rewrite this line from a novel outline so that it names something that
-HAPPENS ON THE PAGE, not the condition it leaves behind.
-
-It currently reads as a state: "{item}"
-The scene it belongs to: {summary}
-
-Say what a reader would watch happen. One clause, under twelve words, no dialogue, no
-description. If nothing concrete can be named, reply with the single word NONE.
-
-Reply with the rewritten line only."""
-
-
-def scrub_state_posts(plan: list[SceneSpec], story: StorySpec, models: Models) -> int:
-    """Turn an obligation that names a thread state into one that names an event.
-
-    `verify.check_threads` already skips these, because asking a judge whether prose "becomes
-    unreliable again" can only produce a guess. Skipping them at run time is the safe behaviour
-    and a dishonest plan: the stored line still reads as a requirement, the audit still reports
-    a MAJOR, and the author is left to work out that the pipeline quietly ignores it.
-
-    So it is repaired here instead, and dropped when it cannot be — an obligation nothing can
-    satisfy is worse than no obligation, and the thread state is applied by `Project.commit`
-    either way. Code cannot do this one: no rule derives "the snow gauge climbs past the mark"
-    from "reaches 'unreliable again'".
-    """
-    fixed = 0
-    for spec in plan:
-        for tid, op in spec.thread_ops.items():
-            thread = story.thread(tid)
-            if thread is None:
-                continue
-            kept: list[str] = []
-            for item in op.post:
-                if not checks.is_state_restatement(item, thread):
-                    kept.append(item)
-                    continue
-                replacement = None
-                try:
-                    reply = models.critic.complete(
-                        RESTATE_PROMPT.format(item=item, summary=spec.summary or "(none)"),
-                        max_tokens=200, temperature=0.3)
-                    line = strip_reasoning(reply.text).strip().strip(chr(34)).strip()
-                    if (line and line.upper() != "NONE"
-                            and not checks.is_state_restatement(line, thread)
-                            and not checks.is_absence_post(line)
-                            and len(line.split()) <= 16):
-                        replacement = line
-                except LLMError:
-                    pass
-                if replacement:
-                    kept.append(replacement)
-                fixed += 1
-            op.post = kept
-    return fixed
-
 # ", his boots crunching over dry leaves" — the absolute-participial construction is the
 # signature of a beat that has stopped planning and started describing. Dialogue is the other
 # signature, and `checks.check_beats_are_intent` reports that one at plan level.
@@ -952,10 +878,6 @@ def make_plan(premise: str, models: Models, total_words: int = 60000,
     deprosed = scrub_prose_beats(specs, models)
     if deprosed:
         stage("beats", f"{deprosed} beat(s) were written as prose, not intent; rewritten")
-
-    restated = scrub_state_posts(specs, story, models)
-    if restated:
-        stage("posts", f"{restated} obligation(s) named a thread state, not an event; restated")
 
     scrubbed = scrub_forbidden(specs, story, models)
     if scrubbed:
