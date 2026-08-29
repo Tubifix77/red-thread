@@ -172,6 +172,48 @@ class OpenAICompatBackend(Backend):
 # Ollama, native API
 # --------------------------------------------------------------------------------------
 
+WRITER_OPTIONS = {"num_ctx": 8192, "repeat_penalty": 1.2, "repeat_last_n": 512}
+"""Sampler settings for the prose role. Every number here was measured, not chosen.
+
+Ollama's `repeat_penalty` default is 1.0, which is *disabled* (verified against
+ollama/ollama `docs/modelfile.mdx`, 29 August 2026), and qwen3:8b's own Modelfile pins it there
+with `PARAMETER repeat_penalty 1`. So every scene this project generated before today was
+sampled with no repetition penalty and a 64-token lookback — about forty-five words. The worst
+scene measured repeated one four-word phrase 77 times in 1,490 words and narrated 97.9% of
+itself in past perfect, and no brief instruction or check could reach the cause, because the
+cause was underneath both.
+
+Swept on the two scenes that failed worst, two seeds each, everything else held constant:
+
+    penalty   duplication   recap    blocks   type-token
+      1.10        .163       .361      2.5       .391
+      1.15        .030       .306      1.2       .456
+      1.20        .004       .103      0.0       .542
+      1.30        .025       .060      0.0       .810   ← damage
+
+1.20 is the lowest value that cleared every draft on both scenes. 1.30 was rejected on evidence
+rather than instinct: character names fell from ~17 occurrences per scene to 5, because a
+penalty that strong suppresses the legitimate repetition a scene is made of. `gemma3:12b`
+writing the same scenes inside this orchestrator sits at a type-token ratio of .474–.478; 1.20
+lands at .542 and 1.30 at .810, which is a model straining for novelty rather than writing.
+
+`num_ctx` is here for a smaller reason that is still a real one. Ollama's runtime default is
+4096, a scene brief runs to about 2,470 tokens, and a 1,500-word draft is another 2,000 — so a
+runaway draft overflows the window and the front of the brief, where the voice contract and the
+task sit, scrolls out mid-generation. 8192 leaves room for both with headroom.
+
+**Writer role only.** The structured roles emit JSON, which is repetition by design — the same
+keys in every object — and penalising it corrupts the output this project depends on.
+"""
+
+STRUCTURED_OPTIONS = {"num_ctx": 8192}
+"""Context headroom for the critic and extractor, and deliberately no repetition penalty.
+
+A judge reply is a list of objects with identical keys. Penalising repeated tokens there is a
+way of asking for malformed JSON.
+"""
+
+
 class OllamaBackend(Backend):
     """Ollama's own `/api/chat`, not its OpenAI-compatible shim.
 
@@ -200,7 +242,21 @@ class OllamaBackend(Backend):
 
     def __init__(self, model: str, base_url: str = "http://localhost:11434",
                  think: bool | str | None = False, timeout: int = 240,
-                 retries: int = 2, keep_alive: str | None = "10m") -> None:
+                 retries: int = 2, keep_alive: str | None = "10m",
+                 options: dict | None = None) -> None:
+        self.options = dict(options or {})
+        """Extra sampler options merged into every call, per role.
+
+        The reason this parameter exists is worth stating, because it went unexamined for the
+        whole project. Ollama's `repeat_penalty` defaults to 1.0 — disabled — and qwen3:8b's own
+        Modelfile pins it there explicitly. Every scene this project has ever generated was
+        sampled with no repetition penalty at all, and `repeat_last_n` at its default of 64
+        tokens, a window of roughly forty-five words. A phrase recurring every twenty words
+        across a 1,500-word scene is invisible to it.
+
+        That is the mechanism behind the worst prose defects measured here, and it is a sampler
+        setting rather than anything the brief or the checks could reach. See `WRITER_OPTIONS`.
+        """
         self.model = model
         # Tolerate being handed the OpenAI-compatible URL, since that is what every other part
         # of the CLI passes around.
@@ -223,6 +279,7 @@ class OllamaBackend(Backend):
         messages = ([{"role": "system", "content": system}] if system else []) + \
                    [{"role": "user", "content": prompt}]
         options: dict = {"temperature": temperature, "num_predict": max_tokens}
+        options.update(self.options)
         if stop:
             options["stop"] = stop
 
@@ -329,13 +386,18 @@ class Models:
         and reliable structure, and a weak one there cannot repair what it flags. On a 10GB card
         an 8B writer beside a 12–14B critic fits comfortably in sequence.
         """
-        writer = (OllamaBackend(writer_model, base_url, think=think_writer) if native
+        writer = (OllamaBackend(writer_model, base_url, think=think_writer,
+                                options=WRITER_OPTIONS) if native
                   else OpenAICompatBackend(writer_model, base_url))
         if not critic_model or critic_model == writer_model:
-            structured = (OllamaBackend(writer_model, base_url, think=False) if native
-                          else writer)
+            # A separate backend even for the same model: the writer carries a repetition
+            # penalty and the structured roles must not, so they cannot share an instance.
+            structured = (OllamaBackend(writer_model, base_url, think=False,
+                                        options=STRUCTURED_OPTIONS) if native
+                          else OpenAICompatBackend(writer_model, base_url))
         else:
-            structured = (OllamaBackend(critic_model, base_url, think=False) if native
+            structured = (OllamaBackend(critic_model, base_url, think=False,
+                                        options=STRUCTURED_OPTIONS) if native
                           else OpenAICompatBackend(critic_model, base_url))
         return cls(writer, structured, structured)
 
@@ -356,9 +418,11 @@ class Models:
         if not native:
             backend = OpenAICompatBackend(model, base_url)
             return cls(backend, backend, backend)
-        structured = OllamaBackend(model, base_url, think=False)
-        writer = (structured if think_writer is False
-                  else OllamaBackend(model, base_url, think=think_writer))
+        structured = OllamaBackend(model, base_url, think=False, options=STRUCTURED_OPTIONS)
+        # Always a separate writer instance, even when thinking is off for both. They differ in
+        # sampler options now, not only in `think`: the writer carries a repetition penalty and
+        # the structured roles must not, because their output is JSON and JSON is repetition.
+        writer = OllamaBackend(model, base_url, think=think_writer, options=WRITER_OPTIONS)
         return cls(writer, structured, structured)
 
 

@@ -486,3 +486,85 @@ Three scenes. One plan. One card. The candidate count was 1 rather than the meas
 3, so these are single draws rather than best-of-three, which flatters neither model in
 particular but makes every figure noisier than the tables suggest. `bench` across a full book,
 and a POV-drift rate measured over more than one scene, are what would settle it.
+
+---
+
+## The sampler was the ceiling, not the model (29 August 2026)
+
+The section above concluded that the writer model was the prose ceiling. That conclusion was
+premature, and the thing that refuted it was checking a setting nobody had looked at.
+
+**Ollama's `repeat_penalty` defaults to 1.0, which is disabled.** Verified against
+`ollama/ollama` `docs/modelfile.mdx`: *"(Default: 1.0, disabled)"*. And `qwen3:8b`'s own
+Modelfile pins it there explicitly — `PARAMETER repeat_penalty 1`. The companion setting
+`repeat_last_n` defaults to 64 tokens, a lookback of roughly forty-five words.
+
+So every scene this project has ever generated was sampled with no repetition penalty and a
+window too short to see a phrase recurring every twenty words. The worst scene measured repeated
+one four-word phrase 77 times in 1,490 words. Nothing in the brief and nothing in the 29 checks
+could reach that, because the cause was underneath both of them.
+
+### The sweep
+
+Two scenes that had failed worst, two seeds each, everything else held constant:
+
+| repeat_penalty | duplication | recap grammar | blocks | type-token |
+|---:|---:|---:|---:|---:|
+| 1.10 | .163 | .361 | 2.5 | .391 |
+| 1.15 | .030 | .306 | 1.2 | .456 |
+| **1.20** | **.004** | **.103** | **0.0** | **.542** |
+| 1.30 | .025 | .060 | 0.0 | .810 |
+
+1.20 is the lowest value that cleared every draft on both scenes. **1.30 was rejected on
+evidence**: character-name occurrences fell from about 17 per scene to 5, because a penalty that
+strong suppresses the legitimate repetition a scene is made of. Type-token ratio is the tell —
+`gemma3:12b` writing these scenes inside the orchestrator sits at .474–.478, and .810 is a model
+straining for novelty rather than writing.
+
+`num_ctx` was raised to 8192 in the same pass, for a smaller but real reason: Ollama's runtime
+default is 4096, a scene brief measures about 2,470 tokens, and a 1,500-word draft is another
+2,000 — so a runaway draft overflows the window and the front of the brief, where the voice
+contract and the task sit, scrolls out mid-generation. On its own it helped little (the middle
+column of the three-way test), but it removes a failure mode that would otherwise return at
+longer scene lengths.
+
+### The result
+
+Scenes 9–11 of the same plan, `qwen3:8b`, the writer role carrying `repeat_penalty 1.2`,
+`repeat_last_n 512`, `num_ctx 8192`:
+
+| | duplication | recap | longest run | blocks | type-token |
+|---|---:|---:|---:|---:|---:|
+| qwen3:8b, before | .118 | .376 | 4.4 | 2.0 | .327 |
+| **qwen3:8b, after** | **.004** | **.078** | **1.3** | **0.0** | .572 |
+| reference drafts | .009 | .105 | ≤2 | 0 | — |
+| gemma3:12b, in-orchestrator | .002–.015 | .046–.058 | 1 | 0 | .474–.478 |
+
+All three scenes committed. Scene 9 — which had been held back on three separate attempts, once
+after four drafts and six repairs — committed in 1m37s with a single deterministic repair, and
+every thread reached its terminal state. The 8B is now **below the reference band on both
+axes**, at roughly an eighth of `gemma3:12b`'s time per draft, and it committed the scene
+`gemma3:12b` failed on a POV break.
+
+### What this changes
+
+The swap is off the table, and the reasoning matters more than the result. A small model under
+strict orchestration and a large model under light orchestration are different products, and
+only the first one is worth building here: it is the configuration where the machinery earns its
+keep, and the one that stays true when the models underneath change. Reaching for a bigger model
+is the move that makes the checks redundant — which is a way of abandoning the project rather
+than finishing it. Every other avenue has to be exhausted first, and this one had not even been
+looked at.
+
+The `gemma3:12b` comparison was still worth running. It is what established how much of the
+remaining defect was model-attributable, and the honest answer turned out to be: almost none of
+it, once the sampler is right.
+
+### Not settled
+
+Three scenes on one plan. The type-token ratio at 1.20 is .572 against `gemma3:12b`'s .474–.478
+— above the healthy band, well short of the .810 damage point, and unexamined. Whether prose at
+that variety reads as *rich* or as *restless* is not something any check here measures, and it is
+the obvious thing to watch when reading the output. The penalty should also be re-swept for any
+new writer model: `gemma3:12b`'s Modelfile sets no `repeat_penalty` at all, so it inherits the
+same disabled default and may well have headroom of its own.

@@ -14,7 +14,7 @@ Illustrated version: <https://claude.ai/code/artifact/9ef610d1-1ca6-4a0f-a937-15
 | | Question | State |
 |---|---|---|
 | 1 | Can it get to the end of a book without help? | **close** |
-| 2 | Is the prose free of the obvious machine tells? | **partly** |
+| 2 | Is the prose free of the obvious machine tells? | **largely** |
 | 3 | Is the finished book worth reading? | **not started** |
 
 **1 — Close.** Five books, 65 scenes, 74,156 words, zero API calls. It plans, drafts, checks,
@@ -26,32 +26,38 @@ brand-new book unassisted.
 and repeated phrasing is down 65%. Recap grammar has not moved, was being under-measured, and is
 now the dominant defect — it has repairs as of today but no evidence yet that they close it.
 
-**3 — Not started.** Nothing in 29 checks and 462 tests has an opinion about whether a scene is
+**3 — Not started.** Nothing in 29 checks and 484 tests has an opinion about whether a scene is
 interesting. This is the distance.
 
 ---
 
 ## What the checks can see
 
-Three cohorts:
+Four cohorts:
 
 - **before** — n = 50 scenes across *The Debt of Years*, *The Register of Kvitmyr* and the first
   unattended run, drafted before the prose checks landed. Mean scene length 1,126 words.
-- **now** — n = 5 scenes written under the full check set (`runs/now`, scenes 4–8).
+- **checks** — n = 5 scenes written under the full check set but with the sampler untouched
+  (`runs/now`, scenes 4–8).
+- **+ sampler** — n = 3 scenes with the same checks and the writer's repetition penalty set
+  from measurement (`runs/recap`, scenes 9–11). The two prose-tell rows below carry over from
+  the `checks` cohort, which is where they were closed; the sampler did not touch them.
 - **reference** — n = 3 single cold scenes from gemma3:12b, phi4:14b and qwen3:8b with no
   orchestration at all (`docs/evidence`). Mean length 665 words. A reference, not a ceiling.
 
-| Signal | before | now | reference |
-|---|---:|---:|---:|
-| Narrator glossing the theme (share of scenes) | 58% | **0%** | 0% |
-| Stacked possessive absolutes (share of scenes) | 52% | **0%** | 0% |
-| Rhetorical triples (share of scenes) | 42% | **0%** | 0% |
-| Repeated phrasing (`duplication_ratio`) | .340 | **.118** | .009 |
-| Recap grammar (`summary_distance`) | .420 | **.376** | .105 |
-| Scenes carrying a block of 4+ past-perfect sentences | 70% | **60%** | 0% |
+| Signal | before | checks | + sampler | reference |
+|---|---:|---:|---:|---:|
+| Narrator glossing the theme (share of scenes) | 58% | **0%** | 0% | 0% |
+| Stacked possessive absolutes (share of scenes) | 52% | **0%** | 0% | 0% |
+| Rhetorical triples (share of scenes) | 42% | **0%** | 0% | 0% |
+| Repeated phrasing (`duplication_ratio`) | .340 | .118 | **.004** | .009 |
+| Recap grammar (`summary_distance`) | .420 | .376 | **.078** | .105 |
+| Scenes carrying a block of 4+ past-perfect sentences | 70% | 60% | **0%** | 0% |
 
-Three tells are gone and repeated phrasing is down 65%. Recap grammar is the honest one, and it
-is worse than this document first claimed.
+The three prose tells were closed by checks and repairs. The bottom three were not — they barely
+moved under the whole check set, and they closed in one pass when a sampler default was
+corrected. Both halves of that are worth keeping in view: the checks are what made the failure
+*visible and countable*, and a setting underneath them is what actually fixed it.
 
 ### Correction, 29 August
 
@@ -137,10 +143,47 @@ carrying, and a POV break is a BLOCKER nothing gets past. A loud failure the gat
 worth more than a quiet one it half-catches. The full comparison, including the eight-fold speed
 cost, is in [MODELS.md](MODELS.md).
 
-That reframes what "close to shippable" means. The orchestrator's job is to catch this and it
-did — the collapse never reached the manuscript, which is exactly what the commit gate is for.
-But the remaining prose distance in the table above is substantially a **model choice**, not a
-missing check, and the checks that took a day to build are worth less than one flag.
+That looked like it reframed what "close to shippable" means. It did not, and the correction
+came within the hour.
+
+### The sampler was the ceiling, not the model
+
+**Ollama's `repeat_penalty` defaults to 1.0, which is disabled**, and `qwen3:8b`'s own Modelfile
+pins it there with `PARAMETER repeat_penalty 1`. The companion `repeat_last_n` defaults to 64
+tokens — about forty-five words. So every scene this project has ever generated was sampled with
+no repetition penalty and a window far too short to see a phrase recurring every twenty words.
+
+Nothing in the brief and nothing in 29 checks could reach that, because the cause sat underneath
+both of them.
+
+Swept on the two scenes that failed worst, two seeds each: penalty 1.20 is the lowest value that
+cleared every draft, and 1.30 was rejected on evidence — character names fell from ~17 per scene
+to 5, which is a penalty suppressing the legitimate repetition a scene is made of. Scenes 9–11
+then ran on `qwen3:8b` with `repeat_penalty 1.2`, `repeat_last_n 512`, `num_ctx 8192` on the
+writer role only:
+
+| | duplication | recap | longest run | blocks |
+|---|---:|---:|---:|---:|
+| qwen3:8b, before | .118 | .376 | 4.4 | 2.0 |
+| **qwen3:8b, after** | **.004** | **.078** | **1.3** | **0.0** |
+| reference drafts | .009 | .105 | ≤2 | 0 |
+| gemma3:12b, 8× slower | .002–.015 | .046–.058 | 1 | 0 |
+
+All three committed. Scene 9 — held back on three separate attempts, once after four drafts and
+six repairs — committed in 1m37s with one deterministic repair, and every thread reached its
+terminal state. The 8B is now **below the reference band on both axes**, and it committed the
+scene `gemma3:12b` failed.
+
+So the model swap is off, and the reason matters more than the result: a small model under
+strict orchestration and a large model under light orchestration are different products, and
+only the first is worth building here. Reaching for a bigger model is the move that makes the
+checks redundant. The `gemma3:12b` comparison still earned its place — it is what established
+how much of the defect was model-attributable, and the answer turned out to be almost none of
+it, once the sampler was right.
+
+One thing to watch: type-token ratio at penalty 1.20 is .572 against gemma's .474–.478 — above
+the healthy band, well short of the .810 damage point, and unmeasured as to whether it reads as
+rich or as restless. Full sweep and caveats in [MODELS.md](MODELS.md).
 
 ## What nothing can see
 
@@ -192,7 +235,7 @@ difference.
 | **74,156** | words drafted locally |
 | **65** | scenes committed |
 | **0** | API calls |
-| **462** | tests passing |
+| **484** | tests passing |
 
 The longest is 30,147 words — a novella, not a novel. Nothing here has been run at 60,000 words,
 and the failure modes that matter at that length (a thread that quietly stops mattering, a middle

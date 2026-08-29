@@ -406,3 +406,70 @@ if __name__ == "__main__":
                           '"object": "a notebook", "kind": "detail"}, {"subject": ')
         self.assertEqual(len(data["facts"]), 1)
         self.assertEqual(data["facts"][0]["subject"], "Siv")
+
+
+class TestSamplerOptions(unittest.TestCase):
+    """The writer gets a repetition penalty; the structured roles must never get one.
+
+    Ollama disables `repeat_penalty` by default and qwen3:8b's own Modelfile pins it off, so
+    every scene this project generated before 29 August 2026 was sampled with no repetition
+    control and a 64-token lookback — roughly forty-five words. That is the mechanism under the
+    worst prose defects measured here, and it sits below anything the brief or the checks can
+    reach: swept on the two scenes that failed worst, duplication went .163 → .004 and recap
+    .361 → .103 between penalty 1.10 and 1.20.
+
+    The role split is the load-bearing part. A judge reply is a list of objects with identical
+    keys, so penalising repeated tokens there is a way of asking for malformed JSON — and the
+    structured roles are the ones whose failures are silent.
+    """
+
+    def setUp(self):
+        from redthread import llm
+        self.llm = llm
+
+    def test_the_writer_carries_the_penalty(self):
+        writer = self.llm.Models.all_local("qwen3:8b").writer
+        self.assertEqual(writer.options.get("repeat_penalty"), 1.2)
+        self.assertEqual(writer.options.get("repeat_last_n"), 512)
+
+    def test_the_structured_roles_do_not(self):
+        factories = {
+            "all_local": lambda: self.llm.Models.all_local("qwen3:8b"),
+            "local, one model": lambda: self.llm.Models.local("qwen3:8b"),
+            "local, split": lambda: self.llm.Models.local("qwen3:8b", "gemma3:12b"),
+        }
+        for label, factory in factories.items():
+            models = factory()
+            for role in ("critic", "extractor"):
+                with self.subTest(config=label, role=role):
+                    self.assertNotIn("repeat_penalty", getattr(models, role).options,
+                                     "a repetition penalty on a JSON role corrupts its output")
+
+    def test_every_role_gets_context_headroom(self):
+        """A scene brief measures about 2,470 tokens and Ollama's runtime default window is
+        4096, so a long draft overflows it and the front of the brief — the voice contract and
+        the task — scrolls out mid-generation."""
+        models = self.llm.Models.all_local("qwen3:8b")
+        for role in ("writer", "critic", "extractor"):
+            with self.subTest(role=role):
+                self.assertGreaterEqual(getattr(models, role).options.get("num_ctx", 0), 8192)
+
+    def test_a_backend_with_no_options_is_unchanged(self):
+        self.assertEqual(self.llm.OllamaBackend("m").options, {})
+
+
+class TestOllamaOptionsReachTheRequest(TestOllamaBackend):
+    """Merged into `options`, without displacing the per-call temperature or token budget."""
+
+    def test_options_are_merged_into_the_request_body(self):
+        self.backend(options={"repeat_penalty": 1.2, "num_ctx": 8192}).complete(
+            "hello", temperature=0.7, max_tokens=900)
+        sent = self.sent[0]["options"]
+        self.assertEqual(sent["repeat_penalty"], 1.2)
+        self.assertEqual(sent["num_ctx"], 8192)
+        self.assertEqual(sent["temperature"], 0.7)
+        self.assertEqual(sent["num_predict"], 900)
+
+    def test_no_options_leaves_the_body_as_it_was(self):
+        self.backend().complete("hello", temperature=0.7, max_tokens=900)
+        self.assertEqual(set(self.sent[0]["options"]), {"temperature", "num_predict"})
