@@ -43,6 +43,27 @@ _PLACE = re.compile(
     r"in front of)\b", re.IGNORECASE)
 
 
+_IDENTITY = re.compile(r"^(?:a|an|the)\s+\w+", re.IGNORECASE)
+
+
+def claim_class(fact: Fact) -> str:
+    """What kind of claim this fact's object makes: identity, position, or condition.
+
+    Two facts only contradict if they answer the same question. A live run blocked scene 9 on
+    "the register cannot be both open on the table and a book with worn leather" — which of
+    course it can. The pairing key is `(subject, predicate)`, and a bare copula carries no
+    meaning at all: `the register | is | ...` groups where it lies with what it is made of with
+    whether it is open. Classifying the object separates them, and it is the object that says
+    what attribute is being claimed.
+    """
+    obj = fact.object.strip()
+    if _IDENTITY.match(obj):
+        return "identity"
+    if _PLACE.search(obj):
+        return "position"
+    return "condition"
+
+
 def is_moveable_pair(a: Fact, b: Fact) -> bool:
     """Do these two facts just say where something was at two different moments?
 
@@ -187,7 +208,8 @@ class Ledger:
                 if old is nf or old.scene == nf.scene:
                     continue
                 if (normalise(old.object) == normalise(nf.object) or same_claim(old, nf)
-                        or is_moveable_pair(old, nf)):
+                        or is_moveable_pair(old, nf)
+                        or claim_class(old) != claim_class(nf)):
                     continue
                 mark = (id(old), id(nf))
                 if mark not in seen:
@@ -206,7 +228,8 @@ class Ledger:
                 if jaccard(content_tokens(old.predicate), nf_pred) < similarity:
                     continue
                 if (normalise(old.object) == normalise(nf.object) or same_claim(old, nf)
-                        or is_moveable_pair(old, nf)):
+                        or is_moveable_pair(old, nf)
+                        or claim_class(old) != claim_class(nf)):
                     continue
                 mark = (id(old), id(nf))
                 if mark not in seen:

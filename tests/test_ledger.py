@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import unittest
 
-from redthread.ledger import Ledger, jaccard, normalise
+from redthread.ledger import Ledger, claim_class, jaccard, normalise
 from redthread.models import Fact, FactKind
 
 
@@ -149,6 +149,29 @@ class TestConflictCandidates(unittest.TestCase):
         new = f("the register", "is", "in the drawer", 8, FactKind.STATE)
         ledger.add(new)
         self.assertEqual(ledger.conflict_candidates([new]), [])
+
+    def test_claims_about_different_attributes_are_not_compared(self):
+        """A live run blocked scene 9 on "the register cannot be both open on the table and a
+        book with worn leather" — which of course it can. A bare copula carries no meaning, so
+        the `(subject, predicate)` key groups where a thing lies with what it is made of."""
+        ledger = Ledger([f("the register", "is", "open on the table", 5, FactKind.STATE)])
+        new = f("the register", "is", "a book with worn leather", 9, FactKind.DETAIL)
+        ledger.add(new)
+        self.assertEqual(ledger.conflict_candidates([new]), [])
+
+    def test_two_identity_claims_still_conflict(self):
+        ledger = Ledger([f("the truck", "is", "a green Hilux", 1, FactKind.DETAIL)])
+        new = f("the truck", "is", "a red Hilux", 6, FactKind.DETAIL)
+        ledger.add(new)
+        self.assertEqual(len(ledger.conflict_candidates([new])), 1)
+
+    def test_claim_class_reads_the_object(self):
+        cases = {"open on the table": "position", "a book with worn leather": "identity",
+                 "grey eyes": "condition", "welded shut": "condition",
+                 "the maintenance chief": "identity"}
+        for obj, expected in cases.items():
+            with self.subTest(obj=obj):
+                self.assertEqual(claim_class(f("x", "is", obj, 1)), expected)
 
     def test_a_fixed_detail_in_two_places_is_still_a_candidate(self):
         """A DETAIL is "a concrete particular the prose has now fixed and cannot change". A scar
