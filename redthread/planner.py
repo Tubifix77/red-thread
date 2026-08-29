@@ -135,6 +135,32 @@ def _character_id(value: str, name: str, taken: set[str]) -> str:
     return candidate
 
 
+def drop_unavoidable_bans(story: StorySpec) -> StorySpec:
+    """Remove forbidden phrases the prose cannot avoid — from a *proposal*, never from a plan.
+
+    The planner is asked to name the vocabulary its premise rules out, and it does that part
+    well: a lighthouse story correctly banned "conspiracy", "hacker" and "sentient". Then it
+    added "truth", "right", "memory" and "silence", which are words a novel is made of. Every
+    scene of that book would trip `check_forbidden` several times and every trip costs a repair
+    round on a word the story is actually about.
+
+    `check_ban_is_avoidable` already gates on this, and its docstring is explicit that the plan
+    is not edited — `write` refuses and the author decides. That stays exactly true. This runs
+    one step earlier and on the other kind of input: a model's proposal, still inside the retry
+    loop, before it has become a contract anything is held to. A `story.json` a person wrote is
+    parsed by `parse_story` and is never touched, so a hand-written ban still reaches the audit
+    and still stops the run.
+
+    Every fresh premise tried has produced at least one of these, which makes it the single
+    largest obstacle to a run nobody is watching.
+    """
+    keep = [p for p in story.style.forbidden_phrases if not checks.is_unavoidable_ban(p)]
+    if len(keep) == len(story.style.forbidden_phrases):
+        return story
+    story.style.forbidden_phrases = keep
+    return story
+
+
 def parse_story(data: dict) -> StorySpec:
     """Build a StorySpec from a model proposal, repairing what code can repair.
 
@@ -289,7 +315,7 @@ def propose_story(premise: str, models: Models, attempts: int = 3) -> StorySpec:
         if not isinstance(data, dict):
             extra = "Your previous reply was not a JSON object. Return the schema exactly."
             continue
-        story = parse_story(data)
+        story = drop_unavoidable_bans(parse_story(data))
         last = story
         problems = story_problems(story)
         if not problems:

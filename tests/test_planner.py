@@ -21,8 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from redthread import checks
 from redthread.llm import LLMError, Models
 from redthread.models import Severity, ThreadKind
-from redthread.planner import (make_plan, parse_story, propose_story, story_problems,
-                               expand_beats, flesh_scenes)
+from redthread.planner import (drop_unavoidable_bans, make_plan, parse_story,
+                               propose_story, story_problems, expand_beats,
+                               flesh_scenes)
 from redthread.schedule import schedule_threads, score_spec, to_scene_specs
 
 from tests.fakes import ScriptedBackend
@@ -602,6 +603,43 @@ class TestBansAreReportedNotDropped(unittest.TestCase):
     def test_the_audit_reports_it(self):
         found = checks.check_ban_is_avoidable([], self._story("truth", "conspiracy"))
         self.assertEqual([v.quote for v in found], ["truth"])
+
+
+class TestUnavoidableBansAreDroppedFromAProposal(unittest.TestCase):
+    """The other half of `TestBansAreReportedNotDropped`, and the distinction between them.
+
+    A ban in a `story.json` a person wrote is theirs; the audit reports it and `write` refuses.
+    A ban in a model's *proposal*, still inside the planner's retry loop, is not a decision
+    anyone made — and every fresh premise tried has produced at least one, which makes it the
+    single largest obstacle to a run nobody is watching.
+
+    The prompt already tells the planner that "truth", "right", "memory" and "silence" are words
+    a novel needs. A live plan for a lighthouse story listed all four, alongside three good bans
+    it got right. Which is the whole argument for checking rather than asking.
+    """
+
+    def _story(self, *phrases):
+        return parse_story(json.loads(story_json(style={
+            "pov": "third limited", "tense": "past", "samples": ["A.", "B.", "C."],
+            "forbidden_phrases": list(phrases), "notes": ""})))
+
+    def test_the_avoidable_bans_survive(self):
+        story = drop_unavoidable_bans(self._story("conspiracy", "hacker", "sentient"))
+        self.assertEqual(story.style.forbidden_phrases, ["conspiracy", "hacker", "sentient"])
+
+    def test_the_unavoidable_ones_are_dropped(self):
+        story = drop_unavoidable_bans(
+            self._story("conspiracy", "truth", "hacker", "right", "memory", "silence"))
+        self.assertEqual(story.style.forbidden_phrases, ["conspiracy", "hacker"])
+
+    def test_what_survives_passes_the_audit_that_would_have_blocked_it(self):
+        """The filter and the gate have to agree, or one of them is wrong."""
+        story = drop_unavoidable_bans(self._story("truth", "right", "conspiracy", "silence"))
+        self.assertEqual(checks.check_ban_is_avoidable([], story), [])
+
+    def test_a_plan_that_needs_nothing_dropped_is_returned_untouched(self):
+        story = self._story("conspiracy")
+        self.assertIs(drop_unavoidable_bans(story), story)
 
 
 class TestBeatsSurviveSharpening(unittest.TestCase):
