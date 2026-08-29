@@ -768,6 +768,16 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         # two rounds after `deseam` had cut exactly that. Scoring alone accepted it, because the
         # totals improved. An action that cleared its own declared target is exempt — that is
         # `deseam` trading a seam for a shortfall, which is the trade it is *for*.
+        # Partial progress toward a length target counts. `_expand_passage` caps how far one
+        # passage may grow, so reaching a large shortfall is meant to take two rounds — but an
+        # expansion that added 101 of the 121 words needed scored identically to no expansion at
+        # all, was discarded, and after twice was sidelined. Scene 12 of a live run then had its
+        # seam cut, which made the shortfall worse, with the only repair for it switched off.
+        closer = False
+        if action in ("expand", "trim"):
+            before = abs(spec.word_target - scene.word_count())
+            after = abs(spec.word_target - candidate.word_count())
+            closer = after < before
         introduced = ({v.kind for v in new_det if v.severity is Severity.MAJOR}
                       - {v.kind for v in det_violations if v.severity is Severity.MAJOR})
         if introduced and not fixed_length:
@@ -779,7 +789,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             progress.stage(f"{action} {result.repairs}",
                            f"introduced {', '.join(sorted(introduced))} · discarded")
             continue
-        if not (improved or fixed_length):
+        if not (improved or fixed_length or (closer and no_new_blockers)):
             failure_streak[action] = failure_streak.get(action, 0) + 1
             if failure_streak[action] >= 2:
                 sidelined.add(action)

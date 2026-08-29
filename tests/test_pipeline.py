@@ -761,6 +761,42 @@ class TestLeakedProhibition(PipelineCase):
         self.assertNotIn("second hand in the book", result.scene.text)
 
 
+class TestPartialLengthProgress(PipelineCase):
+    """`_expand_passage` caps how far one passage may grow, so closing a large shortfall is meant
+    to take two rounds. Scene 12 of a live run added 101 of the 121 words it needed, scored
+    identically to having done nothing, was discarded twice and then sidelined — and when a later
+    `deseam` cut the scene shorter still, the only repair for it was switched off."""
+
+    def test_an_expansion_that_gets_closer_is_kept(self):
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        spec.word_target = 1200
+        short = BREAK.join([fakes.clean_prose(300, variant=1), "He set it down and waited.",
+                            fakes.clean_prose(300, variant=4)])
+        backend.queue("draft", short)
+        # Grows the thinnest passage, but not far enough to clear the length major.
+        backend.queue("passage", fakes.clean_prose(200, variant=6))
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=1))
+
+        self.assertGreater(result.scene.word_count(), len(short.split()))
+        self.assertFalse(any("expand attempt" in n and "discarded" in n for n in result.notes),
+                         result.notes)
+
+    def test_an_expansion_that_shrinks_the_scene_is_still_discarded(self):
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        spec.word_target = 1200
+        backend.queue("draft", BREAK.join([fakes.clean_prose(300, variant=1),
+                                           "He set it down and waited.",
+                                           fakes.clean_prose(300, variant=4)]))
+        backend.queue("passage", "Three words only")
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=1))
+
+        self.assertIn("length", {v.kind for v in result.violations})
+
+
 class TestARepairMustNotBreakSomethingElse(PipelineCase):
     """Whole-scene `_repair` regenerates the prose, so it can undo work a dedicated action has
     already done. On a live run it cleared a style leak and handed back an ending copied from the
