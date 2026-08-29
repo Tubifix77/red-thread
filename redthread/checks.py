@@ -1037,6 +1037,24 @@ run's scene 5 was reported missed however the scene went. `refuses to` is delibe
 """
 
 
+_WITHOUT_CLAUSE = re.compile(r"\s*\bwithout\b.*$", re.IGNORECASE | re.DOTALL)
+
+
+def verifiable_post(text: str) -> str:
+    """Strip a trailing "without …" clause from an obligation, keeping the event.
+
+    "Sofie makes the change without detection" contains a real event and an absence hung off it.
+    The event is something a judge confirms by reading; the absence is not, and a live run
+    reported the whole line missed however the scene went. Dropping the qualifier leaves an
+    obligation the judge can answer.
+
+    Only when something survives the cut. A post that is nothing but a "without" clause is an
+    absence outright, and `is_absence_post` sends it to the prohibition list instead.
+    """
+    stripped = _WITHOUT_CLAUSE.sub("", text).strip().rstrip(",")
+    return stripped if len(stripped.split()) >= 3 else text
+
+
 def is_absence_post(text: str) -> bool:
     """Is this `post` line entirely a thing not happening?
 

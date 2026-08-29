@@ -371,6 +371,24 @@ class TestPostNamesAnEvent(unittest.TestCase):
         """A refusal is dramatisable: the reader watches her not sign it."""
         self.assertFalse(checks.is_absence_post("Ingrid refuses to sign the haulage sheet"))
 
+    def test_an_unverifiable_qualifier_is_stripped_from_an_obligation(self):
+        """Scene 6 of a clean-slate run was required to bring about "Sofie makes the change
+        without detection" and reported missed however the scene went. The event is confirmable
+        by reading; the absence hung off it is not."""
+        self.assertEqual(checks.verifiable_post("Sofie makes the change without detection"),
+                         "Sofie makes the change")
+        self.assertEqual(checks.verifiable_post("Sofie signs the sheet without reading it"),
+                         "Sofie signs the sheet")
+
+    def test_a_post_that_is_only_a_qualifier_is_left_whole(self):
+        """Nothing survives the cut, so there is no event to keep."""
+        text = "without the harbourmaster present"
+        self.assertEqual(checks.verifiable_post(text), text)
+
+    def test_an_ordinary_obligation_is_untouched(self):
+        text = "Sofie hands the list to the harbourmaster"
+        self.assertEqual(checks.verifiable_post(text), text)
+
     def test_an_ordinary_leaving_is_not_an_absence(self):
         self.assertFalse(checks.is_absence_post("Dain leaves the vial on the ground"))
 

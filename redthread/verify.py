@@ -255,7 +255,10 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
                 if inverted:
                     forbidden.append((tid, f"[{label}] {inverted}"))
                 continue
-            required.append((tid, f"[{label}] {item}"))
+            # "Sofie makes the change without detection" is an event with an absence hung off
+            # it. The event is confirmable by reading; the absence is not, and a live run
+            # reported the whole line missed however the scene went.
+            required.append((tid, f"[{label}] {_checks.verifiable_post(item)}"))
         # op.to_state is deliberately NOT given to the judge. State names are this system's
         # bookkeeping labels ("chosen", "paid_off"), not textual events — a judge asked whether
         # prose "ends the thread in state paid_off" can only hallucinate the mapping, and a real
