@@ -658,16 +658,24 @@ def scrub_forbidden(plan: list[SceneSpec], story: StorySpec, models: Models) -> 
             return None
         prompt = SCRUB_PROMPT.format(
             phrases=", ".join(f'"{h}"' for h in hits), line=text.strip())
-        try:
-            reply = models.critic.complete(prompt, max_tokens=200, temperature=0.4)
-        except LLMError:
-            return None
-        line = reply.text.strip().strip('"').strip()
-        if not line or len(line.split()) > 2 * max(6, len(text.split())):
-            return None
-        if any(_contains_phrase(line, p) for p in banned):
-            return None
-        return line
+        # Two attempts, at rising temperature. The verification here is strict on purpose — a
+        # rewrite that still carries the phrase is discarded rather than accepted — and one shot
+        # at it leaves the plan carrying the word: a live run banned "truth" and kept the beat
+        # "She sees truth as shared burden rather than threat" because the single rewrite it got
+        # said "truth" again. A retry costs one small call and clears most of them.
+        for attempt in range(2):
+            try:
+                reply = models.critic.complete(prompt, max_tokens=200,
+                                               temperature=0.4 + 0.3 * attempt)
+            except LLMError:
+                return None
+            line = strip_reasoning(reply.text).strip().strip('"').strip()
+            if not line or len(line.split()) > 2 * max(6, len(text.split())):
+                continue
+            if any(_contains_phrase(line, p) for p in banned):
+                continue
+            return line
+        return None
 
     fixed = 0
     # The story bible first. `check_spec_self_consistency` reads the story *and* the plan, so a

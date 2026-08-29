@@ -1119,7 +1119,14 @@ def check_post_is_an_event(plan: list[SceneSpec], story: StorySpec) -> list[Viol
     return out
 
 
-_BEAT_PROSE = re.compile(r"['\"“”‘’][^'\"“”‘’]{12,}['\"“”‘’]")
+_BEAT_PROSE = re.compile(
+    # Double quotes are unambiguous. Single quotes are not: a beat reading "She connects pass's
+    # history to register's altered entries" has two apostrophes with twenty characters between
+    # them, and the first version of this read that as a line of dialogue — flagging a perfectly
+    # good beat and sending it off to be rewritten. So a single-quoted span must open at a word
+    # boundary and close at one, which a possessive never does.
+    r"[\"“”][^\"“”]{12,}[\"“”]"
+    r"|(?:^|[\s(\[—-])['‘][^'’\n]{12,}['’](?=$|[\s.,;:!?)\]—-])")
 
 
 def check_beats_are_intent(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:

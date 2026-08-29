@@ -363,6 +363,34 @@ class TestBriefLeakage(unittest.TestCase):
         self.assertEqual(found, [])
 
 
+class TestBeatIsProse(unittest.TestCase):
+    """A beat written as prose is prose the writer copies back. Only quoted dialogue is checked,
+    because that is the unambiguous mark — and the ambiguous one bit immediately."""
+
+    def _plan(self, beat: str):
+        from redthread.models import Thread, Transition
+        spec = make_spec(beats=[Beat(beat)],
+                         thread_ops={"T": Transition(post=["something happens"])})
+        story = make_story(threads=[Thread(id="T", name="A thread")])
+        return checks.check_beats_are_intent([spec], story)
+
+    def test_written_dialogue_is_flagged(self):
+        for beat in ("Dain speaks, his words cutting through the silence, "
+                     "'You will not take these years.'",
+                     'Varyn says, "Return the years, or face the consequences."'):
+            with self.subTest(beat=beat):
+                self.assertIn("beat_is_prose", kinds(self._plan(beat)))
+
+    def test_possessive_apostrophes_are_not_dialogue(self):
+        """From a live plan: "She connects pass's history to register's altered entries" has two
+        apostrophes twenty characters apart, and was flagged as a line of dialogue."""
+        for beat in ("She connects pass's history to register's altered entries",
+                     "Ingrid's hand shakes as she reads her mother's column of safe-days",
+                     "The villagers' meeting ends without a vote on the pass's closure"):
+            with self.subTest(beat=beat):
+                self.assertEqual(self._plan(beat), [])
+
+
 class TestCharacterOverlap(unittest.TestCase):
     def test_full_cast_cut_flagged(self):
         found = checks.check_character_overlap(make_spec(characters=["beata"]), ["siv", "otto"])
