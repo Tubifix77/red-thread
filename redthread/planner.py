@@ -331,6 +331,33 @@ def propose_story(premise: str, models: Models, attempts: int = 3) -> StorySpec:
 # 2. scene content, into the scheduled skeleton
 # ======================================================================================
 
+# The "something passing between them" rule in the beats section below is the best-evidenced
+# instruction in this file, and it is worth writing down why rather than leaving it as taste.
+#
+# Reading the middle of a 71-scene book found scene 38: one character alone in a ruin, touching
+# statues and remembering. Every check passed it, `summary_distance` included, because the
+# flashback it becomes is narrated in simple past. Measuring outward from that scene found the
+# emptying-out is a shape — dialogue runs at 21% of words across the opening eighteen scenes,
+# 15% in the next, 10% in the third, 9% in the last — and that 20 of the 71 scenes the plan had
+# populated with two or three characters came back with no dialogue at all.
+#
+# The cause is not the writer. Across those 70 two-character scenes, correlation between the
+# share of beats naming a spoken act and the share of prose that is dialogue is r = +0.672:
+#
+#     beats naming something said     scenes   mean dialogue   came back silent
+#     none                              33         .029           20 of 33
+#     one                               27         .101            6 of 27
+#     two or more                       10         .203            0 of 10
+#
+# Not one scene whose spec named two spoken acts came back silent. The model writes what it is
+# asked for; told "Vael reflects on the enclave's purpose" it writes reflection.
+#
+# A check for this was built and then removed. It flagged three scenes of the hand-authored
+# reference plan — "She leaves with a form and no remedy, and takes it out on the wrong person",
+# "The sisters, at the well, not resolving" — which are better beats than the planner writes and
+# describe interaction without any verb from a list. The correlation was measured on
+# planner-generated beats and does not transfer to a human's. The instruction is where the
+# leverage is; the check was pattern-matching the phrasing rather than the property.
 SCENES_PROMPT = """You are filling in scenes of a novel whose structure is already fixed. \
 Do not change the structure. Each scene below tells you which threads it must move and to which \
 state; your job is to decide what actually happens.
@@ -363,6 +390,11 @@ For each scene give:
   never "Dain steps forward, his boots crunching over dry leaves, his voice steady and low" and
   never a line of dialogue in quotation marks. The scene is written from the beat, so a beat
   written as prose is prose the scene will copy back word for word.
+  IF TWO OR MORE CHARACTERS ARE PRESENT, at least one beat must name something PASSING BETWEEN
+  them — a question asked, a demand refused, an accusation, a lie, an offer taken back. Name the
+  act, not the words: "Sera refuses to say who filed the record", never the line itself. Two
+  people in a room with nothing to say to each other is one person remembering, and the scene
+  comes out as a character walking through a place having thoughts about it.
 - "threads": for each thread id this scene must move, what the scene must BRING ABOUT ("post",
   1-3 concrete statements) and what it must NOT do ("forbid", 1-3 statements). Forbids are where
   premature reveals get prevented — use them.
