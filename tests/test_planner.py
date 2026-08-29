@@ -86,13 +86,14 @@ class PlannerBackend(ScriptedBackend):
     """Routes the planner's three prompt shapes on top of the pipeline roles."""
 
     def __init__(self, story: str | None = None, scenes_reply=None, beats_reply=None,
-                 scrub_reply=None, deprose_reply=None) -> None:
+                 scrub_reply=None, deprose_reply=None, restate_reply=None) -> None:
         super().__init__()
         self._story = story if story is not None else story_json()
         self._scenes = scenes_reply
         self._beats = beats_reply
         self._scrub = scrub_reply
         self._deprose = deprose_reply
+        self._restate = restate_reply
         self.story_calls = 0
         self.scene_calls = 0
         self.beat_calls = 0
@@ -117,6 +118,11 @@ class PlannerBackend(ScriptedBackend):
             text = self._scenes(indices) if callable(self._scenes) else (
                 self._scenes or scenes_json(indices))
             return Reply(text, model="scripted")
+        if "Rewrite this line from a novel outline" in prompt:
+            self.calls.append(("restate", prompt))
+            from redthread.llm import Reply
+            return Reply(self._restate if isinstance(self._restate, str)
+                         else "The snow gauge climbs past the mark.", model="scripted")
         if "Rewrite this outline beat" in prompt:
             self.calls.append(("deprose", prompt))
             from redthread.llm import Reply
@@ -541,6 +547,57 @@ class TestRulesAreRepairedAtParseTime(unittest.TestCase):
                       forbid=["Mira learns who wrote the second hand"])
         self.assertEqual(op.post, ["Mira photographs both entries"])
         self.assertEqual(op.forbid, ["Mira learns who wrote the second hand"])
+
+
+class TestStatePostsAreRestated(unittest.TestCase):
+    """`verify.check_threads` already skips an obligation that names a thread state, because
+    asking a judge whether prose "becomes unreliable again" can only produce a guess. Skipping it
+    at run time is safe and dishonest: the stored line still reads as a requirement and the audit
+    still reports a MAJOR. A live plan had one on its final scene."""
+
+    def _fixture(self):
+        from redthread.models import SceneSpec, StorySpec, Thread, Transition
+        thread = Thread(id="T", name="The Weather",
+                        states=["dormant", "unreliable", "predictable", "unreliable again"])
+        spec = SceneSpec(id="s15", index=15, summary="Ingrid exposes the alterations.",
+                         thread_ops={"T": Transition(
+                             post=["The weather becomes unreliable again",
+                                   "The villagers learn to trust the register"])})
+        return [spec], StorySpec(title="t", premise="p", threads=[thread])
+
+    def test_the_state_line_is_replaced_by_an_event(self):
+        from redthread.planner import scrub_state_posts
+        plan, story = self._fixture()
+        backend = PlannerBackend(restate_reply="The snow gauge climbs past the mark.")
+
+        fixed = scrub_state_posts(plan, story, models_with(backend))
+
+        self.assertEqual(fixed, 1)
+        self.assertEqual(plan[0].thread_ops["T"].post,
+                         ["The snow gauge climbs past the mark.",
+                          "The villagers learn to trust the register"])
+        self.assertEqual(checks.check_post_is_an_event(plan, story), [])
+
+    def test_a_rewrite_that_is_still_a_state_is_dropped(self):
+        """An obligation nothing can satisfy is worse than no obligation; the thread state is
+        applied by the commit either way."""
+        from redthread.planner import scrub_state_posts
+        plan, story = self._fixture()
+        backend = PlannerBackend(restate_reply="The weather is unreliable again")
+
+        scrub_state_posts(plan, story, models_with(backend))
+
+        self.assertEqual(plan[0].thread_ops["T"].post,
+                         ["The villagers learn to trust the register"])
+
+    def test_real_obligations_cost_no_calls(self):
+        from redthread.planner import scrub_state_posts
+        plan, story = self._fixture()
+        plan[0].thread_ops["T"].post = ["The villagers learn to trust the register"]
+        backend = PlannerBackend()
+
+        self.assertEqual(scrub_state_posts(plan, story, models_with(backend)), 0)
+        self.assertEqual(backend.count("restate"), 0)
 
 
 class TestBeatsSurviveSharpening(unittest.TestCase):
