@@ -112,6 +112,11 @@ DEDICATED_REPAIRS = {
     "seam_tail_copy": "deseam, then reseam",
 }
 
+# Kinds where the rule is a contract rather than a matter of craft: the phrase must not appear,
+# the reveal must not happen. When a rewrite of one of these fails verification, the sentence is
+# deleted whatever the scene's word count says, because the alternative is no progress at all.
+ABSOLUTE_KINDS = {"forbidden_phrase", "thread_prohibition"}
+
 NO_REPAIR = {"seam"}
 """Emitted only for an empty scene. There is nothing to repair, only to draft again."""
 
@@ -407,9 +412,14 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                 probe = Scene(spec_id=scene.spec_id, index=scene.index, text=replacement)
                 failed_verify = bool(checks.check_somatic(probe, max_allowed=0))
             if failed_verify:
-                if can_delete:
-                    # A sentence that fails verification twice is better gone than kept, and
-                    # the length budget says the scene can afford it.
+                # ABSOLUTE_KINDS are contract violations, not craft ones: the phrase must not
+                # appear, the reveal must not happen. For those the length guard is the wrong
+                # judge — scene 12 of a live run had the same banned word survive three rewrites
+                # and be skipped every time, because the scene was under target and so deletion
+                # was refused. Skipping makes no progress at all, while the shortfall a deletion
+                # creates has `_expand` waiting for it.
+                if can_delete or v.kind in ABSOLUTE_KINDS:
+                    # A sentence that fails verification is better gone than kept.
                     replacement = ""
                     notes.append(f"surgical: {v.kind} rewrite failed verification; deleted")
                 else:

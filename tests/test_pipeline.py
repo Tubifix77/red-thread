@@ -618,13 +618,17 @@ class TestSeamRepair(PipelineCase):
     def test_exhausted_actions_stop_the_loop_early(self):
         """Every action tried twice and failed means the remaining budget buys nothing."""
         models, backend = fakes.scripted_models()
-        backend.queue("draft", fakes.clean_prose(880)
-                      + " She finally saw the truth of the whole arrangement laid out plain.")
-        # Every surgical rewrite puts the forbidden phrase straight back, and whole-scene repair
-        # returns nothing usable. There is no round at which this starts working.
-        backend.queue("surgical", *["She saw the truth of it plain on the bench."] * 6)
-        result = write_scene(self.project, self.project.spec_at(1), models,
-                             Config(candidates=1, max_repairs=8))
+        spec = self.project.spec_at(1)
+        # A brief leak: the draft narrates its own beat back, and every surgical rewrite narrates
+        # it again. `brief_leak` is a craft violation, not a contract one, so there is no
+        # deletion fallback and no round at which this starts working.
+        beat = ("She copies the altered column into the spare ledger and initials the bottom "
+                "of the page")
+        spec.beats = [Beat(beat)]
+        backend.queue("draft", fakes.clean_prose(870) + " " + beat + ".")
+        backend.queue("surgical", *[beat + "."] * 8)
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=8))
 
         self.assertFalse(result.committed)
         self.assertLess(result.repairs, 8, "the loop should stop before the budget runs out")
@@ -704,6 +708,22 @@ class TestForbiddenPhraseRepair(PipelineCase):
 
         self.assertTrue(any("forbidden_phrase rewrite failed verification" in n
                             for n in result.notes), result.notes)
+
+    def test_an_unfixable_sentence_is_deleted_even_under_target(self):
+        """Scene 12 of a live run had the same banned word survive three rewrites and be skipped
+        every time, because the scene was under target and deletion was refused. Skipping makes
+        no progress at all; the shortfall a deletion creates has `_expand` waiting for it."""
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        spec.word_target = 1400
+        backend.queue("draft", fakes.clean_prose(700) + self.OFFENDER)
+        backend.queue("surgical", *["She saw the truth of it on the bench."] * 4)
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=2))
+
+        self.assertTrue(any("forbidden_phrase rewrite failed verification; deleted" in n
+                            for n in result.notes), result.notes)
+        self.assertNotIn("the truth", result.scene.text.lower())
 
     def test_a_clean_rewrite_is_accepted(self):
         models, backend = fakes.scripted_models()
