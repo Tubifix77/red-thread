@@ -703,7 +703,15 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     # Violation tuples tie often (two drafts, one major each). Distance to the word target
     # breaks the tie — a real run kept a 2.4x runaway over an on-length draft because the sort
     # was stable and the runaway arrived first.
-    scored.sort(key=lambda row: (row[0], abs(row[1].word_count() - spec.word_target)))
+    # Then by how much of the draft is repeated phrasing, bucketed so a trivial difference does
+    # not outrank a real length problem. This is the one quality axis the checks measure well and
+    # the gate cannot use: 29% of the median committed scene is duplicated material, and gating
+    # on that would halt books over something no sentence-local repair can mend. Selection can
+    # use it for free — the checks have already run on every candidate — and picking the cleaner
+    # of two drafts costs nothing and risks nothing.
+    scored.sort(key=lambda row: (row[0],
+                                 round(checks.duplication_ratio(row[1].text) * 20),
+                                 abs(row[1].word_count() - spec.word_target)))
     _, scene, det_violations = scored[0]
     result.scene = scene
     if len(scored) > 1:

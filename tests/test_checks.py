@@ -418,6 +418,48 @@ class TestSentenceSpans(unittest.TestCase):
         self.assertLess(elapsed, 0.5, f"took {elapsed:.2f}s — the quadratic path is back")
 
 
+class TestDuplicationRatio(unittest.TestCase):
+    """Repeated phrasing is the clearest quality signal this project can count, and it was not
+    being counted.
+
+    Measured over 84 committed scenes plus the three single-scene model comparisons in
+    `docs/evidence`: the phi4 and gemma drafts duplicate 0.0–0.2% of their 4-grams, the median
+    scene an 8B commits duplicates 29%, and a quarter of scenes are more than half repeated
+    material. Nothing else in `checks.py` separates prose like that.
+
+    It stays advisory, and `check_internal_repetition`'s docstring says why: 29% duplication is
+    the model's whole register, not six bad sentences, so no sentence-local repair reaches it and
+    gating would halt books over something nothing can mend. Candidate selection uses it instead,
+    where it is free and cannot deadlock.
+    """
+
+    LOOPING = ("She checked the gauge and wrote the number in the book. " * 30) + "Then it ended."
+    FRESH = ("She checked the gauge. He signed the sheet without reading it. The kettle clicked "
+             "off in the far room. A truck went past on the access road. Nobody said anything.")
+
+    def test_looping_prose_scores_near_one(self):
+        self.assertGreater(checks.duplication_ratio(self.LOOPING), 0.9)
+
+    def test_fresh_prose_scores_near_zero(self):
+        self.assertLess(checks.duplication_ratio(self.FRESH), 0.05)
+
+    def test_it_counts_occurrences_not_distinct_phrases(self):
+        """The first version counted distinct repeated phrases, which scored a page saying one
+        sentence thirty times as *cleaner* than varied prose — backwards, and caught by its own
+        test."""
+        many_phrases_twice = " ".join(
+            f"The {noun} had been left where it was. The {noun} had been left where it was."
+            for noun in ("ledger", "gauge", "kettle", "docket", "hasp"))
+        self.assertGreater(checks.duplication_ratio(self.LOOPING),
+                           checks.duplication_ratio(many_phrases_twice))
+
+    def test_the_violation_reports_the_percentage(self):
+        found = checks.check_internal_repetition(scene(self.LOOPING))
+        self.assertTrue(found)
+        self.assertIn("repeated material", found[0].detail)
+        self.assertTrue(all(v.severity is Severity.MINOR for v in found))
+
+
 class TestCopiedRuns(unittest.TestCase):
     """One copied phrase is one leak, however many n-grams fit inside it."""
 

@@ -198,6 +198,71 @@ _OPENINGS = [
 
 # Shared body. Varied sentence length on purpose: a block of same-length sentences would trip
 # `check_rhythm` and every pipeline test would fail for an unrelated reason.
+# Combinatorial filler. The handwritten pool below is 24 sentences, and a 900-word scene needs
+# roughly seventy — so `clean_prose` used to cycle it three times and scored 351 repeated
+# 4-grams per 1000 words, worse than the median scene an 8B commits. A fixture called
+# `clean_prose` that is measurably the least clean prose in the repository cannot test a
+# repetition check, which is how `check_internal_repetition` went years without one.
+#
+# Three independent lists multiply out to several hundred sentences sharing almost no 4-grams,
+# which is enough to build a long scene without cycling.
+_SUBJECTS = [
+    "The night crew",
+    "Whoever had the shift before her",
+    "The relief driver",
+    "Somebody in the office upstairs",
+    "The man from the depot",
+    "Her predecessor",
+    "The inspector who came in March",
+    "One of the yard hands",
+]
+
+_VERBS = [
+    "had signed off on",
+    "had left a pencil note beside",
+    "had queried",
+    "had stopped bothering with",
+    "had re-taped the corner of",
+    "had filed a duplicate of",
+    "had crossed out and reinstated",
+    "had pinned a reminder over",
+]
+
+_OBJECTS = [
+    "the intake log for that week",
+    "the spare-parts requisition",
+    "the wall chart by the door",
+    "the shift handover book",
+    "the calibration slip in the drawer",
+    "the delivery docket from Tuesday",
+    "the noticeboard behind the kettle",
+    "the folder nobody had opened since spring",
+]
+
+_TAILS = [
+    "and nobody had asked about it since.",
+    "which explained nothing and was filed anyway.",
+    "and the ink had gone brown at the edges.",
+    "without writing down why.",
+    "and the entry stayed where it was.",
+    "which was how these things usually went.",
+    "and it had stayed that way.",
+    "before the end of the month.",
+]
+
+
+def _combinatorial_filler() -> list[str]:
+    """Sentences that share almost no four-word runs, in a deterministic order."""
+    out = []
+    for i in range(len(_SUBJECTS) * len(_VERBS)):
+        subject = _SUBJECTS[i % len(_SUBJECTS)]
+        verb = _VERBS[(i // len(_SUBJECTS)) % len(_VERBS)]
+        obj = _OBJECTS[(i * 3 + 1) % len(_OBJECTS)]
+        tail = _TAILS[(i * 5 + 2) % len(_TAILS)]
+        out.append(f"{subject} {verb} {obj}, {tail}")
+    return out
+
+
 _FILLER = [
     "The pump cycled, caught, and settled.",
     "She counted eleven seconds before it went again.",
@@ -271,15 +336,24 @@ def clean_prose(words: int = 900, variant: int | None = None) -> str:
     closing = _CLOSINGS[(variant or 0) % len(_CLOSINGS)]
     out: list[str] = [opening]
     count = len(opening.split()) + len(closing.split())
-    # Rotate the filler per variant so consecutive scenes do not end on the same filler run-up
-    # to their (already distinct) closing sentences.
-    i = (variant or 0) * 3
-    while count < words:
-        sentence = _FILLER[i % len(_FILLER)]
-        i += 1
+    # Handwritten filler first, then the combinatorial pool, and each sentence used at most
+    # once. Cycling a 24-sentence list to reach 900 words put this fixture at 351 repeated
+    # 4-grams per 1000 — worse than the median scene an 8B commits, and enough to make it
+    # useless for testing a repetition check.
+    pool = _FILLER + _combinatorial_filler()
+    # Rotate per variant so consecutive scenes do not share their filler run-up to their
+    # (already distinct) closing sentences.
+    start = (variant or 0) * 3
+    # Two passes at most: the pool holds roughly 1,300 words, and the runaway-length fixtures
+    # ask for 2,300. Repeating is what those tests are *for* — they need an over-long scene, not
+    # a clean one — so the second lap is allowed and the first is not.
+    for offset in range(len(pool) * 3):
+        if count >= words:
+            break
+        sentence = pool[(start + offset) % len(pool)]
         length = len(sentence.split())
         if count + length > words * 1.12:
-            break
+            continue
         out.append(sentence)
         count += length
     out.append(closing)

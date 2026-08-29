@@ -772,16 +772,51 @@ def check_repetition(scene: Scene, committed_texts: list[str], n: int = 5,
                       f"{shown}", "check_repetition", " ".join(repeats[0]))]
 
 
-def check_internal_repetition(scene: Scene, n: int = 4, max_repeats: int = 1) -> list[Violation]:
-    """The same phrase twice inside one scene. Engineering judgement, not sourced."""
+def duplication_ratio(text: str, n: int = 4) -> float:
+    """Fraction of the text's n-grams that are repeats. 0 is all fresh, 1 is one phrase looping.
+
+    The clearest quality signal this project can count, and it was not being counted. Measured
+    over 84 committed scenes plus the three single-scene model comparisons in `docs/evidence`:
+
+        gemma3:12b, phi4:14b   0.000 – 0.002
+        qwen3:8b, one scene    0.026
+        committed scenes       median 0.289, p75 0.566, p90 0.630
+
+    More than a quarter of the median committed scene is repeated material, and a quarter of
+    scenes are more than half repeated. Counting *distinct* repeated phrases instead — the first
+    version of this — scored a page that says one sentence thirty times as cleaner than varied
+    prose, which is backwards.
+    """
+    grams = ngrams(words(text), n)
+    if not grams:
+        return 0.0
+    return 1 - len(set(grams)) / len(grams)
+
+
+def check_internal_repetition(scene: Scene, n: int = 4,
+                              max_repeats: int = 1) -> list[Violation]:
+    """The same phrase twice inside one scene. Engineering judgement, not sourced.
+
+    Advisory on purpose, and the reasoning is worth recording because the obvious move is wrong.
+    The duplication ratio discriminates beautifully — clean drafts sit at 0.00, the median scene
+    an 8B commits at 0.29 — so the temptation is to make a high ratio a MAJOR and let repair fix
+    it. But repeated phrasing is not localised: 29% duplication is not six bad sentences, it is
+    the model's whole register, and no sentence-local repair reaches it. Gating would halt books
+    over something nothing in the loop can mend.
+
+    So the ratio is reported here and *acted on* where it costs nothing and cannot deadlock: in
+    candidate selection, where the cleanest of several drafts wins. See `_score` in pipeline.py.
+    """
     counts = Counter(ngrams(words(scene.text), n))
     dupes = [(g, c) for g, c in counts.items() if c > max_repeats]
     if not dupes:
         return []
     dupes.sort(key=lambda gc: -gc[1])
+    ratio = duplication_ratio(scene.text, n)
     shown = "; ".join(f'"{" ".join(g)}" x{c}' for g, c in dupes[:5])
     return [Violation("internal_repetition", Severity.MINOR,
-                      f"{len(dupes)} phrase(s) repeated within the scene: {shown}",
+                      f"{len(dupes)} phrase(s) repeated within the scene "
+                      f"({ratio:.0%} of it is repeated material): {shown}",
                       "check_internal_repetition", " ".join(dupes[0][0]))]
 
 

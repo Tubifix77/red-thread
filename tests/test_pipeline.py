@@ -1067,6 +1067,40 @@ class TestRedraftWhenEveryRepairFails(PipelineCase):
                              or "drafted again" in n), 1, result.notes)
 
 
+class TestSelectionPrefersFresherProse(PipelineCase):
+    """The one quality axis the checks measure well and the gate cannot use.
+
+    29% of the median scene an 8B commits is repeated phrasing. Gating on that would halt books
+    over something no sentence-local repair can mend — but selection can use it for free, because
+    the checks have already run on every candidate, and picking the cleaner of two drafts costs
+    nothing and risks nothing. Before this, a draft that repeated one line thirty times and a
+    fresh one both scored "1 minor" and the first to arrive won.
+    """
+
+    def test_the_less_repetitive_draft_wins_a_tie(self):
+        models, backend = fakes.scripted_models()
+        looping = ("She checked the gauge and wrote the number down. " * 55).strip()
+        fresh = fakes.clean_prose(880, variant=1)
+        backend.queue("draft", looping, fresh)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=2, max_repairs=0))
+
+        self.assertLess(checks.duplication_ratio(result.scene.text), 0.5)
+        self.assertNotIn("wrote the number down. She checked", result.scene.text)
+
+    def test_a_violation_still_outranks_repetition(self):
+        """Duplication is a tie-break, not a veto: a clean-reading draft with a blocker in it is
+        still the worse draft."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.prose_with_heading(), fakes.clean_prose(880, variant=2))
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=2, max_repairs=0))
+
+        self.assertEqual(result.blockers(), [])
+
+
 class TestPartialLengthProgress(PipelineCase):
     """`_expand_passage` caps how far one passage may grow, so closing a large shortfall is meant
     to take two rounds. Scene 12 of a live run added 101 of the 121 words it needed, scored
