@@ -552,8 +552,10 @@ class TestManuscriptRefrain(unittest.TestCase):
         current = "The gate stood open. She had not meant to look at it again that morning."
         found = checks.check_repetition(scene(current), earlier)
         self.assertTrue(found)
-        self.assertIn("not meant to look", found[0].detail)
-        self.assertIn("7 scenes", found[0].detail)
+        # Which of the overlapping 5-grams wins is incidental; that a refrain is named, and how
+        # far it has spread, is the point.
+        self.assertIn("has now appeared in 7 scenes", found[0].detail)
+        self.assertIn("not meant to", found[0].detail)
 
     def test_ordinary_overlap_lists_examples_instead(self):
         earlier = ["She put the ledger on the bench and went out to the yard."]
