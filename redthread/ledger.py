@@ -83,6 +83,37 @@ def is_moveable_pair(a: Fact, b: Fact) -> bool:
     return bool(_PLACE.search(a.object) and _PLACE.search(b.object))
 
 
+_POSSESSION = re.compile(
+    r"\b(?:carry|carries|carrying|hold|holds|holding|wear|wears|wearing|grip|grips|gripping|"
+    r"clutch\w*|grasp\w*|bear|bears|bearing|keeps? in|has in|had in)\b", re.IGNORECASE)
+
+
+def is_possession_pair(a: Fact, b: Fact) -> bool:
+    """Do these two facts just say what somebody was carrying at two different moments?
+
+    The same argument as `is_moveable_pair`, for the other half of the same idea: that guard
+    covers where a thing *is*, and this one covers who is *holding* it. Both are `STATE`, which
+    this codebase defines as "something now true that stays true until something changes it" —
+    the kind of fact that is supposed to change.
+
+    The 71-scene run halted at scene 37 on `Vael | is carrying | a blade` from scene 27 against
+    `Vael | is carrying | a bundle`. Ten scenes apart, a character who has put one thing down
+    and picked another up is not a contradiction; it is the story. The judge was asked and said
+    contradiction, which is what a judge will always say to two different objects — it has no
+    notion of elapsed time. It should never have been asked.
+
+    This is the failure mode that only appears at length. Across every ledger in the project
+    there are 35 possession facts and just three subject-and-predicate keys carrying more than
+    one object, so nine-scene books never met it. One of the three stopped a book at scene 37.
+
+    Restricted to `STATE`, like its sibling, and that restriction is load-bearing: `Vael | has a
+    | scar on his wrist` is a `DETAIL`, so a scar that moves to the other wrist is still caught.
+    """
+    if a.kind is not FactKind.STATE or b.kind is not FactKind.STATE:
+        return False
+    return bool(_POSSESSION.search(a.predicate) and _POSSESSION.search(b.predicate))
+
+
 _MIND = re.compile(
     r"\b(?:believ\w*|belief|beliefs|think\w*|thought|thoughts|assum\w*|suspect\w*|"
     r"doubt\w*|know|knows|known|knew|understand\w*|understood|convinced|certain|unsure|"
@@ -232,6 +263,7 @@ class Ledger:
                     continue
                 if (normalise(old.object) == normalise(nf.object) or same_claim(old, nf)
                         or is_moveable_pair(old, nf)
+                        or is_possession_pair(old, nf)
                         or is_belief_pair(old, nf)
                         or claim_class(old) != claim_class(nf)):
                     continue
@@ -253,6 +285,7 @@ class Ledger:
                     continue
                 if (normalise(old.object) == normalise(nf.object) or same_claim(old, nf)
                         or is_moveable_pair(old, nf)
+                        or is_possession_pair(old, nf)
                         or is_belief_pair(old, nf)
                         or claim_class(old) != claim_class(nf)):
                     continue

@@ -265,3 +265,46 @@ class TestNormalisation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPossessionChangesAreNotContradictions(unittest.TestCase):
+    """What somebody is carrying is a thing that changes. That is what a STATE is.
+
+    The 71-scene run halted at scene 37 on `Vael | is carrying | a blade` from scene 27 against
+    `Vael | is carrying | a bundle`. Ten scenes apart, a character who put one thing down and
+    picked another up is not a contradiction; it is the story. The judge was asked and said
+    contradiction, which is what a judge will always say to two different objects — it has no
+    notion of elapsed time. The fix is not a better judge, it is not asking.
+
+    The failure only appears at length: across every ledger in the project there are 35
+    possession facts and three subject-and-predicate keys carrying more than one object, so no
+    nine-scene book ever met it.
+    """
+
+    def _fact(self, predicate, obj, scene, kind=FactKind.STATE):
+        return Fact("Vael", predicate, obj, scene, kind)
+
+    def test_the_pair_that_halted_the_book_is_not_a_candidate(self):
+        ledger = Ledger([self._fact("is carrying", "a blade", 27)])
+        new = self._fact("is carrying", "a bundle", 37)
+        self.assertEqual(ledger.conflict_candidates([new]), [])
+
+    def test_other_possession_verbs_too(self):
+        for verb in ("holds", "is holding", "wears", "is wearing", "grips", "clutches"):
+            with self.subTest(verb=verb):
+                ledger = Ledger([self._fact(verb, "a lantern", 3)])
+                new = self._fact(verb, "a coil of rope", 14)
+                self.assertEqual(ledger.conflict_candidates([new]), [])
+
+    def test_a_fixed_detail_is_still_checked(self):
+        """The load-bearing restriction. A scar is a DETAIL — a particular the prose has fixed
+        and cannot change — so a scar that moves wrists is exactly what this system is for."""
+        ledger = Ledger([self._fact("has a", "scar on his left wrist", 27, FactKind.DETAIL)])
+        new = self._fact("has a", "scar on his right wrist", 37, FactKind.DETAIL)
+        self.assertTrue(ledger.conflict_candidates([new]),
+                        "a fixed physical detail changing is a real contradiction")
+
+    def test_it_does_not_swallow_an_unrelated_state_conflict(self):
+        ledger = Ledger([self._fact("is", "dead", 27)])
+        new = self._fact("is", "alive", 37)
+        self.assertTrue(ledger.conflict_candidates([new]))
