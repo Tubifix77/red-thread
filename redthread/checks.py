@@ -559,12 +559,22 @@ def check_pov(scene: Scene, story: StorySpec, max_slips: int = 2) -> list[Violat
             pervasive = len(first) > max(6, scene.word_count() // 120)
             match = _FIRST_PERSON.search(narration)
             start = max(0, match.start() - 50) if match else 0
+            # The pervasive case is deliberately quoteless, and that is the whole of its routing.
+            # A quote is an invitation to sentence surgery, and surgery cannot fix narration
+            # that is in the wrong person: gemma3:12b wrote scene 11 of a live run with 35
+            # first-person uses outside dialogue, and the repair loop rewrote one sentence of
+            # them three times before running out of budget. Without a quote the violation
+            # cannot be located, which routes it to whole-scene repair and then to a redraft —
+            # the only two things that can reach a register.
+            quote = "" if pervasive else (
+                narration[start:match.end() + 60].strip() if match else "")
             out.append(Violation(
                 "pov_person", Severity.BLOCKER if pervasive else Severity.MAJOR,
                 f"contract is '{story.style.pov}' but the narration uses first person "
                 f"{len(first)} time(s) outside dialogue"
-                + (" — the scene is written in the wrong person" if pervasive else ""),
-                "check_pov", narration[start:match.end() + 60].strip() if match else ""))
+                + (" — the scene is written in the wrong person, so it needs redrafting rather "
+                   "than repair" if pervasive else ""),
+                "check_pov", quote))
         if len(second) > max_slips:
             # One violation per offending sentence, quoted. Reported as a bare count with no
             # quote, this routed to whole-scene repair — the only thing left when nothing can be

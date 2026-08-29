@@ -892,3 +892,39 @@ class TestRecapBlock(unittest.TestCase):
         found = checks.run_all(self._scene(fakes.recap_prose(700, 0)),
                                make_spec(word_target=700), make_story())
         self.assertIn("recap_block", {v.kind for v in found})
+
+
+class TestPervasivePovIsNotQuoted(unittest.TestCase):
+    """A quote is an invitation to sentence surgery, so a register must not carry one.
+
+    gemma3:12b wrote scene 11 of a live run with 35 first-person uses outside a third-limited
+    contract. The violation quoted the first of them, surgery took the bait, and the loop
+    rewrote one sentence of thirty-five three times before the budget ran out. The check's own
+    docstring already said narration in the wrong person "needs rewriting, not patching"; the
+    quote was what stopped that from being true.
+    """
+
+    def _run(self, text):
+        return checks.check_pov(scene(text), make_story(
+            style=StyleContract(pov="third limited", tense="past")))
+
+    def test_wholesale_first_person_is_a_blocker_with_no_quote(self):
+        text = " ".join(
+            f"I walked to the {n} and I put my hand on it and I waited." for n in
+            ("door", "bench", "window", "gate", "stove", "table", "rail", "sink", "chair"))
+        found = [v for v in self._run(text) if v.kind == "pov_person"]
+        self.assertEqual(len(found), 1)
+        self.assertIs(found[0].severity, Severity.BLOCKER)
+        self.assertEqual(found[0].quote, "",
+                         "a quote routes this to sentence surgery, which cannot converge on it")
+
+    def test_a_handful_of_slips_still_carries_a_quote(self):
+        """The other half of the distinction. A few first-person slips in close third *are*
+        sentence-local, and taking their quote away would send them to whole-scene repair."""
+        text = ("She crossed the yard and put her shoulder to the door. The hinge gave. "
+                "I could not have said why she stopped there. She counted the crates twice "
+                "and wrote the number on the back of her hand, then went back inside.")
+        found = [v for v in self._run(text) if v.kind == "pov_person"]
+        if found:
+            self.assertIs(found[0].severity, Severity.MAJOR)
+            self.assertTrue(found[0].quote, "a locatable slip should keep its quote")
