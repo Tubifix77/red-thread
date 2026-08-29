@@ -37,6 +37,31 @@ def jaccard(a: set[str], b: set[str]) -> float:
     return len(a & b) / len(a | b)
 
 
+_PLACE = re.compile(
+    r"\b(?:in|on|under|behind|beside|between|at|inside|outside|over|near|beneath|atop|"
+    r"against|by|from|across|through|onto|into|within|below|above|next to|"
+    r"in front of)\b", re.IGNORECASE)
+
+
+def is_moveable_pair(a: Fact, b: Fact) -> bool:
+    """Do these two facts just say where something was at two different moments?
+
+    A `STATE` is defined in this codebase as "something now true that stays true until something
+    changes it" — the kind of fact that is *supposed* to change. So two states placing the same
+    subject somewhere are a subject that moved, not a contradiction. A live run blocked scene 8
+    on `The register | is | open on the table` against `the register | is | in the drawer`, three
+    scenes apart, and on `is | still cool from the night air` against the same. The judge was
+    asked and said contradiction; it should never have been asked.
+
+    Restricted to `STATE` on purpose. A `DETAIL` is "a concrete particular the prose has now
+    fixed and cannot change" — a scar on the left hand against one on the right is exactly the
+    contradiction this system exists to catch, and it stays checked.
+    """
+    if a.kind is not FactKind.STATE or b.kind is not FactKind.STATE:
+        return False
+    return bool(_PLACE.search(a.object) and _PLACE.search(b.object))
+
+
 def same_claim(a: Fact, b: Fact) -> bool:
     """Do these two quadruples assert the same thing, differently split?
 
@@ -161,7 +186,8 @@ class Ledger:
             for old in by_key.get(nf.key(), []):
                 if old is nf or old.scene == nf.scene:
                     continue
-                if normalise(old.object) == normalise(nf.object) or same_claim(old, nf):
+                if (normalise(old.object) == normalise(nf.object) or same_claim(old, nf)
+                        or is_moveable_pair(old, nf)):
                     continue
                 mark = (id(old), id(nf))
                 if mark not in seen:
@@ -179,7 +205,8 @@ class Ledger:
                     continue
                 if jaccard(content_tokens(old.predicate), nf_pred) < similarity:
                     continue
-                if normalise(old.object) == normalise(nf.object) or same_claim(old, nf):
+                if (normalise(old.object) == normalise(nf.object) or same_claim(old, nf)
+                        or is_moveable_pair(old, nf)):
                     continue
                 mark = (id(old), id(nf))
                 if mark not in seen:

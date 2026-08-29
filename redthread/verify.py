@@ -132,6 +132,10 @@ Not a contradiction:
 - the SAME fact recorded twice in different words — "X | has | read the records" and
   "X | has read | records" are one fact, not two, and repetition is never a contradiction
 - one fact being more specific than the other ("carries a notebook", "carries a green notebook")
+- WHERE something or someone is. A register on the table in one scene and in a drawer in another
+  is a register somebody moved; a character in the office and later at the pass is a character
+  who walked there. Position is never a contradiction.
+- a transient physical description — warm, cold, damp, dusty, dark. Those change by the hour.
 
 A contradiction:
 - the same unchanging detail given two different values (eye colour, a scar's location, a name)

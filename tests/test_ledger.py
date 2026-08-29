@@ -140,6 +140,30 @@ class TestConflictCandidates(unittest.TestCase):
         ledger.add(new)
         self.assertEqual(len(ledger.conflict_candidates([new])), 1)
 
+    def test_a_state_that_moved_is_not_a_candidate(self):
+        """A live run blocked scene 8 on `The register | is | open on the table` against
+        `the register | is | in the drawer`, three scenes apart. A STATE is defined here as
+        something that stays true *until something changes it* — two states placing the same
+        subject somewhere are a subject that moved."""
+        ledger = Ledger([f("The register", "is", "open on the table", 5, FactKind.STATE)])
+        new = f("the register", "is", "in the drawer", 8, FactKind.STATE)
+        ledger.add(new)
+        self.assertEqual(ledger.conflict_candidates([new]), [])
+
+    def test_a_fixed_detail_in_two_places_is_still_a_candidate(self):
+        """A DETAIL is "a concrete particular the prose has now fixed and cannot change". A scar
+        on the left hand against one on the right is the contradiction this system is for."""
+        ledger = Ledger([f("the scar", "is", "on his left hand", 1, FactKind.DETAIL)])
+        new = f("the scar", "is", "on his right hand", 6, FactKind.DETAIL)
+        ledger.add(new)
+        self.assertEqual(len(ledger.conflict_candidates([new])), 1)
+
+    def test_a_non_locative_state_change_is_still_a_candidate(self):
+        ledger = Ledger([f("the door", "is", "welded shut", 2, FactKind.STATE)])
+        new = f("the door", "is", "standing open", 9, FactKind.STATE)
+        ledger.add(new)
+        self.assertEqual(len(ledger.conflict_candidates([new])), 1)
+
     def test_different_subjects_are_never_candidates(self):
         ledger = Ledger([f("Siv", "eye colour", "grey", 1, FactKind.DETAIL)])
         new = f("Otto", "eye colour", "brown", 6, FactKind.DETAIL)
