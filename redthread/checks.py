@@ -784,6 +784,36 @@ def check_character_overlap(spec: SceneSpec, previous_characters: list[str]) -> 
 # 7. cross-manuscript repetition  (RESEARCH.md section 6 — homogeneity)
 # --------------------------------------------------------------------------------------
 
+def manuscript_refrains(committed_texts: list[str], n: int = 5, min_scenes: int = 3,
+                        limit: int = 10) -> list[tuple[str, int]]:
+    """Phrases this book has already used in several separate scenes, worst first.
+
+    `check_repetition` finds these and reports them, and reporting is all it can do: a refrain
+    is a property of the manuscript, and no repair applied to scene 37 removes a phrase from
+    scenes 4, 9 and 22. The only place it can be acted on is *before* the next scene is written.
+
+    Found by running 71 scenes instead of nine. Every scene of that book was individually clean
+    — duplication .001 per scene — while the manuscript measured .030, thirty times higher, with
+    "the blade at his side" in 8 of 37 scenes, "a pause stretched between them" in 4, and
+    "casting long shadows across the" in 4. At nine scenes the same measure reads .015, so this
+    is a defect that scales with length and is nearly invisible below it.
+
+    The list stays short and appears late by construction: nothing at five scenes, three at ten,
+    capped at `limit` after that. A five-word run is specific enough to route around — the same
+    argument `check_ban_is_avoidable` makes for why a two-word ban is fair and a one-word ban is
+    not — so this can be handed to the writer as a prohibition without starting a fight the
+    prose loses.
+    """
+    if not committed_texts:
+        return []
+    seen: Counter[tuple[str, ...]] = Counter()
+    for text in committed_texts:
+        seen.update(set(ngrams(words(text), n)))
+    hot = [(" ".join(g), c) for g, c in seen.items() if c >= min_scenes]
+    hot.sort(key=lambda kv: (-kv[1], kv[0]))
+    return hot[:limit]
+
+
 def check_repetition(scene: Scene, committed_texts: list[str], n: int = 5,
                      max_repeats: int = 0, refrain: int = 4) -> list[Violation]:
     """Imagery and phrasing reused from earlier scenes.

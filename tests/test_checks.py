@@ -995,3 +995,60 @@ class TestGesture(unittest.TestCase):
         found = checks.run_all(self._scene(self.FIDGET),
                                make_spec(word_target=60), make_story())
         self.assertIn("gesture_density", {v.kind for v in found})
+
+
+class TestManuscriptRefrains(unittest.TestCase):
+    """A refrain is the manuscript's defect, not any scene's, so it is prevented not repaired.
+
+    Found by running 71 scenes instead of nine. Every scene of that book was individually clean
+    — duplication .001 per scene — while the manuscript measured .030, with "the blade at his
+    side" appearing in 8 separate scenes of 37. `check_repetition` finds this and reporting is
+    all it can do: no repair applied to scene 37 removes a phrase from scenes 4, 9 and 22. The
+    only place to act on it is the brief for the scene not yet written.
+    """
+
+    # Every scene needs its own filler. A shared one is itself a refrain across the fixture,
+    # which the first version of this test discovered by ranking its own scaffolding first.
+    _FILLER = ["she counted the crates twice", "the pump cycled and caught", "rain came sideways",
+               "he signed the docket", "the ferry was late again", "someone had moved the stove",
+               "the tide turned early", "a gull went over", "the kettle was still going",
+               "the lamp needed trimming", "he wound the clock", "the yard door stuck"]
+
+    def _scenes(self, phrase, count, offset=0):
+        return [f"{phrase}, and {self._FILLER[(i + offset) % len(self._FILLER)]}."
+                for i in range(count)]
+
+    def test_a_phrase_in_three_scenes_is_a_refrain(self):
+        found = checks.manuscript_refrains(self._scenes("the blade at his side", 3))
+        self.assertTrue(any("blade at his side" in p for p, _ in found))
+
+    def test_two_scenes_is_not_yet_a_refrain(self):
+        """It has to be a pattern before it is worth spending brief space on."""
+        found = checks.manuscript_refrains(self._scenes("the blade at his side", 2))
+        self.assertEqual(found, [])
+
+    def test_nothing_to_report_before_there_is_a_manuscript(self):
+        self.assertEqual(checks.manuscript_refrains([]), [])
+
+    def test_the_count_is_scenes_not_occurrences(self):
+        """Ten uses in one scene is `check_internal_repetition`'s problem and has a repair.
+        This is the other axis: a phrase used once each in many scenes, which has none."""
+        one_scene = ["the blade at his side. " * 10]
+        self.assertEqual(checks.manuscript_refrains(one_scene), [])
+
+    def test_the_list_is_capped_and_ordered_worst_first(self):
+        texts = (self._scenes("the blade at his side", 8)
+                 + self._scenes("a pause stretched between them", 4, offset=8))
+        found = checks.manuscript_refrains(texts, limit=3)
+        self.assertLessEqual(len(found), 3)
+        self.assertEqual(found[0][1], 8)
+        self.assertTrue(all(found[i][1] >= found[i+1][1] for i in range(len(found)-1)))
+
+    def test_it_reaches_the_brief(self):
+        from redthread import brief as briefmod
+        from redthread.ledger import Ledger
+        text = briefmod.render_brief(
+            make_spec(), make_story(), Ledger(),
+            refrains=[("the blade at his side", 8)])
+        self.assertIn("the blade at his side", text)
+        self.assertIn("refrain", text.lower())

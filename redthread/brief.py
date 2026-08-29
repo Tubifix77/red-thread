@@ -146,6 +146,7 @@ def render_brief(
     previous_tail: str = "",
     previous_characters: list[str] | None = None,
     slop_sample: list[str] | None = None,
+    refrains: list[tuple[str, int]] | None = None,
 ) -> str:
     """Assemble the complete brief for one scene-writing session."""
     previous_characters = previous_characters or []
@@ -236,6 +237,20 @@ def render_brief(
             f"{len(ANTI_TELLS)+2}. These phrasings are statistically over-represented in "
             f"machine-written prose. Avoid all of them and anything in the same register: "
             + "; ".join(f'"{p}"' for p in slop_sample)
+        )
+    if refrains:
+        # The only place a refrain can be acted on. `check_repetition` finds them and can do
+        # nothing else: no repair applied to scene 37 removes a phrase from scenes 4, 9 and 22.
+        # A 71-scene run measured .001 duplication *per scene* and .030 across the manuscript,
+        # with "the blade at his side" in 8 scenes of 37 — every scene individually clean, the
+        # book repetitive. At nine scenes the same measure reads .015, so the defect scales with
+        # length and is nearly invisible below it.
+        prohibitions.append(
+            f"{len(ANTI_TELLS)+3}. THIS BOOK has already used the phrases below, each in "
+            f"several separate scenes. They are becoming a refrain nobody wrote. Do not use any "
+            f"of them again, and do not reach for the image behind them — a new wording of the "
+            f"same picture is the same refrain: "
+            + "; ".join(f'"{p}" (in {c} scenes)' for p, c in refrains)
         )
     parts.append("\n".join(prohibitions))
 
