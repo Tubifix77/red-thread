@@ -1033,6 +1033,24 @@ class TestARepairMustNotBreakSomethingElse(PipelineCase):
                         result.notes)
         self.assertNotIn("seam_tail_copy", {v.kind for v in result.violations})
 
+    def test_a_repair_may_still_trade_several_majors_for_one(self):
+        """The guard is about reintroduction, not novelty. An earlier version rejected any new
+        MAJOR kind, which stopped `_surgical` deleting anything: cutting four flagged sentences
+        drops the scene under target and creates a `length` that was never there. Scene 6 of a
+        clean-slate run had every surgical attempt thrown away for exactly that."""
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        spec.word_target = 850
+        gloss = (" She realised then that the founders had known. In that moment, she "
+                 "understood the cost. That was what it meant to keep a village fed.")
+        backend.queue("draft", fakes.clean_prose(880) + gloss)
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=3))
+
+        self.assertTrue(any("deleted the thematic_gloss" in n for n in result.notes),
+                        result.notes)
+        self.assertNotIn("thematic_gloss", {v.kind for v in result.violations})
+
 
 class TestMissedObligation(PipelineCase):
     """A missed obligation is the one violation with nothing to point at: the judge says the

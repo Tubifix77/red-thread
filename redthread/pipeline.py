@@ -687,6 +687,9 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     # A real scene burned all five rounds on expansions that came back unusable while two
     # style leaks — surgically fixable in one pass — never got a turn.
     sidelined: set[str] = set()
+    cleared: set[str] = set()
+    """MAJOR kinds an accepted repair has removed from this scene. A later repair that
+    brings one back is undoing work, however well its totals score."""
     failure_streak: dict[str, int] = {}
     redrafted = False
 
@@ -871,6 +874,8 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             result.notes.append(f"{action} attempt {result.repairs} did not improve; discarded")
             progress.stage(f"{action} {result.repairs}", "no improvement · discarded")
             continue
+        cleared |= ({v.kind for v in det_violations if v.severity is Severity.MAJOR}
+                    - {v.kind for v in new_det if v.severity is Severity.MAJOR})
         failure_streak[action] = 0
         sidelined.discard(action)
         scene, result.scene = candidate, candidate
