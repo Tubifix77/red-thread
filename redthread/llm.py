@@ -172,7 +172,7 @@ class OpenAICompatBackend(Backend):
 # Ollama, native API
 # --------------------------------------------------------------------------------------
 
-WRITER_OPTIONS = {"num_ctx": 8192, "repeat_penalty": 1.2, "repeat_last_n": 512}
+WRITER_OPTIONS = {"num_ctx": 8192, "repeat_penalty": 1.2, "repeat_last_n": 1536}
 """Sampler settings for the prose role. Every number here was measured, not chosen.
 
 Ollama's `repeat_penalty` default is 1.0, which is *disabled* (verified against
@@ -196,6 +196,24 @@ rather than instinct: character names fell from ~17 occurrences per scene to 5, 
 penalty that strong suppresses the legitimate repetition a scene is made of. `gemma3:12b`
 writing the same scenes inside this orchestrator sits at a type-token ratio of .474–.478; 1.20
 lands at .542 and 1.30 at .810, which is a model straining for novelty rather than writing.
+
+`repeat_last_n` has to cover the whole scene or the penalty is only half applied. Ollama's
+default is 64 tokens; the first value shipped here was 512, which is about 380 words, and a
+scene is three times that. The consequence showed up as soon as scene length was swept: at a
+1,800-word target, one draft in four collapsed back to the old behaviour — duplication .477 —
+because the model was repeating material from earlier in the same scene, outside the window that
+would have penalised it. Widening it removed that entirely:
+
+    repeat_last_n    duplication   collapsed   character names
+        512             .125         1 of 4         16.0
+       1536             .005         0 of 4         23.5
+       3072             .004         0 of 4         18.2
+
+1536 tokens is roughly 1,150 words, which covers a scene at this project's targets. 3072
+measures the same but reaches further back into the brief for no benefit, and the window is
+shared with the prompt — a penalty stretching over the beats and the cast list is a penalty on
+the vocabulary the scene is supposed to use. Character-name counts say neither setting is doing
+that yet, which is the thing to re-check if this is widened again.
 
 `num_ctx` is here for a smaller reason that is still a real one. Ollama's runtime default is
 4096, a scene brief runs to about 2,470 tokens, and a 1,500-word draft is another 2,000 — so a

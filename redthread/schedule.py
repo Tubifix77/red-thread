@@ -32,12 +32,12 @@ from dataclasses import dataclass, field
 from .models import SceneSpec, Thread, ThreadKind, Transition
 
 DEFAULT_SCENE_WORDS = 850
-"""Average words per scene, set from measurement rather than taste.
+"""Average words per scene. The measurement that set this number no longer holds — read on.
 
-Repeated phrasing — the fraction of a scene's 4-grams that are duplicates — rises steeply with
-scene length on a local 8B. Across 87 committed scenes and the single-scene model comparisons in
-`docs/evidence`, correlation of length with duplication is r = 0.68, and it is positive within
-every individual book (r = +0.35 to +0.90, so it is not a between-book artefact):
+**The original finding.** Repeated phrasing — the fraction of a scene's 4-grams that are
+duplicates — rose steeply with scene length on a local 8B. Across 87 committed scenes and the
+single-scene comparisons in `docs/evidence`, correlation of length with duplication was r = 0.68,
+positive within every individual book (r = +0.35 to +0.90, so not a between-book artefact):
 
     506–931 words    0.13 duplicated
     939–1009         0.20
@@ -46,14 +46,27 @@ every individual book (r = +0.35 to +0.90, so it is not a between-book artefact)
     1186–1346        0.48
     1354–1619        0.59
 
-The default was 1100, which put the planner's assigned targets at a mean of 1115 and a range of
-750–1350 — most of a manuscript in the band where this model stops writing and starts looping.
-At 850 the same variation lands around 600–1050, where it does not.
+The default was 1100, which put assigned targets in a range of 750–1350 — most of a manuscript
+in the band where this model stopped writing and started looping. Dropping to 850 moved the range
+to 600–1050, where it did not.
 
-The cost is more scenes for the same length, so more briefs and more calls. That is the trade
-this architecture is built to make: many small tightly-briefed sessions, which is the premise on
-the first line of the README. Raise it for a stronger writer model and re-measure — the number is
-a property of the model, not of the prose.
+**Why that is void.** Every scene in that corpus was sampled with Ollama's `repeat_penalty` at
+its default of 1.0, which is *disabled* (see `llm.WRITER_OPTIONS`). The curve was not a property
+of scene length. It was a model with no repetition penalty, given more room to repeat in. With
+the penalty set from measurement, the same sweep across 850/1100/1400-word targets returns
+duplication of .007 / .004 / .008 — flat, and an order of magnitude below the old table at every
+length. A 2,437-word draft measured .014.
+
+**So what does 850 rest on now?** Not this. The remaining arguments are the architecture's own
+premise — many small tightly-briefed sessions, which is the first line of the README — and the
+fact that a shorter scene is a smaller thing to lose when the gate refuses one. Those are design
+arguments, not measurements, and they should be labelled as such.
+
+What has *not* been measured is whether longer scenes still commit as reliably through the whole
+pipeline: seams, thread obligations and beat coverage are all per-scene, and a 71-scene book at
+850 words is a different risk profile from a 50-scene book at 1200. That is the experiment this
+number now waits on, and until it is run, 850 stays because it is the value five finished books
+were written at — not because the table above still says so.
 """
 
 

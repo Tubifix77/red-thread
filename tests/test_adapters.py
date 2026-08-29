@@ -430,7 +430,22 @@ class TestSamplerOptions(unittest.TestCase):
     def test_the_writer_carries_the_penalty(self):
         writer = self.llm.Models.all_local("qwen3:8b").writer
         self.assertEqual(writer.options.get("repeat_penalty"), 1.2)
-        self.assertEqual(writer.options.get("repeat_last_n"), 512)
+
+    def test_the_penalty_window_covers_a_whole_scene(self):
+        """Half a window is half a penalty.
+
+        The first value shipped was 512 tokens — about 380 words, against scenes of 900 to 1,400.
+        At a 1,800-word target one draft in four collapsed straight back to the old behaviour
+        (duplication .477), because the model was repeating material from earlier in the same
+        scene, outside the window that would have caught it. At 1536 that stopped: 0 of 4, and
+        duplication .005.
+        """
+        writer = self.llm.Models.all_local("qwen3:8b").writer
+        window_words = writer.options["repeat_last_n"] * 0.75
+        self.assertGreaterEqual(
+            window_words, 1100,
+            "the penalty window must cover a scene at this project's targets, or a long draft "
+            "can repeat material that has fallen out of it")
 
     def test_the_structured_roles_do_not(self):
         factories = {
