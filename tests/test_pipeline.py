@@ -1740,3 +1740,55 @@ class TestACappedCheckCannotMeasureProgress(unittest.TestCase):
         self.assertIsNotNone(cut)
         after = checks.check_recap_block(Scene(spec_id="s", index=1, text=cut))
         self.assertLess(len(after), len(before))
+
+
+class TestASceneGetsASecondWholeAttempt(PipelineCase):
+    """A held-back scene is not always a defect, and an overnight run should not stop on one.
+
+    Scene 68 of a 71-scene run was rejected on three uses of "you" outside dialogue. Re-running
+    it with the same brief, the same plan and the same settings committed in three drafts with
+    no repairs at all. Nothing had changed but the sampling.
+
+    The repair loop's own redraft cannot cover this: it fires inside a scene that is already
+    going badly and reuses its context, while this starts the scene over. One retry, never a
+    loop — a scene that fails twice is failing for a reason, and grinding is how an unattended
+    run spends the night on scene 40.
+    """
+
+    def test_a_scene_that_fails_once_and_passes_second_does_not_halt_the_run(self):
+        models, backend = fakes.scripted_models()
+        # First attempt: three drafts that all carry a blocker. Second: clean.
+        for _ in range(3):
+            backend.queue("draft", "## Heading\n\n" + fakes.clean_prose(400, 0))
+        for _ in range(3):
+            backend.queue("draft", fakes.clean_prose(750, 0))
+        backend.queue("draft", fakes.clean_prose(750, 1))
+
+        results = write_all(self.project, models, Config(candidates=3, max_repairs=1),
+                            start=1, stop=2)
+
+        self.assertTrue(results[0].committed,
+                        f"held back by: {[str(v) for v in results[0].violations]}")
+        self.assertTrue(any("sampling rather than" in n for n in results[0].notes),
+                        results[0].notes)
+
+    def test_the_run_still_halts_when_the_second_attempt_also_fails(self):
+        """Otherwise a genuinely impossible scene costs the whole night."""
+        models, backend = fakes.scripted_models()
+        backend.defaults["draft"] = "## Heading\n\nToo short."
+
+        results = write_all(self.project, models, Config(candidates=1, max_repairs=1),
+                            start=1, stop=3)
+
+        self.assertEqual(len(results), 1, "the run must stop at the scene that will not commit")
+        self.assertFalse(results[0].committed)
+
+    def test_a_scene_that_commits_first_time_is_not_written_again(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(900, 0))
+        results = write_all(self.project, models, Config(candidates=1, max_repairs=2),
+                            start=1, stop=1)
+        self.assertTrue(results[0].committed,
+                        f"held back by: {[str(v) for v in results[0].violations]}")
+        self.assertFalse(any("sampling rather than" in n for n in results[0].notes),
+                         "the second attempt must only run for a scene that was held back")

@@ -1563,6 +1563,17 @@ def write_all(project: Project, models: Models, config: Config | None = None,
     continuing past a rejected scene means writing against a ledger that is missing a scene's
     worth of facts — which manufactures exactly the incoherence the system is for.
 
+    But a scene is given a second whole attempt before the run stops, because a held-back scene
+    is not always a defect. Scene 68 of a 71-scene run was rejected on three uses of "you"
+    outside dialogue, and re-running it with the same brief, plan and settings committed in
+    three drafts with no repairs at all. Nothing had changed but the sampling. The repair loop's
+    own redraft cannot cover that case: it fires inside a scene that is already going badly and
+    reuses its context, while this starts over.
+
+    One retry, not a loop. A scene that fails twice is failing for a reason, and grinding on it
+    is how an overnight run spends eight hours on scene 40. The difference the retry makes is
+    the difference between finding a finished book in the morning and finding a stopped one.
+
     The project is saved after every scene, so an interrupted run resumes from where it stopped
     rather than starting over. On a manuscript-length run that is the difference between an
     inconvenience and losing hours of generation.
@@ -1578,6 +1589,22 @@ def write_all(project: Project, models: Models, config: Config | None = None,
 
         progress.scene_start(spec, project.story)
         result = write_scene(project, spec, models, config, progress)
+
+        if not result.committed:
+            progress.stage("retry", "held back once; writing the scene again from scratch")
+            retry = write_scene(project, spec, models, config, progress)
+            # Only taken when it actually commits. A failed retry is not an improvement on a
+            # failed first attempt, and swapping it in loses the more informative of the two:
+            # the first version of this replaced the result unconditionally, so a scene whose
+            # retry came back empty reported "empty scene" instead of the real violations that
+            # held it. Its own test caught that.
+            if retry.committed:
+                retry.notes.append(
+                    "the first attempt at this scene was held back; a second whole attempt "
+                    "with the same brief committed, so the rejection was sampling rather than "
+                    "a defect in the plan")
+                result = retry
+
         results.append(result)
         project.save()
         progress.scene_done(result)
