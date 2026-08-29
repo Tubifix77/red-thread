@@ -495,6 +495,45 @@ class TestDuplicationRatio(unittest.TestCase):
         self.assertEqual(len(found), 7 - 5 + 1)
 
 
+class TestSummaryDistance(unittest.TestCase):
+    """Past perfect is the grammar of recap, and it is countable.
+
+    StoryScope's "narrated at summary distance" tell fired on all eight scenes of a live book,
+    and only the LLM probe could see it — which by this project's calibration policy makes it
+    advisory and therefore invisible. The grammar behind it is not: the reference drafts in
+    `docs/evidence` narrate 7–13% of their sentences in past perfect, while the scenes this
+    project has committed run to a median of 27% and a maximum of 60%.
+    """
+
+    HAPPENING = ("She set the gauge on the bench. Tomas came in without knocking and put the "
+                 "kettle on. Neither of them mentioned the letter. Outside, a van reversed up "
+                 "to the doors and stopped.")
+    RECAPPING = ("She had set the gauge on the bench earlier. Tomas had come in without "
+                 "knocking and had put the kettle on. Neither of them had mentioned the "
+                 "letter. A van had reversed up to the doors and had stopped.")
+
+    def test_a_scene_that_happens_scores_low(self):
+        self.assertLess(checks.summary_distance(self.HAPPENING), 0.1)
+        self.assertEqual(checks.check_summary_distance(scene(self.HAPPENING)), [])
+
+    def test_a_scene_that_recaps_is_reported(self):
+        self.assertGreater(checks.summary_distance(self.RECAPPING), 0.9)
+        found = checks.check_summary_distance(scene(self.RECAPPING))
+        self.assertIn("summary_distance", kinds(found))
+
+    def test_it_stays_advisory(self):
+        """Past perfect is how the whole passage is narrated, not a few sentences that could be
+        rewritten — switching one to simple past leaves the register unchanged. Selection uses
+        it instead."""
+        found = checks.check_summary_distance(scene(self.RECAPPING))
+        self.assertTrue(all(v.severity is Severity.MINOR for v in found))
+
+    def test_one_clause_of_backstory_is_not_recap(self):
+        text = ("She set the gauge down. The last person to touch it had left in March. "
+                "Tomas came in and put the kettle on. Nobody said anything for a while.")
+        self.assertEqual(checks.check_summary_distance(scene(text)), [])
+
+
 class TestCopiedRuns(unittest.TestCase):
     """One copied phrase is one leak, however many n-grams fit inside it."""
 

@@ -38,6 +38,11 @@ ANTI_TELLS = [
     "holding. At most one somatic beat in this scene, and only if it earns its place.",
     "Do not write dialogue as philosophical debate. Characters want things from each other; "
     "they are not exchanging positions on the theme.",
+    "Write what happens, not what had happened. Past perfect — \"she had run the system, it "
+    "had settled, she had not expected\" — is the grammar of recap, and a page made of it is a "
+    "summary wearing a scene's clothes. The cleanest drafts measured use it in about one "
+    "sentence in ten; scenes written for this project have run to six in ten. Backstory in one "
+    "clause is fine; the scene itself happens in simple past.",
     "Name things specifically. Prefer the actual brand, book, song, street, or make of car to "
     "a vague allusion. AI fiction uses named references at 24% against 47% for humans.",
     "Do not resolve tension through the protagonist's decisive agency by default. Human "

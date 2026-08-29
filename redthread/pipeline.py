@@ -719,8 +719,14 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     # on that would halt books over something no sentence-local repair can mend. Selection can
     # use it for free — the checks have already run on every candidate — and picking the cleaner
     # of two drafts costs nothing and risks nothing.
+    # Then the two prose measures the gate cannot use, bucketed so a trivial difference does not
+    # outrank a real length problem: how much of the draft is repeated phrasing, and how much of
+    # it is narrated in past perfect rather than happening. Both separate the reference drafts in
+    # docs/evidence from what this project commits by a wide margin, and both are free here —
+    # the checks have already run on every candidate.
     scored.sort(key=lambda row: (row[0],
                                  round(checks.duplication_ratio(row[1].text) * 20),
+                                 round(checks.summary_distance(row[1].text) * 10),
                                  abs(row[1].word_count() - spec.word_target)))
     _, scene, det_violations = scored[0]
     result.scene = scene

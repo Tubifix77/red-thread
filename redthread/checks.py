@@ -863,6 +863,48 @@ def check_internal_repetition(scene: Scene, n: int = 4, max_repeats: int = 1,
                       "check_internal_repetition", " ".join(dupes[0][0]))]
 
 
+_PAST_PERFECT = re.compile(
+    r"\bhad\s+(?:been|had|got|gone|come|seen|known|taken|written|made|left|kept|run|begun|"
+    r"put|set|told|said|done|felt|found|given|\w+ed)\b", re.IGNORECASE)
+
+
+def summary_distance(text: str) -> float:
+    """Share of sentences narrated in past perfect — the grammar of recap rather than scene.
+
+    "She had run the new system through its first cycle, and it had settled" is a report of
+    things already over. A scene is what happens now; past perfect is what happened before now,
+    and a page made mostly of it is a summary wearing a scene's clothes.
+
+    It discriminates like the duplication ratio does, on the same corpus: the reference drafts in
+    `docs/evidence` sit at 0.07 (gemma3:12b), 0.10 (phi4:14b) and 0.13 (qwen3:8b), while the
+    scenes this project has committed run to a median of 0.27 and a maximum of 0.60. StoryScope's
+    "narrated at summary distance" tell was firing on every scene of a live book and only the
+    LLM probe could see it, which by policy makes it advisory — this is the countable half.
+    """
+    sents = sentences(text)
+    if not sents:
+        return 0.0
+    return sum(1 for s in sents if _PAST_PERFECT.search(s)) / len(sents)
+
+
+def check_summary_distance(scene: Scene, heavy: float = 0.35) -> list[Violation]:
+    """Report a scene that is mostly recap. Advisory, for the same reason diffuse duplication is.
+
+    Past perfect is not localised in a few sentences that could be rewritten — it is how the
+    whole passage is narrated, and switching one sentence to simple past leaves the register
+    unchanged. So this is reported to the author and used where it costs nothing: candidate
+    selection, which prefers the draft that is happening over the draft that is recapping.
+    """
+    density = summary_distance(scene.text)
+    if density < heavy:
+        return []
+    return [Violation(
+        "summary_distance", Severity.MINOR,
+        f"{density:.0%} of sentences are in past perfect — the scene is largely recapping "
+        f"rather than happening (the cleanest drafts measured sit near 10%)",
+        "check_summary_distance")]
+
+
 # --------------------------------------------------------------------------------------
 # 8. sentence-rhythm monotony
 # --------------------------------------------------------------------------------------
@@ -914,6 +956,7 @@ def run_all(
     out += check_internal_repetition(scene)
     out += check_repetition(scene, committed_texts or [])
     out += check_rhythm(scene)
+    out += check_summary_distance(scene)
     return out
 
 
