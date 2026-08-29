@@ -9,7 +9,7 @@ otherwise would be dishonest.
 ## First, what the test suite actually uses
 
 **No model.** `tests/fakes.py` provides a scripted backend returning canned JSON and fixture
-prose. That is why the full suite (340 tests at the time of writing) runs in seconds with no API
+prose. That is why the full suite (421 tests at the time of writing) runs in seconds with no API
 key and no network.
 
 This is deliberate, not a shortcut. The tests verify that the machinery composes — briefs carry
