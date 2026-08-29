@@ -889,62 +889,94 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     blockers, majors, minors = _score(result.violations)
     progress.stage("verify", f"{len(facts)} facts extracted · {blockers}B/{majors}M/{minors}m")
 
-    # ------------------------------------------------- phase C: one bounded response pass
-    # The judge gets one answer, not a negotiation. Its evidence-located findings get a single
-    # surgical pass plus one re-verify; quoteless "missed" obligations get one whole-scene
-    # repair. Whatever remains after that decides the gate.
-    serious = [v for v in llm_violations
-               if v.severity in (Severity.BLOCKER, Severity.MAJOR)]
-    if serious and config.max_repairs > 0:
-        located = [v for v in serious
-                   if v.quote and checks.locate_quote(scene.text, v.quote)]
-        repaired = None
-        if located:
-            repaired = _surgical(scene, spec, serious, models, result.notes,
-                                 samples=project.story.style.samples,
-                                 forbidden=project.story.style.forbidden_phrases)
-            action = "surgical"
-        if repaired is None and any(v.kind == "thread_obligation" for v in serious):
-            repaired = _fulfil(scene, serious, models, result.notes)
-            action = "fulfil"
-        if repaired is None:
-            # Two tries, because the first can fail on the call rather than on the answer — a
-            # live run lost scene 13's only response pass to one LLMError. Retrying a failed
-            # call is not a negotiation with the judge; it is asking the question once.
-            repaired = _repair(scene, serious, models, config)
+    # ------------------------------------------------- phase C: bounded response passes
+    # The judge gets an answer, not a negotiation. Its evidence-located findings get a surgical
+    # pass plus a re-verify; quoteless "missed" obligations get a whole-scene repair. Whatever
+    # remains after that decides the gate.
+    #
+    # A second pass is allowed, but only while a BLOCKER stands and the previous pass actually
+    # changed the text. A leaked concealment is usually carried by more than one sentence, and
+    # `_surgical` can only delete the sentences whose quotes located this time round: scene 4 of
+    # a clean-slate run had its leaking sentence cut, the judge still read the reveal in what was
+    # left, and one pass was all there was. Two is not a negotiation — the judge is answering the
+    # same question about different text.
+    for response_pass in range(2):
+        serious = [v for v in result.violations
+                   if v.severity in (Severity.BLOCKER, Severity.MAJOR)
+                   and v.source.startswith("llm:")]
+        if response_pass and not any(v.severity is Severity.BLOCKER for v in serious):
+            break
+        if serious and config.max_repairs > 0:
+            located = [v for v in serious
+                       if v.quote and checks.locate_quote(scene.text, v.quote)]
+            repaired = None
+            if located:
+                repaired = _surgical(scene, spec, serious, models, result.notes,
+                                     samples=project.story.style.samples,
+                                     forbidden=project.story.style.forbidden_phrases)
+                action = "surgical"
+            if repaired is None and any(v.kind == "thread_obligation" for v in serious):
+                repaired = _fulfil(scene, serious, models, result.notes)
+                action = "fulfil"
             if repaired is None:
+                # Two tries, because the first can fail on the call rather than on the answer — a
+                # live run lost scene 13's only response pass to one LLMError. Retrying a failed
+                # call is not a negotiation with the judge; it is asking the question once.
                 repaired = _repair(scene, serious, models, config)
-            action = "repair"
-        if repaired is None:
-            result.notes.append(f"{action} call failed; keeping previous draft")
-            progress.stage(f"{action} {result.repairs + 1}", "call failed or unusable")
-        if repaired is not None:
-            result.repairs += 1
-            candidate, new_det = run_deterministic(repaired)
-            if not [v for v in new_det if v.severity is Severity.BLOCKER]:
-                try:
-                    facts, llm_violations = verify.verify_scene(
-                        candidate, spec, project.story, project.ledger, models,
-                        story_so_far, with_forecast=False)
-                except LLMError as exc:
-                    result.notes.append(f"re-verify failed: {exc}")
-                else:
-                    candidate.facts = facts
-                    new_all = new_det + llm_violations
-                    if _score(new_all) < _score(result.violations):
-                        scene, result.scene = candidate, candidate
-                        det_violations = new_det
-                        result.violations = new_all
-                        blockers, majors, minors = _score(new_all)
-                        progress.stage(
-                            f"{action} {result.repairs}",
-                            f"{candidate.word_count()}w · "
-                            f"{blockers}B/{majors}M/{minors}m")
+                if repaired is None:
+                    repaired = _repair(scene, serious, models, config)
+                action = "repair"
+            if repaired is None:
+                result.notes.append(f"{action} call failed; keeping previous draft")
+                progress.stage(f"{action} {result.repairs + 1}", "call failed or unusable")
+            if repaired is not None:
+                result.repairs += 1
+                candidate, new_det = run_deterministic(repaired)
+                if not [v for v in new_det if v.severity is Severity.BLOCKER]:
+                    try:
+                        facts, llm_violations = verify.verify_scene(
+                            candidate, spec, project.story, project.ledger, models,
+                            story_so_far, with_forecast=False)
+                    except LLMError as exc:
+                        result.notes.append(f"re-verify failed: {exc}")
                     else:
-                        result.notes.append(
-                            f"{action} response to the verify did not improve; discarded")
-                        progress.stage(f"{action} {result.repairs}",
-                                       "no improvement · discarded")
+                        candidate.facts = facts
+                        new_all = new_det + llm_violations
+                        # While a BLOCKER stands, a candidate that merely ties is still worth
+                        # keeping: the scene it replaces cannot commit either way, and the
+                        # change is what lets the next pass see a different sentence. Deleting
+                        # one of two leaking sentences ties on the score and is the whole of the
+                        # progress available.
+                        was_blocked = any(v.severity is Severity.BLOCKER
+                                          for v in result.violations)
+                        if (_score(new_all) < _score(result.violations)
+                                or (was_blocked
+                                    and _score(new_all) <= _score(result.violations))):
+                            scene, result.scene = candidate, candidate
+                            det_violations = new_det
+                            result.violations = new_all
+                            blockers, majors, minors = _score(new_all)
+                            progress.stage(
+                                f"{action} {result.repairs}",
+                                f"{candidate.word_count()}w · "
+                                f"{blockers}B/{majors}M/{minors}m")
+                        else:
+                            result.notes.append(
+                                f"{action} response to the verify did not improve; discarded")
+                            progress.stage(f"{action} {result.repairs}",
+                                           "no improvement · discarded")
+                            # Nothing landed, so a second pass would ask the same question of
+                            # the same text and get the same answer.
+                            break
+                else:
+                    # The repair bought a BLOCKER in. It is not kept, and there is nothing to
+                    # ask the judge about.
+                    result.notes.append(f"{action} response introduced a blocker; discarded")
+                    break
+            else:
+                break
+        else:
+            break
 
     # ---------------------------------------------------------------- commit gate
     scene.violations = result.violations

@@ -726,6 +726,49 @@ class TestExpansionIsLocal(PipelineCase):
         self.assertEqual(backend.count("passage"), 0)
 
 
+class TestSecondResponsePass(PipelineCase):
+    """A leaked concealment is usually carried by more than one sentence.
+
+    `_surgical` can only delete the sentences whose quotes located this round. Scene 4 of a
+    clean-slate run had its leaking sentence cut, the judge still read the reveal in what was
+    left, and one response pass was all there was.
+    """
+
+    FIRST = " He said the fissure ran under the sluice."
+    SECOND = " The crack under the sluice was where the water went."
+
+    def test_a_second_pass_runs_while_a_blocker_stands(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("threads",
+                      fakes.threads_one_prohibition_violated(0, quote=self.FIRST.strip()),
+                      fakes.threads_one_prohibition_violated(0, quote=self.SECOND.strip()),
+                      fakes.threads_all_met())
+        backend.queue("draft", fakes.clean_prose(950) + self.FIRST + self.SECOND)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=4))
+
+        cuts = [n for n in result.notes if "deleted the thread_prohibition" in n]
+        self.assertEqual(len(cuts), 2, result.notes)
+        self.assertNotIn("fissure ran under", result.scene.text)
+        self.assertNotIn("crack under the sluice", result.scene.text)
+
+    def test_no_second_pass_once_the_blocker_is_gone(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("threads",
+                      fakes.threads_one_prohibition_violated(0, quote=self.FIRST.strip()),
+                      fakes.threads_all_met())
+        backend.queue("draft", fakes.clean_prose(950) + self.FIRST)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=4))
+
+        cuts = [n for n in result.notes if "deleted the thread_prohibition" in n]
+        self.assertEqual(len(cuts), 1, result.notes)
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+
+
 class TestForbiddenPhraseRepair(PipelineCase):
     """The fixture story forbids "the truth"."""
 
