@@ -511,6 +511,29 @@ def strip_dialogue(text: str) -> str:
     return _DIALOGUE.sub(" ", text)
 
 
+def _pov_slips(scene: Scene, pattern: re.Pattern, detail: str,
+               limit: int = 6) -> list[Violation]:
+    """One violation per sentence containing a pronoun slip, quoting that sentence.
+
+    A violation with no quote can only be answered by whole-scene repair, which on a small model
+    is the repair that does not work. The sentence is what surgery rewrites, so the sentence is
+    what the violation must point at.
+    """
+    out: list[Violation] = []
+    seen: set[tuple[int, int]] = set()
+    for lo, hi in sentence_spans(scene.text):
+        sentence = scene.text[lo:hi]
+        if not pattern.search(strip_dialogue(sentence)):
+            continue
+        if (lo, hi) in seen:
+            continue
+        seen.add((lo, hi))
+        out.append(Violation("pov_person", Severity.MAJOR, detail, "check_pov", sentence.strip()))
+        if len(out) >= limit:
+            break
+    return out
+
+
 def check_pov(scene: Scene, story: StorySpec, max_slips: int = 2) -> list[Violation]:
     """Narration must be in the person the style contract specifies.
 
@@ -543,10 +566,13 @@ def check_pov(scene: Scene, story: StorySpec, max_slips: int = 2) -> list[Violat
                 + (" — the scene is written in the wrong person" if pervasive else ""),
                 "check_pov", narration[start:match.end() + 60].strip() if match else ""))
         if len(second) > max_slips:
-            out.append(Violation(
-                "pov_person", Severity.MAJOR,
-                f"contract is '{story.style.pov}' but the narration addresses the reader as "
-                f"'you' {len(second)} time(s) outside dialogue", "check_pov"))
+            # One violation per offending sentence, quoted. Reported as a bare count with no
+            # quote, this routed to whole-scene repair — the only thing left when nothing can be
+            # located — and scene 2 of a clean-slate run was held by three instances of a
+            # generic "you" that surgery could have rewritten one sentence at a time.
+            out += _pov_slips(scene, _SECOND_PERSON,
+                              f"contract is '{story.style.pov}' but this sentence addresses the "
+                              f"reader as 'you' (one of {len(second)} outside dialogue)")
 
     elif "first" in contract and not first:
         out.append(Violation(

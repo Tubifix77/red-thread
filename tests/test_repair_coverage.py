@@ -187,17 +187,34 @@ class TestChecksReportEveryInstance(unittest.TestCase):
         self.assertEqual(len(found), 2)
         self.assertEqual(len({v.quote for v in found}), 2)
 
+    def test_pov_reports_each_offending_sentence(self):
+        """Reported as a bare count with no quote, this routed to whole-scene repair — the only
+        thing left when nothing can be located — and scene 2 of a clean-slate run was held by
+        three instances of a generic "you" that surgery could have taken one at a time."""
+        from redthread.models import StorySpec, StyleContract
+        text = ("She put the book down. The fact was not something you simply told. "
+                "It was something you carried. He said, \"You know that.\" "
+                "Something you waited for. The stove ticked.")
+        story = StorySpec(title="t", premise="p", style=StyleContract(pov="third limited"))
+        found = checks.check_pov(self._scene(text), story)
+        self.assertGreaterEqual(len(found), 2)
+        self.assertEqual(len({v.quote for v in found}), len(found))
+        self.assertTrue(all(v.quote for v in found), "a violation with no quote cannot be fixed")
+
     def test_every_reported_quote_locates_in_the_scene(self):
         """A quote a repair cannot find is a violation a repair cannot reach."""
         from redthread.models import Beat, SceneSpec, StorySpec, StyleContract
         text = ("Her chest tightened at the door. She realised then that the founders had "
-                "known. He wanted the truth and she had none. Something twisted in her throat.")
+                "known. He wanted the truth and she had none. Something twisted in her throat. "
+                "It was something you carried, something you waited for, something you knew.")
         story = StorySpec(title="t", premise="p",
-                          style=StyleContract(forbidden_phrases=["the truth"]))
+                          style=StyleContract(pov="third limited",
+                                              forbidden_phrases=["the truth"]))
         spec = SceneSpec(id="s01", index=1, beats=[Beat("a beat")])
         found = (checks.check_somatic(self._scene(text))
                  + checks.check_thematic_gloss(self._scene(text))
-                 + checks.check_forbidden(self._scene(text), story))
+                 + checks.check_forbidden(self._scene(text), story)
+                 + checks.check_pov(self._scene(text), story))
         self.assertTrue(found)
         for v in found:
             with self.subTest(kind=v.kind, quote=v.quote[:40]):
