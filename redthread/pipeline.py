@@ -970,6 +970,11 @@ Write the passage that makes it happen — {want} words, three or four sentences
 action, the object, what is said. Do not summarise it, do not have the narrator announce it, and
 do not explain what it means.
 
+If what is missing is a refusal, an avoidance, or a choice not to act, it is still something a
+reader watches happen — stage what the character does instead. The paper they put back in the
+tray, the door they walk past, the question they answer with a different question. A character
+ignoring something is a character doing something else, deliberately, in front of us.
+
 It goes here, between these two passages, which you must NOT rewrite or repeat:
 
   BEFORE: …{before}
