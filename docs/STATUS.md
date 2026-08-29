@@ -17,8 +17,17 @@ Illustrated version: <https://claude.ai/code/artifact/9ef610d1-1ca6-4a0f-a937-15
 | 2 | Is the prose free of the obvious machine tells? | **largely** |
 | 3 | Is the finished book worth reading? | **not started** |
 
-**1 — Close.** Six books, 74 scenes, 82,515 words, zero API calls. It plans, drafts, checks,
+**1 — Close.** Seven books, 145 scenes, 144,248 words, zero API calls. It plans, drafts, checks,
 repairs, commits, and resumes after a crash.
+
+The seventh is the scale test this document has listed as the largest gap since the first
+manuscript: *The Debt of Years* at **71 scenes and 61,733 words**, twice the longest previous run,
+all four threads terminal. It halted four times. Three of those were one bug — the ledger calling
+a character who puts something down and picks something else up a contradiction — which only
+exists at length, because across every ledger in the project there are just three
+subject-and-predicate keys carrying more than one object. The fourth was not a defect at all:
+a scene rejected on sampling that committed on a second whole attempt with nothing changed.
+Full record in [evidence/sixty-thousand-word-run.md](evidence/sixty-thousand-word-run.md).
 
 The sixth is the one that matters. *The Keeper's Fourth Book* was planned and written from a
 premise the system had never seen, to test the standing claim that every new premise costs one
@@ -35,7 +44,7 @@ So it has now finished a brand-new book unassisted, once, at novella length.
 and repeated phrasing is down 65%. Recap grammar has not moved, was being under-measured, and is
 now the dominant defect — it has repairs as of today but no evidence yet that they close it.
 
-**3 — Not started.** Nothing in 29 checks and 489 tests has an opinion about whether a scene is
+**3 — Not started.** Nothing in 31 checks and 509 tests has an opinion about whether a scene is
 interesting. This is the distance.
 
 ---
@@ -225,7 +234,7 @@ difference.
 |---|---|---|
 | Plan & thread state machines | built | Pre / Post / Forbid per scene, audited before a word is written |
 | Commit gate & ledger | built | nothing enters memory until the scene passes |
-| Scene checks | built | 29 checks; thresholds set from a 91-scene corpus, never from taste |
+| Scene checks | built | 31 checks; thresholds set from a 91-scene corpus, never from taste |
 | Repair ladder | built | 10 rungs, narrowest first; a test asserts every blocking kind has a repair that can reach it |
 | Resume after failure | built | five books finished; restart picks up at the last committed scene |
 | Candidate selection | partial | ranks on violations, then duplication, then recap, then length — blind to repair cost |
@@ -240,15 +249,21 @@ difference.
 
 | | |
 |---:|---|
-| **6** | books finished end to end |
-| **82,515** | words drafted locally |
-| **74** | scenes committed |
+| **7** | books finished end to end |
+| **144,248** | words drafted locally |
+| **145** | scenes committed |
 | **0** | API calls |
-| **489** | tests passing |
+| **509** | tests passing |
 
-The longest is 30,147 words — a novella, not a novel. Nothing here has been run at 60,000 words,
-and the failure modes that matter at that length (a thread that quietly stops mattering, a middle
-that sags for eight scenes) are exactly the ones no check can see.
+The longest is now 61,733 words, and running it found exactly what was predicted: defects that
+do not exist below about forty scenes. What it also found is the one measure that gets *worse*
+with length — duplication across the manuscript is .041 against .001 within any scene of it, so
+a book of individually clean scenes is repetitive. Feeding the book's own refrains forward
+suppresses the ones it names (seven of ten never appeared again) and does not reduce the total,
+because new ones form that no threshold could have predicted. That is open.
+
+The other half of the prediction is untouched. A middle that sags for eight scenes is now
+possible in a way it was not at nine scenes, and nothing here measures whether this one does.
 
 ---
 

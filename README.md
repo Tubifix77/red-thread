@@ -345,8 +345,9 @@ accumulates and survives reload, threads reach their final states, the seam is f
 verbatim, a mid-run rejection halts cleanly with nothing from the failed scene in dynamic memory,
 and a re-run resumes from the gap. Every check catches its defect.
 
-**Proven by running it to completion, all local, zero API calls:** six manuscripts exist —
-74 scenes and 82,515 words drafted on `qwen3:8b`. The sixth, *The Keeper's Fourth Book*, is the
+**Proven by running it to completion, all local, zero API calls:** seven manuscripts exist —
+145 scenes and 144,248 words drafted on `qwen3:8b`, the longest of them **71 scenes and 61,733
+words** ([record](docs/evidence/sixty-thousand-word-run.md)). The sixth, *The Keeper's Fourth Book*, is the
 first written from a premise the system had never seen with **no intervention after the plan
 gate**: nine scenes, 8,359 words, 8m35s, every scene committed, every thread terminal, and every
 countable prose measure at or below the reference band
