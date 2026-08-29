@@ -844,6 +844,53 @@ class TestRedraftWhenEveryRepairFails(PipelineCase):
                         result.notes)
         self.assertNotIn("format", {v.kind for v in result.violations})
 
+    def test_a_stuck_scene_is_always_redrafted_before_the_budget_ends(self):
+        """Two triggers, and the scene must reach one of them. Exhaustion fires when every
+        action has been sidelined; the budget reservation fires when it has not, because a live
+        scene ran out one round before sidelining completed and so never redrafted at all."""
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        beat = self._leaky_beat(spec)
+        backend.queue("draft", fakes.clean_prose(870) + " " + beat + ".")
+        backend.queue("surgical", *[beat + "."] * 8)
+        backend.queue("draft", fakes.clean_prose(900, variant=3))
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=5))
+
+        self.assertTrue(any("drafted again" in n for n in result.notes), result.notes)
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+
+    def test_the_budget_reservation_fires_when_sidelining_does_not(self):
+        """A repair that keeps succeeding-and-not-helping never sidelines, so exhaustion is
+        never declared and the reservation is the only route to a redraft."""
+        from redthread.pipeline import Config as _C
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        beat = self._leaky_beat(spec)
+        backend.queue("draft", fakes.clean_prose(870) + " " + beat + ".")
+        # Each rewrite differs, so the check keeps firing but nothing is ever sidelined twice in
+        # a row on identical text.
+        backend.queue("surgical", *[beat + "." for _ in range(8)])
+        backend.queue("draft", fakes.clean_prose(900, variant=3))
+
+        result = write_scene(self.project, spec, models, _C(candidates=1, max_repairs=4))
+
+        self.assertTrue(any("drafted again" in n for n in result.notes), result.notes)
+
+    def test_a_small_budget_still_spends_its_rounds_on_repairs(self):
+        """The reservation must not pre-empt the repairs a short budget exists to try."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(900) + " She finally saw the truth of it.")
+        backend.queue("surgical", "She saw the shape of it laid out on the bench.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertFalse(any("drafted again" in n for n in result.notes), result.notes)
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+
     def test_it_happens_at_most_once(self):
         models, backend = fakes.scripted_models()
         spec = self.project.spec_at(1)
