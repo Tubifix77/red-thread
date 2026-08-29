@@ -75,6 +75,16 @@ REMEDIES = {
                        "record."),
     "somatic_emotion": ("Replace the bodily-sensation lines with what the character does, or "
                         "refuses to do. Keep at most one."),
+    # Worded to refuse the obvious fix. A model told a gesture repeats will reach for a synonym
+    # — the fingers stop tracing and start grazing — and the scene is unchanged, because what
+    # repeats is the movement and not the word for it. This is also why the sampler's repetition
+    # penalty cannot touch it: penalising tokens pushes the model toward rewording exactly the
+    # thing it keeps doing, and the measured gesture rate went slightly *up* when the penalty
+    # was added while duplication went to nearly zero.
+    "gesture_tic": ("This gesture has already happened several times in the scene. Do not reword "
+                    "it — a different verb for the same movement is the same movement. Either "
+                    "the character does something else here, with an object or another person, "
+                    "or the sentence goes and the scene is shorter."),
     "forbidden_phrase": "Rewrite the phrase. Any wording will do except that one.",
     "pov_person": ("Convert the narration to the contracted person. Dialogue keeps its own "
                    "pronouns."),
@@ -774,9 +784,14 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     # it is narrated in past perfect rather than happening. Both separate the reference drafts in
     # docs/evidence from what this project commits by a wide margin, and both are free here —
     # the checks have already run on every candidate.
+    # Gesture density joins them for the same reason and with the same standing: it is a
+    # register, no repair reaches it, and this is the one place a register can still be acted
+    # on. Bucketed coarsely — a whole gesture per thousand words — so it breaks ties between
+    # drafts rather than overriding the two measures with more evidence behind them.
     scored.sort(key=lambda row: (row[0],
                                  round(checks.duplication_ratio(row[1].text) * 20),
                                  round(checks.summary_distance(row[1].text) * 10),
+                                 round(checks.gesture_rate(row[1].text)),
                                  abs(row[1].word_count() - spec.word_target)))
     _, scene, det_violations = scored[0]
     result.scene = scene

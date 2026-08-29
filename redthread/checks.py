@@ -1036,6 +1036,99 @@ def check_recap_block(scene: Scene, run: int = 4) -> list[Violation]:
     return out
 
 
+_GESTURE_PART = re.compile(
+    r"\b(?:his|her|their|its)\s+(fingers?|hand|hands|palm|palms|thumb|knuckles|jaw|chin|head|"
+    r"shoulders?|eyes|gaze|brow|lips|mouth|spine|arms?|wrist|breath|voice)\b", re.I)
+
+_GESTURE_VERB = re.compile(
+    r"\b(tilt\w*|trac\w*|brush\w*|hover\w*|press\w*|curl\w*|tighten\w*|flex\w*|clench\w*|"
+    r"cross\w*|fold\w*|shift\w*|settl\w*|linger\w*|flicker\w*|narrow\w*|steady\w*)\b", re.I)
+
+
+def gesture_pairs(text: str) -> list[tuple[str, str, int]]:
+    """Body-part-plus-small-movement pairs, with where each one starts.
+
+    Found by reading a finished book rather than by measuring one. *The Keeper's Fourth Book*
+    scored .000 duplication and zero recap blocks and still read as repetitive, because what
+    repeated was never the words. It was the gestures: fingers tracing, hovering and brushing,
+    a jaw tightening, arms crossing and folding, a head tilting, a gaze settling — the same
+    handful of movements, freshly worded every time, so every check here was blind to them.
+
+    That blindness is structural. `duplication_ratio` counts repeated n-grams and a repetition
+    penalty at the sampler suppresses repeated tokens; both of them push the model toward
+    *rewording* the thing it keeps doing, which is why the gesture rate went slightly up when
+    the sampler was fixed (3.6 to 4.1 per thousand words) while duplication went to nearly zero.
+    """
+    out: list[tuple[str, str, int]] = []
+    for m in _GESTURE_PART.finditer(text):
+        verb = _GESTURE_VERB.search(text, m.start(), m.start() + 60)
+        if verb:
+            out.append((m.group(1).lower(), verb.group(1).lower()[:5], m.start()))
+    return out
+
+
+def gesture_rate(text: str) -> float:
+    """Gestures per thousand words."""
+    words = len(text.split())
+    return len(gesture_pairs(text)) / words * 1000 if words else 0.0
+
+
+def check_gesture_density(scene: Scene, heavy: float = 3.0) -> list[Violation]:
+    """A scene made of small movements. Advisory, because it is a register.
+
+    Same shape as `check_summary_distance` and for the same reason: it is not localised in a few
+    sentences that could be rewritten, it is how the whole passage is written, and cutting one
+    hand-brush leaves the other eleven. So it is reported to the author and used where it costs
+    nothing — candidate selection, which prefers the draft that is doing something to the draft
+    that is fidgeting.
+
+    Measured per thousand words: the three reference drafts in `docs/evidence` and the two
+    scenes `gemma3:12b` committed inside this orchestrator top out at 2.5, with a median of 2.0.
+    The 121 committed scenes here run to a median of 3.6, a p90 of 9.6 and a worst of 15.6.
+    """
+    rate = gesture_rate(scene.text)
+    if rate < heavy:
+        return []
+    return [Violation(
+        "gesture_density", Severity.MINOR,
+        f"{rate:.1f} small physical gestures per thousand words — fingers tracing, a jaw "
+        f"tightening, a head tilting. The cleanest drafts measured sit at 2.0 and none exceeds "
+        f"2.5. The scene is fidgeting rather than acting.",
+        "check_gesture_density")]
+
+
+def check_gesture_tic(scene: Scene, limit: int = 3) -> list[Violation]:
+    """The same gesture, over and over, in one scene. Unlike the density, this has a location.
+
+    The tic-versus-register split that `check_internal_repetition` draws for phrasing, drawn
+    again for movement — and the two halves really are separate defects, which reading one book
+    beside the corpus made plain. *The Keeper's Fourth Book* has a high gesture *rate* and no
+    scene in it repeats a single gesture more than once. Twenty-three of 121 committed scenes do
+    repeat one, and the worst repeats it ten times. No scene in the clean cohort repeats one at
+    all.
+
+    A repeated gesture sits in a sentence, so surgery can reach it; the register cannot be
+    reached and is not asked to be.
+    """
+    counts: dict[tuple[str, str], list[int]] = {}
+    for part, verb, where in gesture_pairs(scene.text):
+        counts.setdefault((part, verb), []).append(where)
+
+    out: list[Violation] = []
+    for (part, verb), places in sorted(counts.items(), key=lambda kv: -len(kv[1])):
+        if len(places) < limit:
+            continue
+        for where in places[limit - 1:]:
+            lo, hi = sentence_covering(scene.text, (where, where + 1))
+            out.append(Violation(
+                "gesture_tic", Severity.MAJOR,
+                f'"{part}" with a "{verb}"-type movement appears {len(places)} times in this '
+                f"scene. Rewording it is not the fix — the character has to do something else, "
+                f"or nothing.",
+                "check_gesture_tic", scene.text[lo:hi].strip()))
+    return out
+
+
 _ANAPHORA = re.compile(
     r"(\b(?:the|a|his|her|their) \w+)[^.!?]{5,70},\s*\1\b[^.!?]{5,70},\s*\1\b", re.I)
 
@@ -1152,6 +1245,8 @@ def run_all(
     out += check_rhythm(scene)
     out += check_summary_distance(scene)
     out += check_recap_block(scene)
+    out += check_gesture_density(scene)
+    out += check_gesture_tic(scene)
     out += check_anaphora(scene)
     out += check_absolute_stack(scene)
     return out

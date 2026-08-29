@@ -928,3 +928,70 @@ class TestPervasivePovIsNotQuoted(unittest.TestCase):
         if found:
             self.assertIs(found[0].severity, Severity.MAJOR)
             self.assertTrue(found[0].quote, "a locatable slip should keep its quote")
+
+
+class TestGesture(unittest.TestCase):
+    """What repeats in a bad scene is often the movement, not the word for it.
+
+    Found by reading a finished book instead of measuring one. *The Keeper's Fourth Book* scored
+    .000 duplication and zero blocks of recap and still read as repetitive: fingers tracing,
+    hovering and brushing, a jaw tightening, arms crossing and folding, a head tilting — the same
+    small movements, freshly worded every time, invisible to every check here.
+
+    The blindness is structural, not an oversight. `duplication_ratio` counts repeated n-grams
+    and the sampler's repetition penalty suppresses repeated tokens; both push the model toward
+    *rewording* what it keeps doing. The measured gesture rate went slightly up when the penalty
+    landed (3.6 to 4.1 per thousand words) while duplication went to nearly zero.
+    """
+
+    def _scene(self, text):
+        return Scene(spec_id="s", index=1, text=text)
+
+    FIDGET = (
+        "Her fingers traced the edge of the desk. He tilted his head. Her jaw tightened once. "
+        "His hand hovered over the ledger. Her arms crossed. His gaze settled on the window. "
+        "Her shoulders pressed back. His thumb brushed the spine of the book. Her brow "
+        "narrowed. His knuckles whitened. She waited.")
+
+    def test_the_rate_counts_movements_not_words(self):
+        """Every gesture in the fixture is worded differently, so duplication sees nothing."""
+        self.assertLess(checks.duplication_ratio(self.FIDGET), 0.05)
+        self.assertGreater(checks.gesture_rate(self.FIDGET), 3.0)
+
+    def test_density_is_advisory_because_it_is_a_register(self):
+        """Cutting one hand-brush leaves the other eleven, so it must not hold the gate."""
+        found = checks.check_gesture_density(self._scene(self.FIDGET))
+        self.assertEqual(len(found), 1)
+        self.assertIs(found[0].severity, Severity.MINOR)
+
+    def test_the_clean_cohort_never_trips_the_density(self):
+        """The threshold's justification: three reference drafts and the two scenes gemma3:12b
+        committed inside this orchestrator top out at 2.5 per thousand words."""
+        drafts = sorted(Path("docs/evidence").glob("scene01-*.txt"))
+        self.assertEqual(len(drafts), 3, "the reference corpus moved; re-measure the threshold")
+        for draft in drafts:
+            with self.subTest(draft=draft.name):
+                text = draft.read_text(encoding="utf-8")
+                self.assertLess(checks.gesture_rate(text), 3.0)
+                self.assertEqual(checks.check_gesture_density(self._scene(text)), [])
+
+    def test_a_repeated_gesture_is_major_and_quoted(self):
+        """The tic half. It sits in a sentence, so surgery can reach it — and it is a separate
+        defect from the density: the Keeper book has a high rate and no scene in it repeats one
+        gesture more than once, while 23 of 124 committed scenes do."""
+        text = ("Her fingers traced the rail. She said nothing for a while. Her fingers traced "
+                "the chart. The kettle boiled over. Her fingers traced the logbook spine.")
+        found = checks.check_gesture_tic(self._scene(text))
+        self.assertTrue(found)
+        self.assertIs(found[0].severity, Severity.MAJOR)
+        self.assertIsNotNone(checks.locate_quote(text, found[0].quote))
+
+    def test_two_of_the_same_gesture_is_not_a_tic(self):
+        text = ("Her fingers traced the rail. She said nothing. Her fingers traced the chart. "
+                "The kettle boiled over and she took it off the ring.")
+        self.assertEqual(checks.check_gesture_tic(self._scene(text)), [])
+
+    def test_both_run_as_part_of_the_scene_checks(self):
+        found = checks.run_all(self._scene(self.FIDGET),
+                               make_spec(word_target=60), make_story())
+        self.assertIn("gesture_density", {v.kind for v in found})
