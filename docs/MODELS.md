@@ -344,6 +344,57 @@ single scene. That is the designed division of labour — the machine guarantees
 itemises its prose debt scene by scene — and raising the sentence ceiling remains one `--local`
 flag away.
 
+## Scene length is a model setting, and it is the biggest quality lever found so far
+
+Repeated phrasing is the sharpest quality signal this project can count: the fraction of a
+scene's 4-grams that are duplicates (`checks.duplication_ratio`). Across 87 committed scenes and
+the single-scene comparisons in `evidence/`, it separates prose by two orders of magnitude —
+gemma3:12b and phi4:14b at 0.000–0.002, qwen3:8b's best single scene at 0.026, the median scene
+this project committed at 0.289.
+
+It rises steeply with scene length on an 8B. Correlation is **r = 0.68** across those 87 scenes,
+and positive within every individual book (r = +0.35 to +0.90), so it is not a between-book
+artefact:
+
+| scene length | duplicated phrasing |
+|---|---|
+| 506–931 words | 0.13 |
+| 939–1009 | 0.20 |
+| 1013–1109 | 0.22 |
+| 1114–1184 | 0.33 |
+| 1186–1346 | 0.48 |
+| 1354–1619 | 0.59 |
+
+`DEFAULT_SCENE_WORDS` was 1100, which put the planner's assigned targets at a mean of 1115 across
+five books — most of a manuscript in the band where this model stops writing and starts looping.
+Setting it to 850 and re-running the same premise on the same model:
+
+```
+before (1100-word default)   mean 1197 words   duplication 0.330
+after  ( 850-word default)   mean  880 words   duplication 0.108
+```
+
+A 67% reduction in repeated prose from one number, and the number came from measurement rather
+than taste. It is a property of the writer, not of prose in general — re-measure before raising
+it for a stronger model, and `bench` is the place to do that.
+
+**Two things that did *not* work**, recorded because the negative results cost as much to get:
+
+- *Trimming the brief.* Duplication climbs by scene position, so the ledger slice looked like a
+  copy attractor. Drafting the same scene three times with the full brief and three with the
+  ledger cut to ten facts gave 0.306 against 0.414 — the slim brief was worse, and with a
+  0.124–0.574 spread inside each condition the experiment settles nothing either way. The
+  position effect was length in disguise.
+- *Gating on the ratio.* The obvious move is to make a high ratio a MAJOR and let repair fix it.
+  It cannot: 29% duplication is not six bad sentences, it is the model's whole register, and no
+  sentence-local repair reaches it. There is no threshold justifiable from real prose that does
+  not halt most scenes.
+
+**What does work besides length: drafting more candidates.** Five drafts of one brief, same model,
+same temperature, ranged 0.170 to 0.510 — a 3× spread on identical input. Selection now breaks
+ties on the ratio, so the cleanest draft wins at no extra cost, and `--candidates 3` is worth the
+time on a machine that has it.
+
 ## Measuring adherence yourself
 
 ```bash

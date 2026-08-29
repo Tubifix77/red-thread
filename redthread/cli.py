@@ -14,6 +14,7 @@ from pathlib import Path
 from . import checks
 from .brief import render_brief, tail_of
 from .models import Scene, Severity
+from .schedule import DEFAULT_SCENE_WORDS
 from .ollama import DEFAULT_OPENAI_BASE as DEFAULT_OLLAMA_BASE
 from .project import Project
 
@@ -431,7 +432,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("premise", help="the premise, as text or a path to a file")
     p.add_argument("--out", required=True, help="run directory to create")
     p.add_argument("--words", type=int, default=60000, help="target manuscript length")
-    p.add_argument("--scene-words", type=int, default=1100, help="average scene length")
+    p.add_argument("--scene-words", type=int, default=DEFAULT_SCENE_WORDS,
+                   help="average scene length (default is measured; see schedule.py)")
     p.add_argument("--scenes", type=int, default=None, help="override the scene count")
     p.add_argument("--sharpen", type=int, default=2,
                    help="rounds of vaguest-first beat expansion")
