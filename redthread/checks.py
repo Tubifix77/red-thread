@@ -970,6 +970,16 @@ _NEITHER_NOR = re.compile(r"\bneither\b(.*?)\bnor\b", re.IGNORECASE | re.DOTALL)
 _LEFT_UNDONE = re.compile(
     r"\b(?:left|leaves|remains?|stays?|goes)\s+(un\w+)\b", re.IGNORECASE)
 
+_AVOIDANCE = re.compile(r"\b(?:avoids?|avoided|avoiding)\s+(\w+ing\b.*)", re.IGNORECASE | re.S)
+""""Ingrid avoids discussing the register" — an obligation to not do something.
+
+Kept separate from the other two because the inversion is exact and needs no grammar: as a
+prohibition it is "discussing the register", which is a question a judge answers by reading. As
+an obligation it asks the judge to confirm an absence in context, which it cannot, and a live
+run's scene 5 was reported missed however the scene went. `refuses to` is deliberately not here
+— a refusal is something a reader can watch happen.
+"""
+
 
 def is_absence_post(text: str) -> bool:
     """Is this `post` line entirely a thing not happening?
@@ -988,10 +998,11 @@ def is_absence_post(text: str) -> bool:
     match = _NEITHER_NOR.search(text)
     if match and "," not in text[:match.start()]:
         return True
-    # The other way a plan writes an absence without a negation word: "the bailiff's past is
-    # left unspoken", "the question remains unanswered". A scene cannot be shown not saying
-    # something, so the judge reports it missed — as it did for the finale of a live run.
-    return bool(_LEFT_UNDONE.search(text))
+    # The other ways a plan writes an absence without a negation word: "the bailiff's past is
+    # left unspoken", "the question remains unanswered", "Ingrid avoids discussing the register".
+    # A scene cannot be shown not saying something, so the judge reports it missed — as it did
+    # for the finale of one live run and scene 5 of another.
+    return bool(_LEFT_UNDONE.search(text) or _AVOIDANCE.search(text))
 
 # "nothing" and "none" are how a plan writes an *empty* forbid list, not how it writes a
 # negation. Flagging those reports a placeholder as a malformed rule.
@@ -1053,6 +1064,12 @@ def positive_prohibition(text: str) -> str:
     out = _NEITHER_NOR.sub(lambda m: m.group(1).strip() + " or ", text)
     if out != text:
         return re.sub(r"\s+", " ", out).strip()
+
+    # "Ingrid avoids discussing the register" forbids "discussing the register" — exactly, and
+    # with no grammar needed, which is why this one is tried before the others.
+    avoidance = _AVOIDANCE.search(text)
+    if avoidance:
+        return re.sub(r"\s+", " ", avoidance.group(1)).strip().rstrip(".")
 
     # "the bailiff's past is left unspoken" forbids the event "the bailiff's past is spoken".
     out = _LEFT_UNDONE.sub(lambda m: "is " + re.sub(r"^un", "", m.group(1), flags=re.I), text)

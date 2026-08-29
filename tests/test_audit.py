@@ -354,6 +354,23 @@ class TestPostNamesAnEvent(unittest.TestCase):
         self.assertEqual(checks.positive_prohibition("the bailiff's past is left unspoken"),
                          "the bailiff's past is spoken")
 
+    def test_an_obligation_to_avoid_something_is_an_absence(self):
+        """Scene 5 of a live run was required to bring about "Ingrid avoids discussing the
+        register" and reported missed however the scene went. As a prohibition the same rule is
+        "discussing the register", which a judge answers by reading."""
+        self.assertTrue(checks.is_absence_post("Ingrid avoids discussing the register"))
+        self.assertEqual(checks.positive_prohibition("Ingrid avoids discussing the register"),
+                         "discussing the register")
+
+    def test_avoiding_a_thing_rather_than_an_action_is_a_real_event(self):
+        """"Ingrid avoids the pass on Tuesday" is something a reader watches happen — she takes
+        the other road. Only avoid-plus-gerund is the absence form."""
+        self.assertFalse(checks.is_absence_post("Ingrid avoids the pass on Tuesday"))
+
+    def test_a_refusal_is_left_as_an_obligation(self):
+        """A refusal is dramatisable: the reader watches her not sign it."""
+        self.assertFalse(checks.is_absence_post("Ingrid refuses to sign the haulage sheet"))
+
     def test_an_ordinary_leaving_is_not_an_absence(self):
         self.assertFalse(checks.is_absence_post("Dain leaves the vial on the ground"))
 
