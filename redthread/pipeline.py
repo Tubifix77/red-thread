@@ -753,6 +753,23 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         targets = ACTION_TARGETS.get(action, set())
         had = {v.kind for v in det_violations} & targets
         fixed_length = no_new_blockers and bool(had) and not ({v.kind for v in new_det} & targets)
+        # A repair that fixes one thing and breaks another is not a repair. Whole-scene `_repair`
+        # regenerates the prose, so it can undo work a dedicated action already did: on a live
+        # run it cleared a style leak and handed back an ending copied from the previous scene,
+        # two rounds after `deseam` had cut exactly that. Scoring alone accepted it, because the
+        # totals improved. An action that cleared its own declared target is exempt — that is
+        # `deseam` trading a seam for a shortfall, which is the trade it is *for*.
+        introduced = ({v.kind for v in new_det if v.severity is Severity.MAJOR}
+                      - {v.kind for v in det_violations if v.severity is Severity.MAJOR})
+        if introduced and not fixed_length:
+            failure_streak[action] = failure_streak.get(action, 0) + 1
+            if failure_streak[action] >= 2:
+                sidelined.add(action)
+            result.notes.append(f"{action} attempt {result.repairs} introduced "
+                                f"{', '.join(sorted(introduced))}; discarded")
+            progress.stage(f"{action} {result.repairs}",
+                           f"introduced {', '.join(sorted(introduced))} · discarded")
+            continue
         if not (improved or fixed_length):
             failure_streak[action] = failure_streak.get(action, 0) + 1
             if failure_streak[action] >= 2:

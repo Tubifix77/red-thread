@@ -327,13 +327,20 @@ def check_style_leak(scene: Scene, story: StorySpec, n: int = 6) -> list[Violati
     out: list[Violation] = []
     for sample in story.style.samples:
         sample_grams = set(ngrams(words(sample), n))
-        shared = scene_grams & sample_grams
-        if shared:
+        shared = sorted(scene_grams & sample_grams)
+        # One violation per copied run. The third check to need this — after `check_somatic` and
+        # `check_brief_leak` — and found the same way: `_surgical` rewrites the sentence a quote
+        # falls in, so a single violation carrying one of seven runs gets one sentence rewritten
+        # while the other six keep the check firing. Scene 6 of a live run spent four rounds
+        # rewriting the same leak. Capped, because a draft with more than a handful has copied
+        # the sample wholesale and wants redrafting.
+        for run in shared[:6]:
             out.append(Violation(
                 "style_leak", Severity.MAJOR,
-                f"the draft reproduces {len(shared)} {n}-word run(s) from a style sample in its "
-                f"own brief — the samples show the register to match, not text to copy",
-                "check_style_leak", " ".join(next(iter(shared)))))
+                f"the draft reproduces this {n}-word run from a style sample in its own brief "
+                f"(one of {len(shared)}) — the samples show the register to match, not text "
+                f"to copy",
+                "check_style_leak", " ".join(run)))
     return out
 
 

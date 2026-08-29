@@ -728,6 +728,36 @@ class TestLeakedProhibition(PipelineCase):
         self.assertNotIn("second hand in the book", result.scene.text)
 
 
+class TestARepairMustNotBreakSomethingElse(PipelineCase):
+    """Whole-scene `_repair` regenerates the prose, so it can undo work a dedicated action has
+    already done. On a live run it cleared a style leak and handed back an ending copied from the
+    previous scene — two rounds after `deseam` had cut exactly that. Scoring alone accepted it,
+    because the totals improved."""
+
+    SOMATIC = (" Her chest tightened. His stomach dropped. Something twisted in her throat.")
+
+    def test_a_repair_that_introduces_a_new_major_is_discarded(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(950))
+        first = write_scene(self.project, self.project.spec_at(1), models, Config(candidates=1))
+        self.assertTrue(first.committed)
+        tail = " ".join(first.scene.text.split()[-40:])
+
+        # Scene 2 is short and full of somatic beats: two major kinds, and `length` has no quote
+        # so the loop routes to whole-scene repair once `expand` has been sidelined.
+        backend.queue("draft", fakes.clean_prose(500, variant=1) + self.SOMATIC)
+        backend.queue("expand", "too short", "too short")
+        # The "repair" fixes both and hands back scene 1's ending in their place.
+        backend.queue("repair", fakes.clean_prose(880, variant=1) + " " + tail)
+
+        result = write_scene(self.project, self.project.spec_at(2), models,
+                             Config(candidates=1, max_repairs=5))
+
+        self.assertTrue(any("introduced seam_tail_copy" in n for n in result.notes),
+                        result.notes)
+        self.assertNotIn("seam_tail_copy", {v.kind for v in result.violations})
+
+
 class TestMissedObligation(PipelineCase):
     """A missed obligation is the one violation with nothing to point at: the judge says the
     scene never delivered X, so there is no quote and sentence-local surgery has no purchase.

@@ -337,6 +337,16 @@ class TestBriefLeakage(unittest.TestCase):
             story)
         self.assertEqual(found, [])
 
+    def test_every_copied_run_gets_its_own_violation(self):
+        """The third check to need this, after `check_somatic` and `check_brief_leak`. Scene 6 of
+        a live run spent four rounds rewriting one sentence of a seven-run leak."""
+        sample = ("The gate had dropped on its hinge in the spring and neither of them had "
+                  "fixed it since.")
+        story = make_story(style=StyleContract(samples=[sample]))
+        found = checks.check_style_leak(scene("She waited. " + sample + " She went in."), story)
+        self.assertGreater(len(found), 1)
+        self.assertEqual(len({v.quote for v in found}), len(found))
+
     def test_no_samples_means_no_check(self):
         self.assertEqual(checks.check_style_leak(scene("Anything at all."), make_story()), [])
 
