@@ -291,7 +291,7 @@ def _reseam(scene: Scene, previous_tail: str, violations: list[Violation], model
 
 def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models: Models,
               notes: list[str], samples: list[str] | None = None,
-              round_no: int = 0) -> str | None:
+              forbidden: list[str] | None = None, round_no: int = 0) -> str | None:
     """Sentence-local repair: splice out or rewrite only the offending sentences.
 
     This is what ConWriter's repair actually is — "revising only the conflict-bearing
@@ -378,7 +378,7 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                 failed_verify = any(
                     rep_grams & set(checks.ngrams(checks.words(sample), 6))
                     for sample in samples)
-            elif v.kind in DELETE_KINDS:
+            elif v.kind in ("thematic_gloss", "tell_thematic_gloss"):
                 # Verified in context, not in isolation: a replacement can pass alone and still
                 # form a fresh gloss construction across the splice seam — a real run spliced a
                 # clean sentence after "…, but because" and produced "because she knew that…".
@@ -390,7 +390,15 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                 # Told "any wording will do except that one", a real run's writer returned the
                 # sentence with the banned phrase intact, four rounds straight, each served
                 # instantly from cache. The phrase's absence is checkable in one line.
-                failed_verify = v.quote.lower() in replacement.lower()
+                #
+                # Against the contract's phrases, not against `v.quote`. `check_forbidden` quotes
+                # the containing *sentence* now — it has to, or the span cannot be located — and
+                # this line was still asking whether the whole original sentence came back, which
+                # it never does. So every rewrite passed verification and scene 6 of a live run
+                # spliced in two replacements that both still said "truth".
+                lowered = replacement.lower()
+                failed_verify = any(p.strip() and p.strip().lower() in lowered
+                                    for p in (forbidden or []))
             elif v.kind == "somatic_emotion":
                 # A writer that reaches for the body once reaches for it again in the rewrite:
                 # "his gut twist" comes back as "his stomach knotted" and the check re-fires.
@@ -704,6 +712,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         if "surgical" not in sidelined:
             repaired = _surgical(scene, spec, fixable, models, result.notes,
                                  samples=project.story.style.samples,
+                                 forbidden=project.story.style.forbidden_phrases,
                                  round_no=result.repairs)
             if repaired is not None:
                 return repaired, "surgical"
@@ -807,7 +816,8 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         repaired = None
         if located:
             repaired = _surgical(scene, spec, serious, models, result.notes,
-                                 samples=project.story.style.samples)
+                                 samples=project.story.style.samples,
+                                 forbidden=project.story.style.forbidden_phrases)
             action = "surgical"
         if repaired is None and any(v.kind == "thread_obligation" for v in serious):
             repaired = _fulfil(scene, serious, models, result.notes)

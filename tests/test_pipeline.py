@@ -685,6 +685,39 @@ class TestExpansionIsLocal(PipelineCase):
         self.assertEqual(backend.count("passage"), 0)
 
 
+class TestForbiddenPhraseRepair(PipelineCase):
+    """The fixture story forbids "the truth"."""
+
+    OFFENDER = " She finally saw the truth of the whole arrangement laid out plain."
+
+    def test_a_rewrite_that_keeps_the_phrase_is_refused(self):
+        """`check_forbidden` quotes the containing sentence — it has to, or the span cannot be
+        located — and the verification here was still asking whether that whole sentence came
+        back, which it never does. Every rewrite passed, and scene 6 of a live run spliced in two
+        replacements that both still said the banned word."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(1100) + self.OFFENDER)
+        backend.queue("surgical", "She saw the truth of it laid out on the bench.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=1))
+
+        self.assertTrue(any("forbidden_phrase rewrite failed verification" in n
+                            for n in result.notes), result.notes)
+
+    def test_a_clean_rewrite_is_accepted(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(880) + self.OFFENDER)
+        backend.queue("surgical", "She saw the shape of the arrangement laid out plain.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertNotIn("the truth", result.scene.text.lower())
+        self.assertTrue(result.committed,
+                        f"held back by: {[str(v) for v in result.violations]}")
+
+
 class TestLeakedProhibition(PipelineCase):
     """A premature reveal is deleted, not rewritten.
 
