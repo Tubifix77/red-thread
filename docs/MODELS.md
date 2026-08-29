@@ -390,10 +390,22 @@ it for a stronger model, and `bench` is the place to do that.
   sentence-local repair reaches it. There is no threshold justifiable from real prose that does
   not halt most scenes.
 
-**What does work besides length: drafting more candidates.** Five drafts of one brief, same model,
-same temperature, ranged 0.170 to 0.510 — a 3× spread on identical input. Selection now breaks
-ties on the ratio, so the cleanest draft wins at no extra cost, and `--candidates 3` is worth the
-time on a machine that has it.
+**What does work besides length: drafting more candidates.** Six drafts of one brief, same model,
+same temperature, spread wide on identical input — one scene ranged 0.044 to 0.447. Selection
+breaks ties on the ratio, so the cleanest draft wins for nothing extra. Expected best-of-k, exact
+over every subset of six drafts across two scenes:
+
+| candidates | expected duplication |
+|---|---|
+| 1 | 0.107 |
+| 2 | 0.058 |
+| 3 | 0.045 |
+| 4 | 0.038 |
+
+One to two halves it; two to three takes another fifth; past three it flattens. **Three is the
+default and it is the right one** — worth stating because every run in the session that produced
+these numbers was launched with `--candidates 2`, which is strictly worse than leaving the flag
+alone.
 
 ## Measuring adherence yourself
 
