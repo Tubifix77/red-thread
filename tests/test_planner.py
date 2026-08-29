@@ -588,6 +588,20 @@ class TestStatePostsAreRestated(unittest.TestCase):
                                    "The villagers learn to trust the register"])})
         return [spec], StorySpec(title="t", premise="p", threads=[thread])
 
+    def test_a_descriptive_absolute_phrase_counts_as_written_out(self):
+        """Scene 9 of a live run carried "Ingrid looks out the window, her breath visible in the
+        cold air" and the prose copied thirteen six-word runs out of its own beats. The detector
+        wanted a participle, and "visible" is an adjective."""
+        from redthread.planner import _is_written_out
+        for beat in ("Ingrid looks out the window, her breath visible in the cold air.",
+                     "Dain steps forward, his boots crunching over dry leaves."):
+            with self.subTest(beat=beat):
+                self.assertTrue(_is_written_out(beat))
+        for beat in ("Ingrid refuses to sign the haulage sheet",
+                     "Torvald takes the register away from her"):
+            with self.subTest(beat=beat):
+                self.assertFalse(_is_written_out(beat))
+
     def test_the_state_line_is_replaced_by_an_event(self):
         from redthread.planner import scrub_state_posts
         plan, story = self._fixture()

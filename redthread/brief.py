@@ -238,7 +238,9 @@ def render_brief(
         f"Setting: {spec.setting}" + (f" — {spec.time}" if spec.time else ""),
         f"Summary: {spec.summary}" if spec.summary else "",
         "",
-        "Beats, in order. Each is roughly half a page of story; hit all of them:",
+        "Beats, in order. Each is roughly half a page of story; hit all of them.",
+        "They are instructions, not sentences: dramatise each one in your own words. A beat "
+        "copied into the prose reads as an outline read aloud, and is rejected as one.",
     ]
     task = [t for t in task if t != ""]
     for i, beat in enumerate(spec.beats, 1):

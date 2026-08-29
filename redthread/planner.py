@@ -823,7 +823,7 @@ def scrub_state_posts(plan: list[SceneSpec], story: StorySpec, models: Models) -
 # ", his boots crunching over dry leaves" — the absolute-participial construction is the
 # signature of a beat that has stopped planning and started describing. Dialogue is the other
 # signature, and `checks.check_beats_are_intent` reports that one at plan level.
-_PARTICIPIAL = re.compile(r",\s+(?:his|her|its|their|the)\s+\w+\s+\w+(?:ing|ed)\b", re.I)
+_PARTICIPIAL = re.compile(r",\s+(?:his|her|its|their|the)\s+\w+\s+\w+", re.I)
 
 
 def _is_written_out(beat: str) -> bool:

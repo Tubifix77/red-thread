@@ -156,6 +156,18 @@ class TestFullRun(unittest.TestCase):
             self.assertNotIn("WARNING: scene", prompt,
                              f"scene {i} was written against an incomplete ledger")
 
+    def test_every_brief_tells_the_writer_the_beats_are_not_sentences(self):
+        """Scene 9 of a live run copied thirteen six-word runs out of its own beats. The beats
+        were fine; nothing had told the writer they were instructions rather than prose."""
+        models, backend = fakes.scripted_models()
+        for spec in self.project.plan:
+            backend.queue("draft", fakes.clean_prose(spec.word_target, spec.index - 1))
+        write_all(self.project, models, Config(candidates=1))
+
+        for i, prompt in enumerate([p for role, p in backend.calls if role == "draft"], start=1):
+            self.assertIn("They are instructions, not sentences", prompt,
+                          f"scene {i}'s brief did not warn against copying its beats")
+
 
 if __name__ == "__main__":
     unittest.main()
