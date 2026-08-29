@@ -1035,10 +1035,16 @@ def positive_prohibition(text: str) -> str:
 
 
 _DISCLOSURE = re.compile(
-    r"\b(?:reveal(?:s|ed|ing)?|disclos\w+|discover(?:s|ed|ing|y)?|uncover\w*|expos\w+|"
-    r"learn(?:s|ed|ing)?|told|tells|know(?:s|n|ing)?|made (?:public|explicit|clear))\b",
+    r"\b(?:reveal(?:s|ed|ing)?|disclos(?:e|es|ed|ing)|discover(?:s|ed|ing)|"
+    r"uncover(?:s|ed|ing)|expos(?:e|es|ed|ing)|learn(?:s|ed|ing)?|told|tells|"
+    r"know(?:s|n|ing)?|made (?:public|explicit|clear))\b",
     re.IGNORECASE)
-"""Verbs of a fact becoming available to the reader.
+"""Verbs of a fact becoming available to the reader — verbs only.
+
+The noun forms are deliberately absent. A live plan forbade "Ingrid is thanked for her
+discovery", which is a prohibition on the village being grateful, not on anything being
+disclosed; matching the noun dropped a real constraint as though it were a stale concealment.
+"exposure", "revelation" and "disclosure" go the same way.
 
 "Explain" is deliberately absent. A Forbid saying "the founders' motives being explained" is a
 craft rule — do not have the narrator gloss the story — and it holds for every scene of the book

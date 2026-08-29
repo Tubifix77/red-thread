@@ -469,6 +469,24 @@ class TestScrub(unittest.TestCase):
         self.assertNotIn("fate", specs[0].summary.lower())
         self.assertIn("survival", specs[0].summary)
 
+    def test_the_story_bible_is_scrubbed_too(self):
+        """A live plan banned "truth" and then wrote "he's too old to confront the truth" into a
+        character description. Descriptions go into every brief, so scrubbing only the scene
+        content left a permanent MAJOR and the banned word in all fifteen briefs."""
+        from redthread.planner import scrub_forbidden
+        from redthread.models import Beat, SceneSpec
+        story = self._story_with_ban()
+        story.characters[0].description = "He is too old to confront the fate of it."
+        specs = [SceneSpec(id="s01", index=1, summary="She reads the ledger.",
+                           beats=[Beat("A beat.")])]
+        backend = PlannerBackend(scrub_reply="He is too old to confront what it means.")
+
+        fixed = scrub_forbidden(specs, story, models_with(backend))
+
+        self.assertEqual(fixed, 1)
+        self.assertNotIn("fate", story.characters[0].description.lower())
+        self.assertEqual(checks.check_spec_self_consistency(specs, story), [])
+
     def test_a_rewrite_that_keeps_the_phrase_is_discarded(self):
         from redthread.planner import scrub_forbidden
         from redthread.models import Beat, SceneSpec

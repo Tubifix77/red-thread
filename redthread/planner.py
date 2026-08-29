@@ -670,6 +670,45 @@ def scrub_forbidden(plan: list[SceneSpec], story: StorySpec, models: Models) -> 
         return line
 
     fixed = 0
+    # The story bible first. `check_spec_self_consistency` reads the story *and* the plan, so a
+    # banned word in a character description is a permanent MAJOR that no amount of scene-level
+    # scrubbing clears — and character descriptions go into every brief, which is the whole
+    # reason the check exists. A live run banned "truth" and then wrote "he's too old to confront
+    # the truth" into the father's description; five scene lines were fixed and that one was not.
+    # Title and character names are left alone: those are identity, and renaming the book or the
+    # cast is the author's call, so the audit keeps reporting them instead.
+    for attr in ("premise",):
+        replacement = fix(getattr(story, attr) or "")
+        if replacement is not None:
+            setattr(story, attr, replacement)
+            fixed += 1
+    for i, rule in enumerate(story.world_rules):
+        replacement = fix(rule)
+        if replacement is not None:
+            story.world_rules[i] = replacement
+            fixed += 1
+    for character in story.characters:
+        for attr in ("description", "voice"):
+            replacement = fix(getattr(character, attr) or "")
+            if replacement is not None:
+                setattr(character, attr, replacement)
+                fixed += 1
+    for thread in story.threads:
+        for attr in ("name", "concealment", "payoff"):
+            replacement = fix(getattr(thread, attr) or "")
+            if replacement is not None:
+                setattr(thread, attr, replacement)
+                fixed += 1
+    replacement = fix(story.style.notes or "")
+    if replacement is not None:
+        story.style.notes = replacement
+        fixed += 1
+    for i, sample in enumerate(story.style.samples):
+        replacement = fix(sample)
+        if replacement is not None:
+            story.style.samples[i] = replacement
+            fixed += 1
+
     for spec in plan:
         for attr in ("summary", "setting", "time", "notes"):
             replacement = fix(getattr(spec, attr) or "")

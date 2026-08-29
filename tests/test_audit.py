@@ -286,6 +286,15 @@ class TestStaleProhibitions(unittest.TestCase):
             self._plan(4, "The enclave is revealed"), self._story(10))
         self.assertEqual(found, [])
 
+    def test_a_noun_is_not_a_disclosure(self):
+        """From a live plan: "Ingrid is thanked for her discovery" forbids gratitude, not
+        disclosure. Matching the noun dropped a real constraint as a stale concealment."""
+        for forbid in ("Ingrid is thanked for her discovery",
+                       "the exposure ends the haulage contracts"):
+            with self.subTest(forbid=forbid):
+                self.assertFalse(checks.is_disclosure_prohibition(forbid))
+        self.assertTrue(checks.is_disclosure_prohibition("Ingrid discovers the second hand"))
+
     def test_a_craft_rule_is_never_stale(self):
         """"the founders' motives being explained" is a rule against narrator gloss, not a
         concealment, and holds for the whole book however much the reader knows."""
