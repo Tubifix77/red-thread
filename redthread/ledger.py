@@ -85,7 +85,7 @@ def is_moveable_pair(a: Fact, b: Fact) -> bool:
 
 _POSSESSION = re.compile(
     r"\b(?:carry|carries|carrying|hold|holds|holding|wear|wears|wearing|grip|grips|gripping|"
-    r"clutch\w*|grasp\w*|bear|bears|bearing|keeps? in|has in|had in)\b", re.IGNORECASE)
+    r"clutch\w*|grasp\w*|touch\w*|bear|bears|bearing|keeps? in|has in|had in)\b", re.IGNORECASE)
 
 
 def is_possession_pair(a: Fact, b: Fact) -> bool:
@@ -108,10 +108,17 @@ def is_possession_pair(a: Fact, b: Fact) -> bool:
 
     Restricted to `STATE`, like its sibling, and that restriction is load-bearing: `Vael | has a
     | scar on his wrist` is a `DETAIL`, so a scar that moves to the other wrist is still caught.
+
+    Matched across the predicate *and* the object together, the way `is_belief_pair` does, and
+    the first version of this guard did not. It only read the predicate, which caught `Vael | is
+    carrying | a blade` and then missed `Vael | is | holding a dagger` twelve scenes later —
+    same claim, same book, the verb landing on the other side of a boundary that is an artefact
+    of extraction rather than of meaning. The same run halted twice on one bug.
     """
     if a.kind is not FactKind.STATE or b.kind is not FactKind.STATE:
         return False
-    return bool(_POSSESSION.search(a.predicate) and _POSSESSION.search(b.predicate))
+    return bool(_POSSESSION.search(f"{a.predicate} {a.object}")
+                and _POSSESSION.search(f"{b.predicate} {b.object}"))
 
 
 _MIND = re.compile(

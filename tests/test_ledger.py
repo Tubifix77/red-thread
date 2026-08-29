@@ -296,6 +296,18 @@ class TestPossessionChangesAreNotContradictions(unittest.TestCase):
                 new = self._fact(verb, "a coil of rope", 14)
                 self.assertEqual(ledger.conflict_candidates([new]), [])
 
+    def test_the_verb_may_sit_on_either_side_of_the_boundary(self):
+        """Where the predicate ends and the object begins is an artefact of extraction.
+
+        The first version of this guard read only the predicate. It caught `Vael | is carrying |
+        a blade` at scene 37 and then missed `Vael | is | holding a dagger` at scene 49 — same
+        claim, same book, same run halted twice on one bug. `same_claim` makes exactly this
+        argument about the predicate/object boundary; this guard now respects it too.
+        """
+        ledger = Ledger([Fact("Vael", "is", "holding a dagger", 22, FactKind.STATE)])
+        new = Fact("Vael", "is", "gripping the rope", 49, FactKind.STATE)
+        self.assertEqual(ledger.conflict_candidates([new]), [])
+
     def test_a_fixed_detail_is_still_checked(self):
         """The load-bearing restriction. A scar is a DETAIL — a particular the prose has fixed
         and cannot change — so a scar that moves wrists is exactly what this system is for."""
