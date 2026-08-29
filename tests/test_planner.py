@@ -637,6 +637,30 @@ class TestStatePostsAreRestated(unittest.TestCase):
         self.assertEqual(backend.count("restate"), 0)
 
 
+class TestUnavoidableBansAreDropped(unittest.TestCase):
+    """A ban the prose cannot honour is dropped as the plan is parsed, the same way a negated
+    forbid is inverted. One fresh plan banned "truth", "right", "memory" and "silence" in a story
+    about a recipe nobody wrote down — four running battles, one per scene, each costing a repair
+    round."""
+
+    def _story(self, *phrases):
+        return parse_story(json.loads(story_json(style={
+            "pov": "third limited", "tense": "past", "samples": ["A.", "B.", "C."],
+            "forbidden_phrases": list(phrases), "notes": ""})))
+
+    def test_common_abstractions_do_not_survive_parsing(self):
+        story = self._story("truth", "memory", "conspiracy", "hacker")
+        self.assertEqual(story.style.forbidden_phrases, ["conspiracy", "hacker"])
+
+    def test_a_phrase_survives(self):
+        story = self._story("the truth of it", "sentient")
+        self.assertEqual(story.style.forbidden_phrases, ["the truth of it", "sentient"])
+
+    def test_the_audit_is_clean_afterwards(self):
+        story = self._story("truth", "villain")
+        self.assertEqual(checks.check_ban_is_avoidable([], story), [])
+
+
 class TestBeatsSurviveSharpening(unittest.TestCase):
     """`scrub_prose_beats` has to run AFTER `expand_beats`, not before.
 

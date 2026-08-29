@@ -203,8 +203,15 @@ def parse_story(data: dict) -> StorySpec:
         pov=str(style_raw.get("pov") or "third limited").strip(),
         tense=str(style_raw.get("tense") or "past").strip(),
         samples=[str(s).strip() for s in (style_raw.get("samples") or []) if str(s).strip()],
-        forbidden_phrases=[str(s).strip().lower()
-                           for s in (style_raw.get("forbidden_phrases") or []) if str(s).strip()],
+        # A ban the prose cannot honour is dropped as the plan is parsed, the same way a negated
+        # forbid is inverted: keeping it buys nothing and costs a repair round in every scene
+        # that needs the word. One fresh plan banned "truth", "right", "memory" and "silence" in
+        # a story about a recipe nobody wrote down. `check_ban_is_avoidable` stays as the
+        # backstop for anything this misses.
+        forbidden_phrases=[phrase for phrase in
+                           (str(s).strip().lower()
+                            for s in (style_raw.get("forbidden_phrases") or []) if str(s).strip())
+                           if not checks.is_unavoidable_ban(phrase)],
         notes=str(style_raw.get("notes") or "").strip(),
     )
 

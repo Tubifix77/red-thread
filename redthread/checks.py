@@ -1368,6 +1368,12 @@ choice knowledge secret story word thing moment place life world day night sense
 """.split())
 
 
+def is_unavoidable_ban(phrase: str) -> bool:
+    """Is this a word the prose is made of, rather than the vocabulary of a trope?"""
+    word = phrase.strip().lower()
+    return " " not in word and word in _UNAVOIDABLE
+
+
 def check_ban_is_avoidable(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
     """A forbidden phrase must be avoidable, or the book fights it in every scene.
 
@@ -1382,8 +1388,7 @@ def check_ban_is_avoidable(plan: list[SceneSpec], story: StorySpec) -> list[Viol
     """
     out: list[Violation] = []
     for phrase in story.style.forbidden_phrases:
-        word = phrase.strip().lower()
-        if " " in word or word not in _UNAVOIDABLE:
+        if not is_unavoidable_ban(phrase):
             continue
         out.append(Violation(
             "unavoidable_ban", Severity.MAJOR,
