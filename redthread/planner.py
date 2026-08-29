@@ -84,6 +84,11 @@ Anything you put in "forbidden_phrases" binds YOU as well. Do not list a word an
 the premise, a thread, or a world rule — every scene brief is built from that text, so a \
 prohibited term sitting there is injected into all of them.
 
+Ban the vocabulary of the thing the premise is avoiding — "conspiracy", "hacker", "sentient" — \
+never a word the prose is made of. "truth", "right", "memory", "silence" and their like are words \
+a novel needs; banning one does not shape the book, it starts a fight the prose loses in every \
+scene, and each loss costs a repair round.
+
 CONSTRAINTS STATED IN THE PREMISE ARE BINDING. If the premise says what the story must avoid — a \
 trope, a comparison, a kind of antagonist — honour it, and put the vocabulary of the thing it must \
 avoid into "forbidden_phrases". A premise calling a system "adaptive" does not license a sentient \

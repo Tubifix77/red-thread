@@ -1360,6 +1360,40 @@ def check_prohibition_phrasing(plan: list[SceneSpec], story: StorySpec) -> list[
     return out
 
 
+# Abstractions a novel reaches for constantly. Banning one is not a style constraint, it is a
+# running battle the prose loses in every scene — and each loss costs a repair round.
+_UNAVOIDABLE = frozenset("""
+truth right reason feeling memory silence hope fear love death time light dark change power
+choice knowledge secret story word thing moment place life world day night sense mind heart
+""".split())
+
+
+def check_ban_is_avoidable(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
+    """A forbidden phrase must be avoidable, or the book fights it in every scene.
+
+    `forbidden_phrases` exists to keep a premise off the shape it is trying not to be: ban
+    "conspiracy", "hacker", "sentient" and the prose never misses them. A live plan banned
+    "truth" in a story about a falsified record, and "right" as well. One scene came back with
+    six `forbidden_phrase` violations, each needing its own repair, on a word the story is
+    actually about.
+
+    Single common abstractions only. A two-word phrase is specific enough to route around, and
+    a rarer word is the kind of ban this feature is for.
+    """
+    out: list[Violation] = []
+    for phrase in story.style.forbidden_phrases:
+        word = phrase.strip().lower()
+        if " " in word or word not in _UNAVOIDABLE:
+            continue
+        out.append(Violation(
+            "unavoidable_ban", Severity.MAJOR,
+            f'the style contract forbids "{phrase}", which is a word a novel needs. Every scene '
+            f'will trip it and every trip costs a repair round. Ban the vocabulary of the thing '
+            f'the premise is avoiding, not the words the prose is made of.',
+            "check_ban_is_avoidable", phrase))
+    return out
+
+
 def check_spec_self_consistency(plan: list[SceneSpec], story: StorySpec) -> list[Violation]:
     """The plan must not violate its own style contract.
 
@@ -1447,6 +1481,7 @@ def audit_plan(plan: list[SceneSpec], story: StorySpec,
     out += check_stakes_progression(plan, story, history)
     out += check_concealment(plan, story)
     out += check_spec_self_consistency(plan, story)
+    out += check_ban_is_avoidable(plan, story)
     out += check_prohibition_phrasing(plan, story)
     out += check_stale_prohibitions(plan, story)
     out += check_post_is_an_event(plan, story)

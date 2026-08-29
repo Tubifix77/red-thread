@@ -207,6 +207,36 @@ class TestReferencePlan(unittest.TestCase):
             self.assertEqual(seq[-1][1], t.states[-1], f"{t.id} is never paid off")
 
 
+class TestBanIsAvoidable(unittest.TestCase):
+    """A forbidden phrase must be avoidable, or the book fights it in every scene."""
+
+    def _story(self, *phrases):
+        from redthread.models import StyleContract
+        return StorySpec(title="t", premise="p",
+                         style=StyleContract(forbidden_phrases=list(phrases)))
+
+    def test_a_common_abstraction_is_flagged(self):
+        """A live plan banned "truth" in a story about a falsified record, and "right" as well.
+        One scene came back with six `forbidden_phrase` violations on a word the story is
+        actually about."""
+        found = checks.check_ban_is_avoidable([], self._story("truth", "right"))
+        self.assertEqual(len(found), 2)
+        self.assertEqual({v.kind for v in found}, {"unavoidable_ban"})
+
+    def test_trope_vocabulary_is_exactly_what_this_feature_is_for(self):
+        found = checks.check_ban_is_avoidable(
+            [], self._story("conspiracy", "hacker", "sentient", "villain"))
+        self.assertEqual(found, [])
+
+    def test_a_phrase_is_specific_enough_to_route_around(self):
+        found = checks.check_ban_is_avoidable([], self._story("the truth of it"))
+        self.assertEqual(found, [])
+
+    def test_the_audit_surfaces_it(self):
+        found = checks.audit_plan([], self._story("memory"))
+        self.assertIn("unavoidable_ban", kinds(found))
+
+
 class TestProhibitionPhrasing(unittest.TestCase):
     """A Forbid says what must not happen. A live plan wrote every concealment as a negation
     instead — "The fugitive's true purpose is not revealed" — and read literally that demands the
