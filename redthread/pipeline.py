@@ -331,10 +331,25 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
 
     text = scene.text
     # Deleting is free but costs words, and a real run deleted its way from 918 words to 772 —
-    # under the length floor — while the judge kept finding new gloss. Delete only while the
-    # scene can afford it; once at or below target, gloss sentences are rewritten into something
-    # concrete instead, which holds the length while removing the tell.
+    # under the length floor — while the judge kept finding new gloss. So the budget is the
+    # distance to the floor, not to the target: a scene at 1087 against a 1300-word target is
+    # 82 words clear of its minimum and can afford one sentence, while the old rule called it
+    # untouchable and skipped the span instead. Skipping makes no progress, the action is
+    # sidelined after two rounds of it, and a live scene lost its whole budget that way.
+    # Two thresholds, because they answer different questions.
+    #
+    # `can_delete` is a *preference*: above target, a gloss sentence is cheaper to cut than to
+    # rewrite. At or below target, rewriting holds the length while removing the tell, which is
+    # why a real run that deleted its way from 918 words to 772 got this guard in the first
+    # place.
+    #
+    # `budget` is a *limit*: how many words can go before the scene falls under its length floor.
+    # It governs the fallback when a rewrite has already failed verification, where the old rule
+    # skipped the span entirely — no progress, the action sidelined after two rounds of it, and
+    # a live scene lost its whole budget to three skipped somatic rewrites at 1087 words against
+    # a 1300 target, 82 words clear of a floor it was never going to breach.
     can_delete = scene.word_count() > spec.word_target
+    budget = scene.word_count() - spec.word_target * 0.85
     for lo, hi, v in sorted(spans, key=lambda s: s[0], reverse=True):
         original = text[lo:hi].strip()
         # A BLOCKER outranks the length guard. Deleting gloss repeatedly can shrink a scene
@@ -342,8 +357,10 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
         # un-read by any later scene, while a short scene has `_expand` waiting for it. Scene 4
         # of a live book leaked a concealment, was under target, and so had its leaking sentence
         # *rewritten* instead of cut; the rewrite leaked it again and the scene was blocked.
+        can_afford = budget >= len(original.split())
         if v.kind in DELETE_KINDS and (can_delete or v.severity is Severity.BLOCKER):
             replacement = ""
+            budget -= len(original.split())
             notes.append(f"surgical: deleted the {v.kind} sentence (no model call)")
         else:
             before = text[max(0, lo - 160):lo].strip()[-140:]
@@ -421,9 +438,10 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                 # and be skipped every time, because the scene was under target and so deletion
                 # was refused. Skipping makes no progress at all, while the shortfall a deletion
                 # creates has `_expand` waiting for it.
-                if can_delete or v.kind in ABSOLUTE_KINDS:
+                if can_afford or v.kind in ABSOLUTE_KINDS:
                     # A sentence that fails verification is better gone than kept.
                     replacement = ""
+                    budget -= len(original.split())
                     notes.append(f"surgical: {v.kind} rewrite failed verification; deleted")
                 else:
                     notes.append(f"surgical: {v.kind} rewrite failed verification; skipped")

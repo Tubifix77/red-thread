@@ -1200,6 +1200,27 @@ class TestSurgicalRepair(PipelineCase):
         self.assertTrue(result.committed,
                         f"held back by: {[str(v) for v in result.violations]}")
 
+    def test_a_failed_rewrite_below_target_still_deletes_down_to_the_floor(self):
+        """Preferring a rewrite is right until the rewrite has failed. A live scene at 1087
+        words against a 1300 target — 82 words clear of a floor it was never going to breach —
+        skipped three somatic rewrites in a row, made no progress, and had the action sidelined
+        for it."""
+        models, backend = fakes.scripted_models()
+        spec = self.project.spec_at(1)
+        spec.word_target = 1000
+        somatic = (" Her chest tightened at the door. His stomach dropped when he read it. "
+                   "Something twisted in her throat.")
+        backend.queue("draft", fakes.clean_prose(900) + somatic)
+        # Every rewrite reaches for the body again, so verification refuses all of them.
+        backend.queue("surgical", *["Her chest tightened again."] * 6)
+
+        result = write_scene(self.project, spec, models, Config(candidates=1, max_repairs=3))
+
+        self.assertTrue(any("failed verification; deleted" in n for n in result.notes),
+                        result.notes)
+        self.assertGreaterEqual(result.scene.word_count(), int(1000 * 0.85),
+                                "deleted past the length floor")
+
     def test_gloss_below_target_is_rewritten_not_deleted(self):
         """Deleting is free but costs words: a real run deleted its way from 918 to 772 words.
         At or below target, gloss is rewritten into something concrete instead."""
