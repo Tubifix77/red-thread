@@ -23,6 +23,7 @@ ROLES = {
     "It currently reuses wording from the": "reseam",
     "One passage in a novel scene is too thin": "passage",
     "is missing something it was required to make happen": "fulfil",
+    "discloses something the reader is not meant to know": "excise",
 }
 
 
@@ -88,6 +89,7 @@ class ScriptedBackend(Backend):
         # Longer than any thin passage a test will hand it, so the "came back
         # shorter" guard in `_expand_passage` does not reject it.
         "passage": " ".join(_FILLER) + " " + " ".join(_FILLER),
+        "excise": "NONE",
         "fulfil": ("She put the vial on the bench and slid it across to him. He did not "
                    "pick it up. The tally sheet went into the stove and the stove door "
                    "clanged shut behind it."),

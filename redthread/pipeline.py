@@ -105,6 +105,7 @@ DELETE_KINDS = {"thematic_gloss", "tell_thematic_gloss", "thread_prohibition"}
 # and 292 green tests said nothing about it because the fixtures were built not to trip it.
 DEDICATED_REPAIRS = {
     "thread_obligation": "fulfil",
+    "thread_prohibition": "surgical deletion, then excise",
     "length": "expand",
     "length_runaway": "trim",
     "truncated_scene": "snap",
@@ -941,6 +942,9 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             if repaired is None and any(v.kind == "thread_obligation" for v in serious):
                 repaired = _fulfil(scene, serious, models, result.notes)
                 action = "fulfil"
+            if repaired is None and any(v.kind == "thread_prohibition" for v in serious):
+                repaired = _excise_leak(scene, serious, models, result.notes)
+                action = "excise"
             if repaired is None:
                 # Two tries, because the first can fail on the call rather than on the answer — a
                 # live run lost scene 13's only response pass to one LLMError. Retrying a failed
@@ -1146,6 +1150,70 @@ def _fulfil(scene: Scene, violations: list[Violation], models: Models, notes: li
     notes.append(f"fulfil: wrote {len(addition.split())} words staging "
                  f"{len(missing)} missed obligation(s)")
     return candidate
+
+
+LOCATE_PROMPT = """A scene of a novel discloses something the reader is not meant to know yet.
+
+MUST NOT BE DISCLOSED: {secret}
+
+Quote the ONE sentence from the scene that gives it away — the sentence a reader would learn it
+from. Copy it exactly, word for word, from the text below. If several do, quote the earliest.
+If nothing in the scene actually discloses it, reply with the single word NONE.
+
+SCENE:
+---
+{text}
+---
+
+Reply with the sentence only, or NONE."""
+
+
+def _excise_leak(scene: Scene, violations: list[Violation], models: Models,
+                 notes: list[str]) -> str | None:
+    """Ask which sentence leaks, verify the answer is really in the scene, and cut it.
+
+    A `thread_prohibition` the judge cannot quote is the one violation with no repair at all:
+    `_surgical` needs a span, `_fulfil` answers obligations, and whole-scene repair is the one
+    that does not work on a small model. Scene 6 of a clean-slate run was held by exactly that,
+    with both whole-scene attempts failing on the call.
+
+    The claim is still actionable — the judge knows what was disclosed, it just did not say
+    where. Asking for the sentence separately is a smaller question than "repair this scene",
+    and the answer is checkable: a quote that does not locate is a quote the judge invented, and
+    is refused the same way an unevidenced finding is refused everywhere else here.
+    """
+    leaks = [v for v in violations if v.kind == "thread_prohibition"]
+    if not leaks:
+        return None
+    secret = leaks[0].detail.removeprefix("violated: ")
+    try:
+        reply = models.critic.complete(
+            LOCATE_PROMPT.format(secret=secret[:300], text=_clip_scene(scene.text)),
+            max_tokens=400, temperature=0.0)
+    except LLMError:
+        return None
+
+    quote = strip_reasoning(reply.text).strip().strip('"').strip()
+    if not quote or quote.upper().startswith("NONE"):
+        notes.append("excise: the judge could not point at a sentence that discloses it")
+        return None
+    located = checks.locate_quote(scene.text, quote)
+    if located is None:
+        notes.append("excise: the quoted sentence is not in the scene; discarded")
+        return None
+
+    lo, hi = checks.sentence_covering(scene.text, located)
+    candidate = (scene.text[:lo].rstrip() + " " + scene.text[hi:].lstrip()).strip()
+    if len(candidate.split()) < scene.word_count() * 0.7:
+        return None
+    notes.append(f"excise: cut the sentence the judge named as the disclosure "
+                 f"({hi - lo} characters)")
+    return candidate
+
+
+def _clip_scene(text: str, words: int = 2000) -> str:
+    parts = text.split()
+    return " ".join(parts[:words]) + (" […]" if len(parts) > words else "")
 
 
 def _expand_passage(scene: Scene, spec: SceneSpec, models: Models, notes: list[str],

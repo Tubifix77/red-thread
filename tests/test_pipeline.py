@@ -726,6 +726,61 @@ class TestExpansionIsLocal(PipelineCase):
         self.assertEqual(backend.count("passage"), 0)
 
 
+class TestUnquotedLeak(PipelineCase):
+    """A `thread_prohibition` the judge cannot quote had no repair at all.
+
+    `_surgical` needs a span, `_fulfil` answers obligations, and whole-scene repair is the one
+    that does not work on a small model. Scene 6 of a clean-slate run was held by exactly that,
+    with both whole-scene attempts failing on the call.
+    """
+
+    LEAK = " He said the fissure ran under the sluice."
+
+    def _models(self):
+        # The judge reports the violation with no quote, so nothing can be located.
+        return fakes.scripted_models({
+            "threads": fakes.threads_one_prohibition_violated(0, quote="")})
+
+    def test_the_named_sentence_is_cut(self):
+        models, backend = self._models()
+        backend.queue("draft", fakes.clean_prose(950) + self.LEAK)
+        backend.queue("excise", self.LEAK.strip())
+        # Second look at the cut scene: the leak is gone.
+        backend.queue("threads", fakes.threads_one_prohibition_violated(0, quote=""),
+                      fakes.threads_all_met())
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=3))
+
+        self.assertTrue(any("excise: cut the sentence" in n for n in result.notes), result.notes)
+        self.assertNotIn("fissure ran under", result.scene.text)
+
+    def test_an_invented_quote_is_refused(self):
+        """A quote that does not locate is a quote the judge invented, and is refused the same
+        way an unevidenced finding is refused everywhere else here."""
+        models, backend = self._models()
+        backend.queue("draft", fakes.clean_prose(950) + self.LEAK)
+        backend.queue("excise", "A sentence that appears nowhere in this scene at all.")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=3))
+
+        self.assertTrue(any("not in the scene; discarded" in n for n in result.notes),
+                        result.notes)
+        self.assertIn("fissure ran under", result.scene.text)
+
+    def test_none_is_taken_at_its_word(self):
+        models, backend = self._models()
+        backend.queue("draft", fakes.clean_prose(950) + self.LEAK)
+        backend.queue("excise", "NONE")
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=3))
+
+        self.assertTrue(any("could not point at a sentence" in n for n in result.notes),
+                        result.notes)
+
+
 class TestSecondResponsePass(PipelineCase):
     """A leaked concealment is usually carried by more than one sentence.
 
