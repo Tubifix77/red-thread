@@ -453,11 +453,46 @@ class TestDuplicationRatio(unittest.TestCase):
         self.assertGreater(checks.duplication_ratio(self.LOOPING),
                            checks.duplication_ratio(many_phrases_twice))
 
-    def test_the_violation_reports_the_percentage(self):
-        found = checks.check_internal_repetition(scene(self.LOOPING))
+    # Many different phrases, each repeated twice: a register, with no single phrase reaching the
+    # tic threshold.
+    DIFFUSE = " ".join(
+        f"{a} the {noun} and said nothing. {a} the {noun} and said nothing."
+        for a, noun in (("She lifted", "ledger"), ("He turned", "gauge"),
+                        ("They emptied", "kettle"), ("Somebody stamped", "docket"),
+                        ("She unscrewed", "hasp"), ("He amended", "roster"),
+                        ("They recounted", "tally")))
+
+    # One phrase, many sentences: a tic, and each carrier is a different sentence a repair can
+    # reach. This is the shape real prose takes — a live scene said "the way she always" five
+    # times in five different sentences.
+    TIC = " ".join(
+        f"She noticed the way he always {verb} before the shift ended."
+        for verb in ("checked the log", "wiped the bench", "counted the tickets",
+                     "closed the hatch", "signed the sheet", "moved the crate",
+                     "read the gauge"))
+
+    def test_diffuse_duplication_stays_advisory(self):
+        """No single sentence carries it, so nothing local can repair it."""
+        found = checks.check_internal_repetition(scene(self.DIFFUSE))
         self.assertTrue(found)
         self.assertIn("repeated material", found[0].detail)
         self.assertTrue(all(v.severity is Severity.MINOR for v in found))
+
+    def test_a_concentrated_tic_is_repairable(self):
+        """One phrase across seven sentences is seven places a repair can go."""
+        found = checks.check_internal_repetition(scene(self.TIC))
+        self.assertTrue(found)
+        self.assertTrue(all(v.severity is Severity.MAJOR for v in found))
+        self.assertGreater(len(found), 1)
+        self.assertEqual(len({v.quote for v in found}), len(found))
+        for v in found:
+            self.assertIsNotNone(checks.locate_quote(self.TIC, v.quote))
+
+    def test_it_leaves_the_allowance_alone(self):
+        """It reduces to the allowance, not to one: demanding a model never repeat a four-word
+        run would churn every scene without reaching it."""
+        found = checks.check_internal_repetition(scene(self.TIC))
+        self.assertEqual(len(found), 7 - 5 + 1)
 
 
 class TestCopiedRuns(unittest.TestCase):

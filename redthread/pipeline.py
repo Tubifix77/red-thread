@@ -62,6 +62,8 @@ Return the complete corrected scene as prose, nothing else."""
 # spent all three repair attempts returning prose that had not changed. A violation with an
 # instruction attached is a task; one without is a complaint.
 REMEDIES = {
+    "internal_repetition": ("Rewrite the sentence without the repeated phrase. The scene has "
+                           "used it several times already; say this one another way entirely."),
     "style_leak": ("Find the sentence lifted from the style samples and write a different "
                    "sentence in the same rhythm. The samples show the register to match, not "
                    "text to reuse."),
@@ -443,6 +445,14 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                 lowered = replacement.lower()
                 failed_verify = any(p.strip() and p.strip().lower() in lowered
                                     for p in (forbidden or []))
+            elif v.kind == "internal_repetition":
+                # The tic must actually be gone. A writer asked to vary a phrase it has already
+                # used five times reaches for it again, the way it does with the body and with
+                # a banned word — and the detail carries the phrase in leading quotes, which is
+                # the only place it exists once the quote became the whole sentence.
+                phrase = v.detail.split('"')[1] if '"' in v.detail else ""
+                failed_verify = bool(phrase) and phrase in " ".join(
+                    checks.words(replacement))
             elif v.kind == "somatic_emotion":
                 # A writer that reaches for the body once reaches for it again in the rewrite:
                 # "his gut twist" comes back as "his stomach knotted" and the check re-fires.

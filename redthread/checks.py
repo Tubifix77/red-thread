@@ -793,8 +793,8 @@ def duplication_ratio(text: str, n: int = 4) -> float:
     return 1 - len(set(grams)) / len(grams)
 
 
-def check_internal_repetition(scene: Scene, n: int = 4,
-                              max_repeats: int = 1) -> list[Violation]:
+def check_internal_repetition(scene: Scene, n: int = 4, max_repeats: int = 1,
+                              tic: int = 5) -> list[Violation]:
     """The same phrase twice inside one scene. Engineering judgement, not sourced.
 
     Advisory on purpose, and the reasoning is worth recording because the obvious move is wrong.
@@ -813,6 +813,49 @@ def check_internal_repetition(scene: Scene, n: int = 4,
         return []
     dupes.sort(key=lambda gc: -gc[1])
     ratio = duplication_ratio(scene.text, n)
+
+    # A tic is not the same failure as a register, and only one of them is repairable.
+    #
+    # Diffuse duplication — a scene where 29% of the 4-grams recur, spread everywhere — is the
+    # model's whole voice. No sentence-local repair reaches it, so it stays advisory and selection
+    # handles it. But one phrase used five times in six hundred words is a verbal tic sitting in
+    # five specific sentences, and rewriting four of them fixes it. A scene read from a live run
+    # said "the way she always" five times and "the way she kept" three more; the aggregate ratio
+    # was 3%, so it was reported as nothing.
+    #
+    # The line is drawn from the reference drafts in docs/evidence: gemma3:12b never repeats a
+    # four-word run, phi4:14b manages two, and qwen3:8b's cleanest single scene reaches four.
+    tics = [(g, c) for g, c in dupes if c >= tic]
+    if tics:
+        # One violation per *excess* sentence, quoting the sentence — not the phrase. Quoting the
+        # phrase gives every violation the same span, `_surgical` collapses them to one edit, and
+        # a single rewrite drops the count from five to four and clears the threshold without
+        # fixing anything. Quoting sentences is what `check_forbidden` learned to do for the same
+        # reason, and it lets one round take the tic down to the allowance.
+        out: list[Violation] = []
+        spans = sentence_spans(scene.text)
+        for gram, count in tics[:3]:
+            phrase = " ".join(gram)
+            carriers = [scene.text[lo:hi].strip() for lo, hi in spans
+                        if phrase in " ".join(words(scene.text[lo:hi]))]
+            # Reduce to the allowance, not to one. `tic` is where a repetition becomes a tic,
+            # so `tic - 1` uses is the target — which is also where qwen3:8b's cleanest measured
+            # scene sat. Demanding the gemma3 standard of never repeating a four-word run would
+            # churn every scene without reaching it.
+            for sentence in carriers[1:1 + (count - tic + 1)]:
+                out.append(Violation(
+                    "internal_repetition", Severity.MAJOR,
+                    f'"{phrase}" appears {count} times in {len(words(scene.text))} words — a '
+                    f"verbal tic, not a register. Rewrite this one without it.",
+                    "check_internal_repetition", sentence))
+        # Overlapping grams of one repeated phrase ("watched the way he", "the way he moved")
+        # each raise their own tic, so the same sentence arrives more than once. One edit per
+        # sentence is all `_surgical` can apply anyway.
+        seen: set[str] = set()
+        unique = [v for v in out if not (v.quote in seen or seen.add(v.quote))]
+        if unique:
+            return unique[:6]
+
     shown = "; ".join(f'"{" ".join(g)}" x{c}' for g, c in dupes[:5])
     return [Violation("internal_repetition", Severity.MINOR,
                       f"{len(dupes)} phrase(s) repeated within the scene "

@@ -206,6 +206,10 @@ _OPENINGS = [
 #
 # Three independent lists multiply out to several hundred sentences sharing almost no 4-grams,
 # which is enough to build a long scene without cycling.
+# Sixteen of each, not eight. With eight subjects across sixty-four sentences every subject
+# opened eight of them, so "The night crew had" recurred eight times — which is exactly the
+# verbal tic `check_internal_repetition` now flags at five. A fixture cannot carry the defect
+# it is used to test for.
 _SUBJECTS = [
     "The night crew",
     "Whoever had the shift before her",
@@ -215,17 +219,33 @@ _SUBJECTS = [
     "Her predecessor",
     "The inspector who came in March",
     "One of the yard hands",
+    "A contractor nobody recognised",
+    "The woman who did the accounts",
+    "Two of the loaders",
+    "Whoever answered the phone that morning",
+    "An auditor from the county",
+    "The apprentice",
+    "Someone on the early rota",
+    "The foreman before this one",
 ]
 
 _VERBS = [
     "had signed off on",
     "had left a pencil note beside",
-    "had queried",
-    "had stopped bothering with",
+    "queried",
+    "stopped bothering with",
     "had re-taped the corner of",
     "had filed a duplicate of",
     "had crossed out and reinstated",
     "had pinned a reminder over",
+    "mislaid",
+    "photocopied",
+    "once scribbled a date on",
+    "wedged a receipt into",
+    "asked twice about",
+    "rewrote the heading of",
+    "folded and put away",
+    "counted the pages of",
 ]
 
 _OBJECTS = [
@@ -237,6 +257,14 @@ _OBJECTS = [
     "the delivery docket from Tuesday",
     "the noticeboard behind the kettle",
     "the folder nobody had opened since spring",
+    "a stack of weighbridge tickets",
+    "the maintenance card taped inside the lid",
+    "last quarter's fuel returns",
+    "the roster pinned above the sink",
+    "an envelope of receipts from the ferry",
+    "the index card system in the back office",
+    "three pages of pump readings",
+    "the visitors' book at the gate",
 ]
 
 _TAILS = [
@@ -248,15 +276,23 @@ _TAILS = [
     "which was how these things usually went.",
     "and it had stayed that way.",
     "before the end of the month.",
+    "then put it back exactly where it lived.",
+    "and said so to nobody in particular.",
+    "on a Friday, according to the date.",
+    "and left the cap off the pen.",
+    "twice, in two different colours.",
+    "and nothing came of it either time.",
+    "while the kettle was still going.",
+    "and that was the end of that.",
 ]
 
 
 def _combinatorial_filler() -> list[str]:
     """Sentences that share almost no four-word runs, in a deterministic order."""
     out = []
-    for i in range(len(_SUBJECTS) * len(_VERBS)):
+    for i in range(len(_SUBJECTS) * 8):
         subject = _SUBJECTS[i % len(_SUBJECTS)]
-        verb = _VERBS[(i // len(_SUBJECTS)) % len(_VERBS)]
+        verb = _VERBS[(i * 7 + 3) % len(_VERBS)]
         obj = _OBJECTS[(i * 3 + 1) % len(_OBJECTS)]
         tail = _TAILS[(i * 5 + 2) % len(_TAILS)]
         out.append(f"{subject} {verb} {obj}, {tail}")
