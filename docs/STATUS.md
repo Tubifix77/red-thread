@@ -17,16 +17,25 @@ Illustrated version: <https://claude.ai/code/artifact/9ef610d1-1ca6-4a0f-a937-15
 | 2 | Is the prose free of the obvious machine tells? | **largely** |
 | 3 | Is the finished book worth reading? | **not started** |
 
-**1 — Close.** Five books, 65 scenes, 74,156 words, zero API calls. It plans, drafts, checks,
-repairs, commits, and resumes after a crash. Each *new premise* has still cost one to three code
-fixes; the most recent five scenes needed none. It finishes books. It has not yet finished a
-brand-new book unassisted.
+**1 — Close.** Six books, 74 scenes, 82,515 words, zero API calls. It plans, drafts, checks,
+repairs, commits, and resumes after a crash.
+
+The sixth is the one that matters. *The Keeper's Fourth Book* was planned and written from a
+premise the system had never seen, to test the standing claim that every new premise costs one
+to three code fixes. **It cost one, and the plan gate caught it before a word was generated** —
+the planner had banned "truth", "right", "memory" and "silence", which are words a novel is made
+of. After that: nine scenes, 8,359 words, 8m35s, all committed, no held-back scenes, no
+redrafts, no code fixes during writing, and the only two repairs were deterministic ones needing
+no model call. Full record in
+[evidence/keepers-fourth-book-run.md](evidence/keepers-fourth-book-run.md).
+
+So it has now finished a brand-new book unassisted, once, at novella length.
 
 **2 — Partly.** Three tells that fired in roughly half of all early scenes now fire in none,
 and repeated phrasing is down 65%. Recap grammar has not moved, was being under-measured, and is
 now the dominant defect — it has repairs as of today but no evidence yet that they close it.
 
-**3 — Not started.** Nothing in 29 checks and 484 tests has an opinion about whether a scene is
+**3 — Not started.** Nothing in 29 checks and 489 tests has an opinion about whether a scene is
 interesting. This is the distance.
 
 ---
@@ -231,11 +240,11 @@ difference.
 
 | | |
 |---:|---|
-| **5** | books finished end to end |
-| **74,156** | words drafted locally |
-| **65** | scenes committed |
+| **6** | books finished end to end |
+| **82,515** | words drafted locally |
+| **74** | scenes committed |
 | **0** | API calls |
-| **484** | tests passing |
+| **489** | tests passing |
 
 The longest is 30,147 words — a novella, not a novel. Nothing here has been run at 60,000 words,
 and the failure modes that matter at that length (a thread that quietly stops mattering, a middle

@@ -345,8 +345,12 @@ accumulates and survives reload, threads reach their final states, the seam is f
 verbatim, a mid-run rejection halts cleanly with nothing from the failed scene in dynamic memory,
 and a re-run resumes from the gap. Every check catches its defect.
 
-**Proven by running it to completion, all local, zero API calls:** five manuscripts exist —
-65 scenes and 74,156 words drafted on `qwen3:8b`. Two are written up in full below; the other
+**Proven by running it to completion, all local, zero API calls:** six manuscripts exist —
+74 scenes and 82,515 words drafted on `qwen3:8b`. The sixth, *The Keeper's Fourth Book*, is the
+first written from a premise the system had never seen with **no intervention after the plan
+gate**: nine scenes, 8,359 words, 8m35s, every scene committed, every thread terminal, and every
+countable prose measure at or below the reference band
+([record](docs/evidence/keepers-fourth-book-run.md)). Two are written up in full below; the other
 three (*The Book of Safe Days*, *The List*, *The Night Baker's Schedule*) were regression runs
 against fresh premises, and each one cost between one and three code fixes. That number is the
 real measure of how unattended this is, and it is not yet zero.

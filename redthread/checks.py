@@ -653,7 +653,13 @@ _GLOSS_PATTERNS = [
     re.compile(r"\bsomething (?:deeper|larger|bigger|older|else entirely)\b", re.I),
     re.compile(r"\b(?:could|did|can)\b.{0,4}(?:n.t|not) (?:yet )?(?:name|articulate|put into words)\b", re.I),
     re.compile(r"\bwas more than (?:a|just) (?!\d)\w+", re.I),
-    re.compile(r"\bas (?:if|though) the \w+ itself\b", re.I),
+    # "as though the walls themselves held their breath" — read in a finished book and found to
+    # be the same pattern one line up, under-matched twice: `as though` was already covered but
+    # only with `the`, and the plural `themselves` was not covered at all. Across 119 committed
+    # scenes the shipped form catches 8 hits in 7 scenes and these two catch 6 more in 5, at the
+    # same rate and with the same zero occurrences in the reference drafts. Widened rather than
+    # added, because it is one tell and not three.
+    re.compile(r"\bas (?:if|though) (?:the|a|his|her|their) \w+ (?:itself|themselves)\b", re.I),
     re.compile(r"\ba kind of \w+", re.I),
 ]
 
