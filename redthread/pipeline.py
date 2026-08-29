@@ -321,6 +321,15 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
         if located is None:
             continue
         lo, hi = checks.sentence_covering(scene.text, located)
+        # `sentence_covering` spans from the sentence holding the quote's start to the one
+        # holding its end, so a long judge quote covers a passage rather than a sentence. Scene 2
+        # of a clean-slate run had 235 words cut for one prohibition — taking the material that
+        # satisfied the scene's obligation with it, which the re-verify then reported as missed.
+        # A rewrite of a long span is still a rewrite; a deletion of one is a hole.
+        if v.kind in DELETE_KINDS and hi - lo > 400:
+            lo, hi = checks.sentence_covering(scene.text, (located[0], located[0] + 1))
+            notes.append(f"surgical: the {v.kind} quote spanned a passage; narrowed the cut to "
+                         f"its first sentence")
         # Skip a span already claimed by an earlier violation: two edits to one sentence
         # cannot both be applied, and the first is the more severe by sort order.
         if any(not (hi <= s_lo or lo >= s_hi) for s_lo, s_hi, _ in spans):
@@ -1203,6 +1212,9 @@ def _excise_leak(scene: Scene, violations: list[Violation], models: Models,
         return None
 
     lo, hi = checks.sentence_covering(scene.text, located)
+    if hi - lo > 400:
+        # One sentence was asked for; a passage came back. Cut the sentence it starts in.
+        lo, hi = checks.sentence_covering(scene.text, (located[0], located[0] + 1))
     candidate = (scene.text[:lo].rstrip() + " " + scene.text[hi:].lstrip()).strip()
     if len(candidate.split()) < scene.word_count() * 0.7:
         return None

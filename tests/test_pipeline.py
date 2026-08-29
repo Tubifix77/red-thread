@@ -755,6 +755,24 @@ class TestUnquotedLeak(PipelineCase):
         self.assertTrue(any("excise: cut the sentence" in n for n in result.notes), result.notes)
         self.assertNotIn("fissure ran under", result.scene.text)
 
+    def test_a_passage_length_quote_cuts_only_one_sentence(self):
+        """`sentence_covering` spans from the quote's start sentence to its end sentence, so a
+        long judge quote covers a passage. Scene 2 of a clean-slate run had 235 words cut for one
+        prohibition, taking the material that satisfied the scene's obligation with it."""
+        models, backend = self._models()
+        body = fakes.clean_prose(950)
+        backend.queue("draft", body + self.LEAK)
+        # The judge quotes half the scene rather than the sentence.
+        backend.queue("excise", " ".join(body.split()[-120:]) + self.LEAK)
+        backend.queue("threads", fakes.threads_one_prohibition_violated(0, quote=""),
+                      fakes.threads_all_met())
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=3))
+
+        removed = len(body.split()) + len(self.LEAK.split()) - result.scene.word_count()
+        self.assertLess(removed, 60, f"cut {removed} words for one sentence")
+
     def test_an_invented_quote_is_refused(self):
         """A quote that does not locate is a quote the judge invented, and is refused the same
         way an unevidenced finding is refused everywhere else here."""
