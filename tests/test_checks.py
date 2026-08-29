@@ -109,6 +109,23 @@ class TestSomatic(unittest.TestCase):
         for q in quotes:
             self.assertIn(q.split()[-1], text)
 
+    def test_an_object_held_is_not_an_emotion_beat(self):
+        """The noun-in-a-body-part pattern matched any noun, so "the pages in her hands" read as
+        emotion via bodily metaphor. Scene 5 of a live run spent five repair rounds on it — the
+        surgical rewrite kept the pages, because the pages were the point of the sentence."""
+        for text in ("She squared the pages in her hands and set them down.",
+                     "He turned the pen in his fingers and wrote nothing.",
+                     "The bucket of couplings in her hands was heavier than it looked."):
+            with self.subTest(text=text):
+                self.assertEqual(checks.check_somatic(scene(text), max_allowed=0), [])
+
+    def test_a_sensation_in_a_body_part_still_fires(self):
+        for text in ("There was a knot in her stomach that would not go.",
+                     "She felt a tightness in his chest and looked away.",
+                     "The weight in her chest did not shift."):
+            with self.subTest(text=text):
+                self.assertTrue(checks.check_somatic(scene(text), max_allowed=0))
+
     def test_one_somatic_beat_allowed(self):
         self.assertEqual(
             checks.check_somatic(scene("Her chest tightened. She wrote the number down.")), [])

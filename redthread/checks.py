@@ -431,11 +431,20 @@ _SOMATIC_VERB = (r"tighten\w*|clench\w*|drop\w*|lurch\w*|twist\w*|knot\w*|constr
                  r"seiz\w*|hammer\w*|race\w*|pound\w*|crawl\w*|prickl\w*|went cold|"
                  r"turned to ice|caught|hitch\w*|squeez\w*")
 
+_SENSATION = (r"knot|tightness|ache|aching|lump|flutter|fluttering|chill|heat|warmth|pressure|"
+              r"twist|twisting|hollow|hollowness|tremor|trembling|buzz|buzzing|sting|stinging|"
+              r"burn|burning|tension|coldness|emptiness|pang|throb|throbbing|prickle|prickling|"
+              r"shiver|quiver|catch|weight|heaviness|dryness|thickness|fist|clenching")
+
 _SOMATIC_PATTERNS = [
     re.compile(rf"\b(?:her|his|their|its|the)\s+(?:{_BODY})\b[^.!?]{{0,40}}?\b(?:{_SOMATIC_VERB})\b",
                re.I),
     re.compile(rf"\b(?:{_SOMATIC_VERB})\b[^.!?]{{0,30}}?\b(?:her|his|their)\s+(?:{_BODY})\b", re.I),
-    re.compile(r"\b(?:a|the)\s+\w+\s+(?:in|of)\s+(?:her|his|their)\s+"
+    # "a knot in her stomach", "a tightness in his chest". The noun has to be a sensation:
+    # matching any noun made "the pages in her hands" an emotion beat, which held scene 5 of a
+    # live run through five repair rounds — the surgical rewrite kept the pages, because the
+    # pages were the point of the sentence.
+    re.compile(rf"\b(?:a|the)\s+(?:{_SENSATION})\s+(?:in|of)\s+(?:her|his|their)\s+"
                rf"(?:{_BODY})\b", re.I),
     re.compile(r"breath (?:she|he|they) (?:did ?n[o']t|hadn't) (?:know|realise|realize)", re.I),
 ]
