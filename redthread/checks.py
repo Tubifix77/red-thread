@@ -611,16 +611,24 @@ def check_thematic_gloss(scene: Scene, max_allowed: int = 0) -> list[Violation]:
     subtle cases — that is what the LLM `theme_gloss` probe in verify.py is for. Two layers,
     because this is the loudest tell in the StoryScope data and worth catching twice.
     """
-    found = []
+    found: list[tuple[int, str]] = []
     for pattern in _GLOSS_PATTERNS:
         for m in pattern.finditer(scene.text):
             start = max(0, m.start() - 40)
-            found.append(scene.text[start:m.end() + 60].strip())
+            found.append((m.start(), scene.text[start:m.end() + 60].strip()))
     if len(found) <= max_allowed:
         return []
+    # One violation per construction. The fourth check to need this, after `check_somatic`,
+    # `check_brief_leak` and `check_style_leak` — and found the same way, on a live run: scene 3
+    # reported "5 narrator-explains-the-point construction(s)" as a single violation, `_surgical`
+    # deleted the one sentence it quoted, four remained, and the check fired again on the
+    # remainder until the budget ran out. A repair can only reach what a violation points at.
+    found.sort()
     return [Violation("thematic_gloss", Severity.MAJOR,
-                      f"{len(found)} narrator-explains-the-point construction(s)",
-                      "check_thematic_gloss", found[0][:160])]
+                      f"the narration explains the point here (one of {len(found)} such "
+                      f"constructions in the scene)",
+                      "check_thematic_gloss", quote[:160])
+            for _, quote in found[max_allowed:][:6]]
 
 
 # --------------------------------------------------------------------------------------

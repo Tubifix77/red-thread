@@ -120,5 +120,89 @@ class TestEveryBlockingKindHasARepair(unittest.TestCase):
                               f"{kind} has a dedicated repair but no check emits it")
 
 
+class TestChecksReportEveryInstance(unittest.TestCase):
+    """A repair can only reach what a violation points at.
+
+    `_surgical` rewrites or deletes the sentence a violation's quote falls in. So a check that
+    finds five defects and reports one violation quoting the first gets one sentence repaired
+    per round, while the check keeps firing on the other four — the scene burns its whole budget
+    and commits nothing.
+
+    This has now been found four separate times in live runs: `check_somatic` (three somatic
+    beats), `check_brief_leak` (seven copied runs), `check_style_leak` (seven again), and
+    `check_thematic_gloss` (five gloss constructions). Each was fixed on its own and the lesson
+    did not generalise, so it is asserted here instead of remembered.
+    """
+
+    def _scene(self, text: str):
+        from redthread.models import Scene
+        return Scene(spec_id="s01", index=1, text=text)
+
+    def test_somatic_reports_each_beat(self):
+        text = ("Her chest tightened at the door. His stomach dropped when he read it. "
+                "Something twisted in her throat. She said nothing at all.")
+        found = checks.check_somatic(self._scene(text))
+        self.assertGreaterEqual(len(found), 2)
+        self.assertEqual(len({v.quote for v in found}), len(found))
+
+    def test_thematic_gloss_reports_each_construction(self):
+        text = ("She realised then that the founders had known. The stove ticked. "
+                "In that moment, she understood the cost. He put the cup down. "
+                "That was what it meant to keep a port working.")
+        found = checks.check_thematic_gloss(self._scene(text))
+        self.assertGreaterEqual(len(found), 2)
+        self.assertEqual(len({v.quote for v in found}), len(found))
+
+    def test_brief_leak_reports_each_copied_run(self):
+        from redthread.models import Beat, SceneSpec
+        spec = SceneSpec(id="s01", index=1, beats=[
+            Beat("Sofie copies the altered column into the spare ledger"),
+            Beat("Sofie initials the bottom of the berth allocation sheet")])
+        text = ("Sofie copies the altered column into the spare ledger. The gate rattled. "
+                "Sofie initials the bottom of the berth allocation sheet.")
+        found = checks.check_brief_leak(self._scene(text), spec)
+        self.assertGreaterEqual(len(found), 2)
+        self.assertEqual(len({v.quote for v in found}), len(found))
+
+    def test_style_leak_reports_each_copied_run(self):
+        from redthread.models import StorySpec, StyleContract
+        # Two different samples, each copied once. Copying one sample twice gives two runs with
+        # identical text, and a repair can only locate the first of those.
+        first = "The gate had dropped on its hinge and neither of them had fixed it since."
+        second = "A queue at the counter moves at the speed of its slowest question."
+        story = StorySpec(title="t", premise="p",
+                          style=StyleContract(samples=[first, second]))
+        text = "She waited. " + first + " The stove ticked. " + second
+        found = checks.check_style_leak(self._scene(text), story)
+        self.assertGreaterEqual(len(found), 2)
+        self.assertEqual(len({v.quote for v in found}), len(found))
+
+    def test_forbidden_phrase_reports_each_sentence(self):
+        from redthread.models import StorySpec, StyleContract
+        story = StorySpec(title="t", premise="p",
+                          style=StyleContract(forbidden_phrases=["the truth"]))
+        text = ("He wanted the truth and she had none. The stove ticked. "
+                "Nobody said the truth out loud again.")
+        found = checks.check_forbidden(self._scene(text), story)
+        self.assertEqual(len(found), 2)
+        self.assertEqual(len({v.quote for v in found}), 2)
+
+    def test_every_reported_quote_locates_in_the_scene(self):
+        """A quote a repair cannot find is a violation a repair cannot reach."""
+        from redthread.models import Beat, SceneSpec, StorySpec, StyleContract
+        text = ("Her chest tightened at the door. She realised then that the founders had "
+                "known. He wanted the truth and she had none. Something twisted in her throat.")
+        story = StorySpec(title="t", premise="p",
+                          style=StyleContract(forbidden_phrases=["the truth"]))
+        spec = SceneSpec(id="s01", index=1, beats=[Beat("a beat")])
+        found = (checks.check_somatic(self._scene(text))
+                 + checks.check_thematic_gloss(self._scene(text))
+                 + checks.check_forbidden(self._scene(text), story))
+        self.assertTrue(found)
+        for v in found:
+            with self.subTest(kind=v.kind, quote=v.quote[:40]):
+                self.assertIsNotNone(checks.locate_quote(text, v.quote))
+
+
 if __name__ == "__main__":
     unittest.main()
