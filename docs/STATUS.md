@@ -26,7 +26,7 @@ brand-new book unassisted.
 and repeated phrasing is down 65%. Recap grammar has not moved, was being under-measured, and is
 now the dominant defect — it has repairs as of today but no evidence yet that they close it.
 
-**3 — Not started.** Nothing in 29 checks and 458 tests has an opinion about whether a scene is
+**3 — Not started.** Nothing in 29 checks and 462 tests has an opinion about whether a scene is
 interesting. This is the distance.
 
 ---
@@ -111,8 +111,28 @@ of a scene's beats using a cognition or state verb and its recap density is **r 
 group means move in the right direction (.378 → .410 → .466) but the top group is n = 3 and the
 relationship is negligible. Against duplication it is r = 0.006.
 
-Not enough to build a plan check on, so nothing was built. The scene 9 collapse remains
-unexplained.
+Not enough to build a plan check on, so nothing was built.
+
+### What actually explained it
+
+The same spec, the same brief, the same orchestrator, one draft, `gemma3:12b` instead of
+`qwen3:8b`:
+
+| scene 9, one draft | qwen3:8b | gemma3:12b |
+|---|---:|---:|
+| repeated phrasing | .29 | **.015** |
+| recap grammar | .98 | **.046** |
+| longest past-perfect run | 46 sentences | **1 sentence** |
+| blocks of recap | 7 | **0** |
+| outcome | held back after 4 drafts and 6 repairs | committed, 2 minors |
+
+Reference quality, on the spec that destroyed the 8B, from a model that fits the same 10GB card.
+The plan was not inert and the brief was not at fault: the writer model was at its ceiling.
+
+That reframes what "close to shippable" means. The orchestrator's job is to catch this and it
+did — the collapse never reached the manuscript, which is exactly what the commit gate is for.
+But the remaining prose distance in the table above is substantially a **model choice**, not a
+missing check, and the checks that took a day to build are worth less than one flag.
 
 ## What nothing can see
 
@@ -164,7 +184,7 @@ difference.
 | **74,156** | words drafted locally |
 | **65** | scenes committed |
 | **0** | API calls |
-| **458** | tests passing |
+| **462** | tests passing |
 
 The longest is 30,147 words — a novella, not a novel. Nothing here has been run at 60,000 words,
 and the failure modes that matter at that length (a thread that quietly stops mattering, a middle

@@ -1670,3 +1670,73 @@ class TestRecapRepair(PipelineCase):
             ("log", "roster", "docket", "chart", "slip", "folder")))
         found = checks.check_summary_distance(scene)
         self.assertTrue(all(v.severity is Severity.MINOR for v in found))
+
+
+class TestPassageScopedKindsNeverReachSurgery(PipelineCase):
+    """Sentence surgery rewrites the sentence a quote lands in.
+
+    A check whose unit is a run of sentences therefore cannot be repaired by it: the run comes
+    back one sentence shorter and fires again. Seams have had an early return since a live scene
+    burned five rounds on exactly that; `recap_block` reached surgery anyway, because the early
+    return was conditional on its own repair not being sidelined, and once `unrecap` and
+    `cutrecap` were both out the block fell straight through. Surgical then "fixed" a
+    six-sentence block three times by rewriting one sentence of it.
+    """
+
+    def test_the_guard_covers_every_passage_scoped_kind(self):
+        from redthread.pipeline import ACTION_TARGETS, PASSAGE_SCOPED
+        reachable = set().union(*ACTION_TARGETS.values())
+        self.assertEqual(PASSAGE_SCOPED - reachable, set(),
+                         "a passage-scoped kind with no passage-scoped repair can never be "
+                         "fixed: surgery is barred from it and nothing else reaches it")
+
+    def test_surgical_is_not_offered_a_recap_block(self):
+        models, backend = fakes.scripted_models()
+        # Both repairs refuse: the rewrite comes back still in past perfect, and the block is
+        # too much of the scene to cut. Nothing may then hand it to surgery.
+        backend.queue("draft", fakes.recap_prose(300, 0, sentences=5))
+        backend.queue("unrecap", "She had set it down. It had cracked. He had said nothing. "
+                                 "She had written the date at the top of the page.")
+
+        write_scene(self.project, self.project.spec_at(1), models,
+                    Config(candidates=1, max_repairs=5))
+
+        for role, prompt in backend.calls:
+            if role == "surgical":
+                self.assertNotIn("past perfect", prompt,
+                                 "a recap block was handed to sentence-local repair")
+
+
+class TestACappedCheckCannotMeasureProgress(unittest.TestCase):
+    """The subtlest of the three bugs this repair route surfaced.
+
+    The repair loop decides an action did its job by comparing how many violations of its target
+    kind there were before and after. A check that reports "at most three" makes that comparison
+    blind: a live scene held seven blocks of recap, `cutrecap` deleted one, the count read three
+    both times, and a repair that had done precisely what it was asked was discarded as "no
+    improvement" — twice, then sidelined, leaving the scene unrepairable.
+    """
+
+    def test_every_block_is_reported(self):
+        from redthread.models import Scene
+        block = " ".join(fakes._RECAP_BLOCK[:4])
+        clean = "She opened the door and went out. "
+        text = ((block + " " + clean) * 5)
+        scene = Scene(spec_id="s", index=1, text=text)
+        blocks = checks.recap_blocks(text)
+        self.assertGreater(len(blocks), 3, "the fixture must exceed any plausible cap")
+        self.assertEqual(len(checks.check_recap_block(scene)), len(blocks),
+                         "one violation per block, uncapped, or the repair loop goes blind")
+
+    def test_removing_one_block_lowers_the_count(self):
+        from redthread.models import Scene
+        block = " ".join(fakes._RECAP_BLOCK[:4])
+        clean = "She opened the door and went out. "
+        text = ((block + " " + clean) * 5)
+        scene = Scene(spec_id="s", index=1, text=text)
+        before = checks.check_recap_block(scene)
+        from redthread import pipeline
+        cut = pipeline._cut_recap(scene, before, [])
+        self.assertIsNotNone(cut)
+        after = checks.check_recap_block(Scene(spec_id="s", index=1, text=cut))
+        self.assertLess(len(after), len(before))
