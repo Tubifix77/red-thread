@@ -20,7 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from redthread import checks
 from redthread.models import Beat, SceneSpec, Severity, StorySpec, Thread, ThreadKind
-from redthread.schedule import (Schedule, chapter_of, concreteness, midpoint_window,
+from redthread.schedule import (DEFAULT_SCENE_WORDS, Schedule, chapter_of,
+                                concreteness, midpoint_window,
                                 scene_count, schedule_threads, score_spec, to_scene_specs,
                                 vaguest_first, word_targets)
 
@@ -46,7 +47,7 @@ def thread_mix(subplots: int = 1, relationships: int = 0, thematic: int = 0) -> 
 def plan_for(threads: list[Thread], n_scenes: int) -> tuple[StorySpec, list[SceneSpec]]:
     story = StorySpec(title="Sweep", premise="A premise.", threads=threads)
     schedule = schedule_threads(threads, n_scenes)
-    return story, to_scene_specs(schedule, threads, n_scenes * 1100)
+    return story, to_scene_specs(schedule, threads, n_scenes * DEFAULT_SCENE_WORDS)
 
 
 def serious(violations) -> list:
@@ -291,6 +292,36 @@ class TestEdgeCases(unittest.TestCase):
         schedule = schedule_threads(threads, 4)
         self.assertTrue(schedule.moves)
         self.assertLessEqual(max(schedule.moves), 4)
+
+
+class TestSceneLengthIsSetFromMeasurement(unittest.TestCase):
+    """The default scene length is a measured property of the writer, not a taste call.
+
+    Repeated phrasing rises steeply with scene length on a local 8B: r = 0.68 across 87 committed
+    scenes, positive within every individual book. Scenes under about 1000 words duplicate 13–20%
+    of their 4-grams; scenes over 1200 duplicate 33–59%. The default was 1100, which put the
+    planner's assigned targets at a mean of 1115 — most of a manuscript in the looping band.
+
+    This test exists so the number cannot drift back without someone reading the evidence.
+    """
+
+    MEASURED_CEILING = 1000
+
+    def test_the_default_sits_below_the_measured_ceiling(self):
+        self.assertLessEqual(DEFAULT_SCENE_WORDS, self.MEASURED_CEILING,
+                             "past ~1000 words this writer duplicates a third of its own prose")
+
+    def test_the_variation_around_it_stays_below_the_ceiling(self):
+        """Targets vary per scene, and the top of that range is what actually matters."""
+        threads = thread_mix(subplots=1, relationships=1)
+        _, specs = plan_for(threads, 14)
+        worst = max(s.word_target for s in specs)
+        self.assertLessEqual(worst, self.MEASURED_CEILING + 250,
+                             f"the longest scene the scheduler assigns is {worst} words")
+
+    def test_a_manuscript_still_reaches_its_target_length(self):
+        """Shorter scenes must mean more of them, not a shorter book."""
+        self.assertGreaterEqual(scene_count(30000) * DEFAULT_SCENE_WORDS, 27000)
 
 
 if __name__ == "__main__":

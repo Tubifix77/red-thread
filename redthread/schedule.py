@@ -31,7 +31,30 @@ from dataclasses import dataclass, field
 
 from .models import SceneSpec, Thread, ThreadKind, Transition
 
-DEFAULT_SCENE_WORDS = 1100
+DEFAULT_SCENE_WORDS = 850
+"""Average words per scene, set from measurement rather than taste.
+
+Repeated phrasing — the fraction of a scene's 4-grams that are duplicates — rises steeply with
+scene length on a local 8B. Across 87 committed scenes and the single-scene model comparisons in
+`docs/evidence`, correlation of length with duplication is r = 0.68, and it is positive within
+every individual book (r = +0.35 to +0.90, so it is not a between-book artefact):
+
+    506–931 words    0.13 duplicated
+    939–1009         0.20
+    1013–1109        0.22
+    1114–1184        0.33
+    1186–1346        0.48
+    1354–1619        0.59
+
+The default was 1100, which put the planner's assigned targets at a mean of 1115 and a range of
+750–1350 — most of a manuscript in the band where this model stops writing and starts looping.
+At 850 the same variation lands around 600–1050, where it does not.
+
+The cost is more scenes for the same length, so more briefs and more calls. That is the trade
+this architecture is built to make: many small tightly-briefed sessions, which is the premise on
+the first line of the README. Raise it for a stronger writer model and re-measure — the number is
+a property of the model, not of the prose.
+"""
 
 
 # --------------------------------------------------------------------------------------
