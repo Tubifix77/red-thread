@@ -86,6 +86,7 @@ def is_moveable_pair(a: Fact, b: Fact) -> bool:
 _MIND = re.compile(
     r"\b(?:believ\w*|belief|beliefs|think\w*|thought|thoughts|assum\w*|suspect\w*|"
     r"doubt\w*|know|knows|known|knew|understand\w*|understood|convinced|certain|unsure|"
+    r"question\w*|wonder\w*|notic\w*|realis\w*|realiz\w*|accept\w*|expect\w*|"
     r"trust\w*|suspicion)\b", re.IGNORECASE)
 
 

@@ -132,6 +132,28 @@ class TestCommitGate(PipelineCase):
         self.assertEqual(self.project.story.thread("T-A").current_state, "dormant")
         self.assertEqual(self.project.history, [])
 
+    def test_one_finding_per_contradicting_pair(self):
+        """`conflict_candidates` can forward the same pair twice — once on the exact-key branch
+        and once on the near-synonym branch — and a live scene was held by three blockers of
+        which two were the same claim, each demanding its own repair round."""
+        from redthread.models import Fact, FactKind
+        self.project.ledger.add(Fact("Siv", "eye colour", "grey", 0, FactKind.DETAIL))
+        self.project.ledger.add(Fact("Siv", "eye color", "grey", 0, FactKind.DETAIL))
+
+        models, backend = fakes.scripted_models({
+            "extract": fakes.facts_json([("Siv", "eye colour", "brown", "detail")]),
+            "conflict": json.dumps({"judgements": [
+                {"pair": 0, "contradiction": True, "why": "eye colour cannot change"},
+                {"pair": 0, "contradiction": True, "why": "eye colour cannot change"}]}),
+        })
+        backend.queue("draft", fakes.clean_prose())
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=0))
+
+        blockers = [v for v in result.violations if v.kind == "continuity_contradiction"]
+        self.assertEqual(len(blockers), 1, [v.detail for v in blockers])
+
     def test_continuity_contradiction_is_a_blocker(self):
         """Stage two of DOME's detection: the model judges a flagged pair as contradictory."""
         self.project.ledger.add(

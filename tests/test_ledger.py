@@ -182,6 +182,14 @@ class TestConflictCandidates(unittest.TestCase):
         ledger.add(new)
         self.assertEqual(ledger.conflict_candidates([new]), [])
 
+    def test_two_things_never_questioned_do_not_conflict(self):
+        """From a live run: `Elin | had | never questioned the temperature` against
+        `Elin | had | never questioned the schedule`. Both are true at once."""
+        ledger = Ledger([f("Elin", "had", "never questioned the temperature", 3)])
+        new = f("Elin", "had", "never questioned the schedule", 7)
+        ledger.add(new)
+        self.assertEqual(ledger.conflict_candidates([new]), [])
+
     def test_a_physical_detail_is_not_a_belief(self):
         ledger = Ledger([f("Siv", "has", "grey eyes", 1, FactKind.DETAIL)])
         new = f("Siv", "has", "brown eyes", 6, FactKind.DETAIL)

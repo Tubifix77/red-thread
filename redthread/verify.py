@@ -192,7 +192,17 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
             f"{row.get('why', 'contradicts established state')} — earlier: "
             f"{old.as_line()}; now: {new.as_line()}",
             "llm:judge_conflicts", new.object))
-    return out
+    # One finding per pair. The same pair can be forwarded twice — once on the exact-key branch
+    # and once on the near-synonym branch of `conflict_candidates` — and a live scene was held by
+    # three blockers of which two were the same claim, each demanding its own repair round.
+    seen: set[str] = set()
+    unique: list[Violation] = []
+    for violation in out:
+        if violation.detail in seen:
+            continue
+        seen.add(violation.detail)
+        unique.append(violation)
+    return unique
 
 
 # ======================================================================================
