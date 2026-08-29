@@ -575,6 +575,41 @@ class TestManuscriptRefrain(unittest.TestCase):
         self.assertTrue(all(v.severity is Severity.MINOR for v in found))
 
 
+class TestStackedAbsolutes(unittest.TestCase):
+    """The dominant tic in this project's prose, and the one that survived every other check.
+
+    Measured across 91 committed scenes and the three reference drafts in `docs/evidence`:
+    sentences hanging two or more possessive absolutes off commas appear in 71 of the 91 and in
+    none of the three, median 2 per scene, maximum 13.
+    """
+
+    ONE = ("She turned back to the screen, her fingers moving over the keys. The kettle clicked "
+           "off. Nobody said anything for a while.")
+    STACKED = ("She waited, her fingers curled around the cabinet, her eyes fixed on his head. "
+               "He did not look up, his back to her, his shoulders set. "
+               "Sofie watched him, her hands still, her nails pressing into the wood.")
+
+    def test_one_absolute_is_ordinary_writing(self):
+        self.assertEqual(checks.check_absolute_stack(scene(self.ONE)), [])
+
+    def test_a_habit_of_stacking_is_flagged(self):
+        found = checks.check_absolute_stack(scene(self.STACKED))
+        self.assertIn("stacked_absolutes", kinds(found))
+        self.assertTrue(all(v.severity is Severity.MAJOR for v in found))
+
+    def test_two_stacked_sentences_read_as_deliberate(self):
+        """The threshold is three, where it stops being a moment and becomes a habit."""
+        two = ("She waited, her fingers curled around the cabinet, her eyes fixed on his head. "
+               "The gate stood open. He did not look up, his back to her, his shoulders set.")
+        self.assertEqual(checks.check_absolute_stack(scene(two)), [])
+
+    def test_each_violation_quotes_a_sentence_a_repair_can_reach(self):
+        found = checks.check_absolute_stack(scene(self.STACKED))
+        self.assertEqual(len({v.quote for v in found}), len(found))
+        for v in found:
+            self.assertIsNotNone(checks.locate_quote(self.STACKED, v.quote))
+
+
 class TestAnaphora(unittest.TestCase):
     """The rhetorical triple: one phrase opening three clauses of a single sentence.
 

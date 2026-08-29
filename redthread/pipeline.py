@@ -92,6 +92,9 @@ REMEDIES = {
     "slop": "Replace the flagged phrasing with something plainer.",
     "anaphora": ("Three clauses of this sentence begin with the same words. Keep one of them "
                  "and say the rest another way, or cut two and let the one stand."),
+    "stacked_absolutes": ("Keep ONE of the descriptive phrases hung off commas and cut the rest. "
+                          "If the detail matters, give it its own sentence with a verb in it — "
+                          "not \"her hands clasped\" but \"she clasped her hands\"."),
     "repetition": ("This phrasing has already run through several earlier scenes. Write this "
                    "sentence with different words and a different image."),
 }
@@ -458,6 +461,10 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                 phrase = v.detail.split('"')[1] if '"' in v.detail else ""
                 failed_verify = bool(phrase) and phrase in " ".join(
                     checks.words(replacement))
+            elif v.kind == "stacked_absolutes":
+                # A writer asked to unstack reaches for the same construction again, exactly as
+                # it does with the body and with a banned word. One is allowed; two is the tic.
+                failed_verify = len(checks._ABSOLUTE.findall(replacement)) >= 2
             elif v.kind == "somatic_emotion":
                 # A writer that reaches for the body once reaches for it again in the rewrite:
                 # "his gut twist" comes back as "his stomach knotted" and the check re-fires.

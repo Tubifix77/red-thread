@@ -981,6 +981,37 @@ def check_anaphora(scene: Scene) -> list[Violation]:
     return out
 
 
+_ABSOLUTE = re.compile(r",\s+(?:his|her|its|their)\s+\w+\s+\w+", re.I)
+
+
+def check_absolute_stack(scene: Scene, limit: int = 3) -> list[Violation]:
+    """Sentences that pile up possessive absolutes: "her posture rigid, her hands clasped".
+
+    The dominant tic in this project's own prose, and the one that survived every other check.
+    One absolute phrase is ordinary writing — "she turned back to the screen, her fingers moving
+    over the keys" is fine. Two or more in a sentence is a camera panning across body parts
+    instead of a scene happening, and it stacks: one committed sentence ran "his back to her, his
+    head bowed over the paper, the pen moving, the ink filling the lines, the numbers forming a
+    pattern".
+
+    Measured across 91 committed scenes and the three reference drafts in `docs/evidence`:
+    stacked sentences appear in 71 of the 91 and in none of the three, with a median of 2 per
+    scene and a maximum of 13. The threshold is three, where it stops being a moment and becomes
+    a habit — one or two read as deliberate.
+    """
+    stacked = [scene.text[lo:hi].strip() for lo, hi in sentence_spans(scene.text)
+               if len(_ABSOLUTE.findall(scene.text[lo:hi])) >= 2]
+    if len(stacked) < limit:
+        return []
+    return [Violation(
+        "stacked_absolutes", Severity.MAJOR,
+        f"this sentence hangs two or more descriptive phrases off commas, and the scene does it "
+        f"{len(stacked)} times — a camera panning across body parts rather than a scene "
+        f"happening",
+        "check_absolute_stack", sentence)
+        for sentence in stacked[:4]]
+
+
 # --------------------------------------------------------------------------------------
 # 8. sentence-rhythm monotony
 # --------------------------------------------------------------------------------------
@@ -1034,6 +1065,7 @@ def run_all(
     out += check_rhythm(scene)
     out += check_summary_distance(scene)
     out += check_anaphora(scene)
+    out += check_absolute_stack(scene)
     return out
 
 
