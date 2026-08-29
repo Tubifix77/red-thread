@@ -627,6 +627,23 @@ _GLOSS_PATTERNS = [
     re.compile(r"\bwas,? (?:she|he|they) (?:thought|supposed),? (?:what|how|the)\b", re.I),
     re.compile(r"\bperhaps that was (?:the|all|what)\b", re.I),
     re.compile(r"\b(?:some|all) (?:things|people|loves|griefs) (?:are|were)\b", re.I),
+
+    # Added after measuring the gap between this check and the LLM probe across 89 committed
+    # scenes: the probe called 85 of them glossy and these patterns fired on none of them. It
+    # was right — "This wasn't just about the list. This was about something deeper, something
+    # she couldn't yet name" is the tell in its purest form, and nothing here saw it. Each
+    # pattern below fires on committed prose and on none of the reference drafts in
+    # docs/evidence, and each was read in context before being kept.
+    #
+    # "had always known" was measured too, at 53 of 89 — and left out. It catches ordinary
+    # description as readily as gloss ("his gaze was steady, the way it had always been"), and
+    # a pattern firing on half the corpus needs to be right about all of it.
+    re.compile(r"\b(?:this|it|that) (?:was|is)n?.{0,3}t? ?just (?:about|a|an|the)\b",
+               re.I),
+    re.compile(r"\bsomething (?:deeper|larger|bigger|older|else entirely)\b", re.I),
+    re.compile(r"\b(?:could|did|can)\b.{0,4}(?:n.t|not) (?:yet )?(?:name|articulate|put into words)\b", re.I),
+    re.compile(r"\bwas more than (?:a|just) (?!\d)\w+", re.I),
+    re.compile(r"\bas (?:if|though) the \w+ itself\b", re.I),
 ]
 
 
@@ -1556,13 +1573,21 @@ def check_ban_is_avoidable(plan: list[SceneSpec], story: StorySpec) -> list[Viol
 
     Single common abstractions only. A two-word phrase is specific enough to route around, and
     a rarer word is the kind of ban this feature is for.
+
+    This gates rather than advising, which is the one exception among the rule-shape checks. The
+    others describe how a rule is phrased; this one predicts a cost the book pays in every scene.
+    A live plan banning "truth", "right" and "silence" produced scenes carrying three
+    `forbidden_phrase` majors each, every one needing its own repair round, and no amount of
+    rewriting makes those words avoidable. Reported as a MINOR it changed nothing and the run
+    simply suffered — which is what an advisory is worth to a process nobody is watching. The
+    plan is still not edited: `write` refuses and the author decides.
     """
     out: list[Violation] = []
     for phrase in story.style.forbidden_phrases:
         if not is_unavoidable_ban(phrase):
             continue
         out.append(Violation(
-            "unavoidable_ban", Severity.MINOR,
+            "unavoidable_ban", Severity.MAJOR,
             f'the style contract forbids "{phrase}", which is a word a novel needs. Every scene '
             f'will trip it and every trip costs a repair round. Ban the vocabulary of the thing '
             f'the premise is avoiding, not the words the prose is made of.',

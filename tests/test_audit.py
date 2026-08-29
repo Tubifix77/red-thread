@@ -218,12 +218,16 @@ class TestWhatGatesAndWhatAdvises(unittest.TestCase):
     for.
     """
 
+    # "unavoidable_ban" is deliberately not here. The others describe how a rule is phrased;
+    # that one predicts a cost paid in every scene of the book, and as an advisory it changed
+    # nothing while runs carried three `forbidden_phrase` majors per scene.
     ADVISORY = {"negated_prohibition", "post_names_a_state", "post_names_an_absence",
-                "unavoidable_ban", "beat_is_prose", "stale_prohibition"}
+                "beat_is_prose", "stale_prohibition"}
     # "decorative_subplots" (plural) is the plan-wide verdict and gates; the singular is the
     # per-thread note beside it.
     GATING = {"no_subplots", "decorative_subplots", "state_repeat", "state_regression",
-              "midpoint_stall", "unpaid_thread", "missed_deadline", "spec_self_violation"}
+              "midpoint_stall", "unpaid_thread", "missed_deadline", "spec_self_violation",
+              "unavoidable_ban"}
 
     def _severity_of(self, kind: str):
         import ast
