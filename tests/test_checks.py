@@ -418,6 +418,37 @@ class TestSentenceSpans(unittest.TestCase):
         self.assertLess(elapsed, 0.5, f"took {elapsed:.2f}s — the quadratic path is back")
 
 
+class TestCopiedRuns(unittest.TestCase):
+    """One copied phrase is one leak, however many n-grams fit inside it."""
+
+    SCENE = ("She waited by the sill. Ingrid exhales visible breath through the window and "
+             "turns back. The stove ticked.")
+
+    def test_overlapping_ngrams_merge_into_one_run(self):
+        """Seven copied words are two overlapping six-grams. Counted separately they read as two
+        leaks and tripped a threshold meant to require two, which held scene 9 of a live run on
+        a single copied phrase."""
+        runs = checks.copied_runs(self.SCENE,
+                                  "Ingrid exhales visible breath through the window.", 6, 4)
+        self.assertEqual(runs, ["ingrid exhales visible breath through the window"])
+
+    def test_separated_copies_stay_separate(self):
+        scene = ("Ingrid exhales visible breath through the window. The stove ticked twice and "
+                 "then stopped. She crosses her fingers without noticing the register pages.")
+        source = ("Ingrid exhales visible breath through the window. She crosses her fingers "
+                  "without noticing the register pages.")
+        self.assertEqual(len(checks.copied_runs(scene, source, 6, 4)), 2)
+
+    def test_a_grammar_heavy_run_does_not_count(self):
+        runs = checks.copied_runs("He turned his back to the council the way a man leaves.",
+                                  "Dain turns his back to the council and walks out", 6, 4)
+        self.assertEqual(runs, [])
+
+    def test_nothing_shared_is_no_runs(self):
+        self.assertEqual(checks.copied_runs(self.SCENE, "An unrelated sentence entirely.", 6, 4),
+                         [])
+
+
 class TestForbiddenPhrase(unittest.TestCase):
     """The quote has to be something a repair can find and rewrite."""
 

@@ -310,6 +310,42 @@ def check_slop(scene: Scene, story: StorySpec | None = None,
                       "check_slop", hits[0])]
 
 
+def copied_runs(scene_text: str, source: str, n: int = 6,
+                substantive: int = 0) -> list[str]:
+    """Maximal word runs the scene shares with `source`, merged rather than counted as n-grams.
+
+    Counting n-grams double-counts a single copy: "Ingrid exhales visible breath through the
+    window" is seven words and therefore two overlapping six-grams, which read as two separate
+    leaks and tripped a threshold meant to require two. Scene 9 of a live run was held on one
+    copied phrase reported as two.
+
+    `substantive` requires that many non-function words in a run before it counts, so a run that
+    is mostly grammar — the shape any two sentences about the same event share — is not evidence
+    of copying.
+    """
+    scene_tokens = words(scene_text)
+    source_grams = set(ngrams(words(source), n))
+    if not source_grams:
+        return []
+    hits = [i for i, gram in enumerate(ngrams(scene_tokens, n))
+            if gram in source_grams
+            and sum(1 for w in gram if w not in _FUNCTION_WORDS) >= substantive]
+    runs: list[str] = []
+    start = None
+    previous = None
+    for i in hits:
+        if start is None:
+            start, previous = i, i
+        elif i == previous + 1:
+            previous = i
+        else:
+            runs.append(" ".join(scene_tokens[start:previous + n]))
+            start, previous = i, i
+    if start is not None:
+        runs.append(" ".join(scene_tokens[start:previous + n]))
+    return runs
+
+
 def check_style_leak(scene: Scene, story: StorySpec, n: int = 6) -> list[Violation]:
     """The draft reproduced a style sample from its own brief.
 
@@ -323,11 +359,9 @@ def check_style_leak(scene: Scene, story: StorySpec, n: int = 6) -> list[Violati
     """
     if not story.style.samples:
         return []
-    scene_grams = set(ngrams(words(scene.text), n))
     out: list[Violation] = []
     for sample in story.style.samples:
-        sample_grams = set(ngrams(words(sample), n))
-        shared = sorted(scene_grams & sample_grams)
+        shared = copied_runs(scene.text, sample, n)
         # One violation per copied run. The third check to need this — after `check_somatic` and
         # `check_brief_leak` — and found the same way: `_surgical` rewrites the sentence a quote
         # falls in, so a single violation carrying one of seven runs gets one sentence rewritten
@@ -337,10 +371,10 @@ def check_style_leak(scene: Scene, story: StorySpec, n: int = 6) -> list[Violati
         for run in shared[:6]:
             out.append(Violation(
                 "style_leak", Severity.MAJOR,
-                f"the draft reproduces this {n}-word run from a style sample in its own brief "
+                f"the draft reproduces this run from a style sample in its own brief "
                 f"(one of {len(shared)}) — the samples show the register to match, not text "
                 f"to copy",
-                "check_style_leak", " ".join(run)))
+                "check_style_leak", run))
     return out
 
 
@@ -365,14 +399,12 @@ def check_brief_leak(scene: Scene, spec: SceneSpec) -> list[Violation]:
     So two conditions, both learned the same way `check_seam` learned its own: the shared run has
     to be substantive rather than grammar, and one of them is coincidence.
     """
-    scene_grams = set(ngrams(words(scene.text), 6))
     sources = [spec.summary, spec.notes] + [b.summary for b in spec.beats]
     out: list[Violation] = []
     for source in sources:
         if not source:
             continue
-        shared = [g for g in scene_grams & set(ngrams(words(source), 6))
-                  if sum(1 for w in g if w not in _FUNCTION_WORDS) >= 4]
+        shared = copied_runs(scene.text, source, n=6, substantive=4)
         if len(shared) < 2:
             continue
         # One violation per copied run, not one per source. The same lesson `check_somatic`
@@ -381,12 +413,12 @@ def check_brief_leak(scene: Scene, spec: SceneSpec) -> list[Violation]:
         # the other six. Scene 26 of a live run spent every repair round that way. Capped,
         # because a draft with more than a handful is a draft that read its brief aloud and
         # wants redrafting rather than surgery.
-        for run in sorted(shared)[:6]:
+        for run in shared[:6]:
             out.append(Violation(
                 "brief_leak", Severity.MAJOR,
-                f"the draft reproduces this six-word run from its own brief (one of "
-                f"{len(shared)}) — it is narrating the instruction rather than dramatising it",
-                "check_brief_leak", " ".join(run)))
+                f"the draft reproduces this run from its own brief (one of {len(shared)}) — "
+                f"it is narrating the instruction rather than dramatising it",
+                "check_brief_leak", run))
     return out
 
 
