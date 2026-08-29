@@ -118,6 +118,15 @@ DEDICATED_REPAIRS = {
 # deleted whatever the scene's word count says, because the alternative is no progress at all.
 ABSOLUTE_KINDS = {"forbidden_phrase", "thread_prohibition"}
 
+ADVISORY_BUT_REPAIRABLE = {"thread_obligation", "thread_prohibition"}
+"""Judgements the repair loop acts on but the commit gate ignores.
+
+"Did this scene do its job?" and "did it leak the secret?" are readings, not measurements. The
+orchestrator gates on what code can check; these are reported to the author, and repaired
+best-effort on the way past, because a scene that landed its obligation is better than one that
+did not — but a small model's opinion of a story does not get to stop the book.
+"""
+
 NO_REPAIR = {"seam"}
 """Emitted only for an empty scene. There is nothing to repair, only to draft again."""
 
@@ -368,7 +377,7 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
         # of a live book leaked a concealment, was under target, and so had its leaking sentence
         # *rewritten* instead of cut; the rewrite leaked it again and the scene was blocked.
         can_afford = budget >= len(original.split())
-        if v.kind in DELETE_KINDS and (can_delete or v.severity is Severity.BLOCKER):
+        if v.kind in DELETE_KINDS and (can_delete or v.kind in ABSOLUTE_KINDS):
             replacement = ""
             budget -= len(original.split())
             notes.append(f"surgical: deleted the {v.kind} sentence (no model call)")
@@ -934,10 +943,19 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     # left, and one pass was all there was. Two is not a negotiation — the judge is answering the
     # same question about different text.
     for response_pass in range(2):
+        # Thread verdicts are advisory — they cannot hold a scene back — but they are still
+        # worth one repair attempt, because a scene that landed its obligation is better than
+        # one that did not. So the response pass acts on them despite their MINOR severity; the
+        # gate below simply never consults them.
         serious = [v for v in result.violations
-                   if v.severity in (Severity.BLOCKER, Severity.MAJOR)
-                   and v.source.startswith("llm:")]
-        if response_pass and not any(v.severity is Severity.BLOCKER for v in serious):
+                   if v.source.startswith("llm:")
+                   and (v.severity in (Severity.BLOCKER, Severity.MAJOR)
+                        or v.kind in ADVISORY_BUT_REPAIRABLE)]
+        # A second pass while anything the judge raised is still standing and the last pass
+        # changed the text. Keyed on the findings themselves rather than on BLOCKER, because
+        # thread verdicts are advisory now and a leak carried by two sentences still needs both
+        # cut.
+        if response_pass and not serious:
             break
         if serious and config.max_repairs > 0:
             located = [v for v in serious
@@ -984,12 +1002,17 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                         # one of two leaking sentences ties on the score and is the whole of the
                         # progress available.
                         # Minors are advisory by policy, so they do not get to veto progress
-                        # on a blocker: a deletion that removes a leak and leaves one more
-                        # repetition behind is still the only step available.
-                        was_blocked = any(v.severity is Severity.BLOCKER
+                        # on something the judge actually raised: a deletion that removes a leak
+                        # and leaves one more repetition behind is still the only step available.
+                        #
+                        # Keyed on the finding, not on BLOCKER. Thread verdicts are advisory now
+                        # and score as MINOR, so a comparison that only respected blockers threw
+                        # away every leak deletion the moment they were demoted.
+                        outstanding = any(v.severity is Severity.BLOCKER
+                                          or v.kind in ADVISORY_BUT_REPAIRABLE
                                           for v in result.violations)
                         if (_score(new_all) < _score(result.violations)
-                                or (was_blocked
+                                or (outstanding
                                     and _score(new_all)[:2] <= _score(result.violations)[:2])):
                             scene, result.scene = candidate, candidate
                             det_violations = new_det

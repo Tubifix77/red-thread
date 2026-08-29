@@ -173,9 +173,11 @@ class TestCommitGate(PipelineCase):
         self.assertFalse(result.committed)
         self.assertIn("continuity_contradiction", {v.kind for v in result.violations})
 
-    def test_violated_prohibition_is_a_blocker(self):
-        """A premature reveal cannot be committed: once the reader knows, no later scene can
-        un-know it."""
+    def test_a_violated_prohibition_is_reported_but_does_not_gate(self):
+        """"Did this scene leak the secret?" is a reading, not a measurement. Gating on a small
+        model's answer halted whole books on scenes that had disclosed nothing, and every attempt
+        to make it safe narrowed what the plan was allowed to say. It is reported to the author
+        and repaired best-effort; it does not stop the run."""
         models, backend = fakes.scripted_models({
             "threads": fakes.threads_one_prohibition_violated(0)})
         backend.queue("draft", fakes.clean_prose())
@@ -183,18 +185,20 @@ class TestCommitGate(PipelineCase):
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=0))
 
-        self.assertFalse(result.committed)
+        self.assertTrue(result.committed)
         self.assertIn("thread_prohibition", {v.kind for v in result.violations})
+        self.assertEqual(result.blockers(), [])
 
-    def test_missed_thread_obligation_holds_the_scene_back(self):
+    def test_a_missed_obligation_is_reported_but_does_not_gate(self):
         models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
         backend.queue("draft", fakes.clean_prose())
 
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=0))
 
-        self.assertFalse(result.committed)
-        self.assertTrue(result.majors())
+        self.assertTrue(result.committed)
+        self.assertIn("thread_obligation", {v.kind for v in result.violations})
+        self.assertEqual(result.majors(), [])
 
     def test_force_commits_despite_majors_but_never_despite_blockers(self):
         models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
@@ -943,11 +947,11 @@ class TestLeakedProhibition(PipelineCase):
                             for n in result.notes), result.notes)
         self.assertEqual(backend.count("surgical"), 0, "deletion needs no model")
 
-    def test_a_blocker_outranks_the_length_guard(self):
-        """Deleting gloss can shrink a scene under its floor, which is why the guard exists. A
-        reveal cannot be un-read by any later scene; a short scene has `_expand` waiting."""
+    def test_a_leak_is_still_cut_when_the_scene_is_under_target(self):
+        """Deleting gloss can shrink a scene under its floor, which is why the length guard
+        exists. A leak is exempt anyway: it cannot be un-read, and a short scene has `_expand`
+        waiting for it."""
         models, backend = self._models()
-        # Under target, so `can_delete` is False and the old code rewrote instead.
         backend.queue("draft", fakes.clean_prose(600) + self.LEAK)
 
         result = write_scene(self.project, self.project.spec_at(1), models,
@@ -1257,16 +1261,20 @@ class TestSurgicalRepair(PipelineCase):
 
         self.assertNotIn("word word word", result.scene.text)
 
-    def test_quoteless_violations_fall_back_to_whole_scene_repair(self):
+    def test_a_quoteless_obligation_goes_to_fulfil_not_to_surgery(self):
+        """Surgery needs a span. A missed obligation has none — it is a thing absent from the
+        scene — so it goes to the repair that writes the missing beat, and only falls to
+        whole-scene repair if that fails."""
         models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
-        backend.queue("draft", fakes.clean_prose(900))
-        backend.queue("repair", fakes.clean_prose(905))
+        # `_fulfil` splices before the final passage, so it needs paragraphs to splice between.
+        backend.queue("draft", BREAK.join([fakes.clean_prose(450, variant=1),
+                                           fakes.clean_prose(450, variant=4)]))
 
         write_scene(self.project, self.project.spec_at(1), models,
                     Config(candidates=1, max_repairs=1))
 
         self.assertEqual(backend.count("surgical"), 0)
-        self.assertEqual(backend.count("repair"), 1)
+        self.assertGreaterEqual(backend.count("fulfil"), 1)
 
 
     def test_deterministic_and_judge_findings_are_handled_in_their_own_phases(self):
@@ -1334,9 +1342,14 @@ class TestSurgicalRepair(PipelineCase):
 
 
 class TestGradedVerdicts(PipelineCase):
-    """Binary judgments from the local judge hold up; graded ones do not. A 'partial' on a
-    fuzzy obligation deadlocked a real run for four repair rounds, exactly like the tell
-    false-positives."""
+    """Every verdict the judge gives about the *story* is advisory.
+
+    The calibration went in stages. First the graded verdicts were demoted — a "partial" on a
+    fuzzy obligation deadlocked a run for four repair rounds. Then the binary ones followed them,
+    for the same reason one layer up: "did this scene do its job" is a reading, not a
+    measurement, and gating on a small model's reading halted books over scenes that were fine
+    while quietly rewriting the plans that fed them.
+    """
 
     def test_partial_verdict_is_advisory(self):
         partial = json.dumps({
@@ -1355,14 +1368,28 @@ class TestGradedVerdicts(PipelineCase):
         self.assertIn(("thread_obligation", "minor"),
                       {(v.kind, v.severity.value) for v in result.violations})
 
-    def test_missed_verdict_still_blocks(self):
+    def test_a_missed_verdict_is_advisory_too(self):
         models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
         backend.queue("draft", fakes.clean_prose())
 
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=0))
 
+        self.assertTrue(result.committed)
+        self.assertIn(("thread_obligation", "minor"),
+                      {(v.kind, v.severity.value) for v in result.violations})
+
+    def test_the_deterministic_checks_still_gate(self):
+        """Demoting the judge must not demote the checks. A scene that breaks a countable rule
+        is still held back — that is the half of the guardrail code can be trusted with."""
+        models, backend = fakes.scripted_models({"threads": fakes.threads_one_missed(0)})
+        backend.queue("draft", fakes.prose_with_heading())
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=0))
+
         self.assertFalse(result.committed)
+        self.assertIn("format", {v.kind for v in result.blockers()})
 
 
 class TestJudgeEvidence(PipelineCase):
@@ -1407,7 +1434,9 @@ class TestJudgeEvidence(PipelineCase):
         self.assertIn("thematic_gloss", {v.kind for v in result.violations},
                       "the deterministic check still carries the block")
 
-    def test_prohibition_without_locatable_quote_is_major_not_blocker(self):
+    def test_an_unevidenced_prohibition_is_recorded_as_such(self):
+        """The note says the judge could not point at anything, so a reader of the report knows
+        how much to trust it."""
         models, backend = fakes.scripted_models({
             "threads": fakes.threads_one_prohibition_violated(0)})
         backend.queue("draft", fakes.clean_prose(900))
@@ -1415,25 +1444,28 @@ class TestJudgeEvidence(PipelineCase):
         result = write_scene(self.project, self.project.spec_at(1), models,
                              Config(candidates=1, max_repairs=0))
 
-        kinds = {(v.kind, v.severity.value) for v in result.violations}
-        self.assertIn(("thread_prohibition", "major"), kinds)
-        self.assertNotIn(("thread_prohibition", "blocker"), kinds)
+        leaks = [v for v in result.violations if v.kind == "thread_prohibition"]
+        self.assertEqual(len(leaks), 1)
+        self.assertIn("no locatable quote", leaks[0].detail)
+        self.assertEqual(result.blockers(), [])
 
-    def test_prohibition_with_locatable_quote_stays_a_blocker(self):
-        text = fakes.clean_prose(880) + " She told him everything about the founders' figure."
+    def test_an_evidenced_prohibition_is_reported_and_repaired_but_not_a_gate(self):
+        """The quote still matters — it is what `_surgical` and `_excise_leak` act on — but a
+        reading of the story does not stop the book. The author decides whether it leaked."""
+        leak = " She told him everything about the founders' figure."
         prohibition = json.dumps({
             "requirements": [{"n": i, "verdict": "met"} for i in range(12)],
-            "prohibitions": [{"n": 0, "violated": True,
-                              "quote": "She told him everything about the founders' figure"}]
+            "prohibitions": [{"n": 0, "violated": True, "quote": leak.strip().rstrip(".")}]
             + [{"n": i, "violated": False} for i in range(1, 12)]})
         models, backend = fakes.scripted_models({"threads": prohibition})
-        backend.queue("draft", text)
+        backend.queue("draft", fakes.clean_prose(1050) + leak)
 
         result = write_scene(self.project, self.project.spec_at(1), models,
-                             Config(candidates=1, max_repairs=0))
+                             Config(candidates=1, max_repairs=2))
 
-        self.assertIn(("thread_prohibition", "blocker"),
-                      {(v.kind, v.severity.value) for v in result.violations})
+        self.assertEqual(result.blockers(), [])
+        self.assertTrue(any("thread_prohibition" in n for n in result.notes),
+                        f"the leak was never repaired: {result.notes}")
 
 
 class TestTrim(PipelineCase):

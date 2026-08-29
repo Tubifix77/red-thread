@@ -325,13 +325,19 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
             tid, text = required[int(row.get("n", -1))]
         except (ValueError, TypeError, IndexError):
             continue
-        # The calibration lesson, generalised: this judge's BINARY judgments hold up (its
-        # violated-prohibition calls located real leaks that repair then fixed), its GRADED ones
-        # do not (a "partial" on a fuzzy obligation deadlocked a run for four repair rounds the
-        # same way the tell false-positives did). "missed" blocks; "partial" is advisory.
-        severity = Severity.MAJOR if verdict == "missed" else Severity.MINOR
+        # Advisory, not a gate. "Did this scene accomplish what it was for?" is a reading, not
+        # a measurement — an authorial judgement wearing a verifier's clothes. Gating on a small
+        # model's answer to it produced two failure modes and no successes: scenes held back for
+        # obligations they had met, and — worse — a plan quietly rewritten until its instructions
+        # were mechanically checkable. "Nils ignores the thermometer's reading" is a perfectly
+        # writable beat that was deleted from a live plan because a judge could not confirm it
+        # afterwards.
+        #
+        # So the verdict is reported to the author and the repair loop still tries to act on it,
+        # but it cannot stop the book. The orchestrator gates on what code can check; the story
+        # is the author's.
         out.append(Violation(
-            "thread_obligation", severity,
+            "thread_obligation", Severity.MINOR,
             f"{verdict}: {text}", "llm:check_threads", str(row.get("evidence", ""))[:200]))
 
     for row in (data.get("prohibitions") or []):
@@ -341,16 +347,19 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
             tid, text = forbidden[int(row.get("n", -1))]
         except (ValueError, TypeError, IndexError):
             continue
-        # A broken Forbid — a premature reveal especially — cannot be committed: once the reader
-        # knows, no later scene can un-know it. But a BLOCKER stops the whole run, so it demands
-        # real evidence — a judge quote that actually appears in the scene. Without one it is
-        # still taken seriously, as a MAJOR, which triggers repair instead of halting the book on
-        # a judgement that cannot be checked.
+        # Also advisory, and this one was the most expensive to learn. The asymmetry is real —
+        # once the reader knows, no later scene can un-know it — but the *detection* is a
+        # reading, and an 8B reading for an absence is the least reliable judgement in the
+        # system. As a BLOCKER it halted whole books on scenes that had disclosed nothing, and
+        # every attempt to make it safe narrowed what the plan was allowed to say.
+        #
+        # The quote still matters: an evidenced leak names the sentence, which is what
+        # `_surgical` and `_excise_leak` act on. It is reported prominently and repaired
+        # best-effort; the author decides whether it really leaked.
         quote = str(row.get("quote", ""))[:200]
         evidenced = bool(quote) and _checks.locate_quote(scene.text, quote) is not None
         out.append(Violation(
-            "thread_prohibition",
-            Severity.BLOCKER if evidenced else Severity.MAJOR,
+            "thread_prohibition", Severity.MINOR,
             f"violated: {text}" + ("" if evidenced else " (judge gave no locatable quote)"),
             "llm:check_threads", quote if evidenced else ""))
     return out
