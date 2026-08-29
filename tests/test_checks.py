@@ -575,6 +575,43 @@ class TestManuscriptRefrain(unittest.TestCase):
         self.assertTrue(all(v.severity is Severity.MINOR for v in found))
 
 
+class TestAnaphora(unittest.TestCase):
+    """The rhetorical triple: one phrase opening three clauses of a single sentence.
+
+    Measured across 91 committed scenes it appears in 31 of them, and in none of the three
+    reference drafts in `docs/evidence`. It survived the tic check because the continuations
+    differ — "the way his back remained straight, the way his fingers did not falter, the way
+    the hum continued" shares only "the way" — and it survived the duplication ratio because
+    three repeats of two words is nothing against a whole scene.
+    """
+
+    def test_a_triple_is_flagged(self):
+        text = ("She watched him, the way his back remained straight, the way his fingers did "
+                "not falter, the way the hum continued underneath it all.")
+        found = checks.check_anaphora(scene(text))
+        self.assertIn("anaphora", kinds(found))
+        self.assertIn("the way", found[0].detail)
+
+    def test_the_quote_is_the_sentence_a_repair_can_reach(self):
+        text = ("The gate stood open. They were coming for the years he had taken, the years "
+                "he had lost, the years he had never meant to steal. Nobody moved.")
+        found = checks.check_anaphora(scene(text))
+        self.assertTrue(found)
+        self.assertIsNotNone(checks.locate_quote(text, found[0].quote))
+        self.assertNotIn("The gate stood open", found[0].quote)
+
+    def test_two_parallel_clauses_are_not_a_triple(self):
+        """Two is a pair and reads as deliberate; three is the tell."""
+        text = "She noticed the way he stood, the way he held the clipboard, and said nothing."
+        self.assertEqual(checks.check_anaphora(scene(text)), [])
+
+    def test_repetition_across_sentences_is_not_this(self):
+        """`check_internal_repetition` owns that. This is one sentence turning on itself."""
+        text = ("She noticed the way he stood. He put the clipboard down. She noticed the way "
+                "he waited. The kettle clicked off. She noticed the way he left.")
+        self.assertEqual(checks.check_anaphora(scene(text)), [])
+
+
 class TestCopiedRuns(unittest.TestCase):
     """One copied phrase is one leak, however many n-grams fit inside it."""
 

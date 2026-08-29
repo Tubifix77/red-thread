@@ -90,6 +90,8 @@ REMEDIES = {
                         "complete beat instead."),
     "internal_repetition": "Vary the repeated phrasing.",
     "slop": "Replace the flagged phrasing with something plainer.",
+    "anaphora": ("Three clauses of this sentence begin with the same words. Keep one of them "
+                 "and say the rest another way, or cut two and let the one stand."),
     "repetition": ("This phrasing has already run through several earlier scenes. Write this "
                    "sentence with different words and a different image."),
 }

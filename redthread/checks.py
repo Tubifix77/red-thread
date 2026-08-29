@@ -644,6 +644,7 @@ _GLOSS_PATTERNS = [
     re.compile(r"\b(?:could|did|can)\b.{0,4}(?:n.t|not) (?:yet )?(?:name|articulate|put into words)\b", re.I),
     re.compile(r"\bwas more than (?:a|just) (?!\d)\w+", re.I),
     re.compile(r"\bas (?:if|though) the \w+ itself\b", re.I),
+    re.compile(r"\ba kind of \w+", re.I),
 ]
 
 
@@ -948,6 +949,38 @@ def check_summary_distance(scene: Scene, heavy: float = 0.35) -> list[Violation]
         "check_summary_distance")]
 
 
+_ANAPHORA = re.compile(
+    r"(\b(?:the|a|his|her|their) \w+)[^.!?]{5,70},\s*\1\b[^.!?]{5,70},\s*\1\b", re.I)
+
+
+def check_anaphora(scene: Scene) -> list[Violation]:
+    """The rhetorical triple: one phrase opening three clauses of a single sentence.
+
+    "the way his back remained straight, the way his fingers did not falter, the way he did not
+    look at her" — and "the silence was a kind of language, a kind of code, a kind of failure",
+    which manages to be a triple and an abstraction at once. It is a distinctive move: measured
+    across 91 committed scenes it appears in a handful and reaches 13.7 per thousand words in the
+    worst, while none of the reference drafts in `docs/evidence` contains a single one.
+
+    Rare enough to be worth stopping for, and unlike a register it sits in one sentence, so
+    surgery can reach it.
+    """
+    out: list[Violation] = []
+    for lo, hi in sentence_spans(scene.text):
+        sentence = scene.text[lo:hi].strip()
+        match = _ANAPHORA.search(sentence)
+        if not match:
+            continue
+        out.append(Violation(
+            "anaphora", Severity.MAJOR,
+            f'three clauses of this sentence open with "{match.group(1)}" — a rhetorical '
+            f"triple. Keep one and write the others differently, or cut two.",
+            "check_anaphora", sentence))
+        if len(out) >= 4:
+            break
+    return out
+
+
 # --------------------------------------------------------------------------------------
 # 8. sentence-rhythm monotony
 # --------------------------------------------------------------------------------------
@@ -1000,6 +1033,7 @@ def run_all(
     out += check_repetition(scene, committed_texts or [])
     out += check_rhythm(scene)
     out += check_summary_distance(scene)
+    out += check_anaphora(scene)
     return out
 
 
