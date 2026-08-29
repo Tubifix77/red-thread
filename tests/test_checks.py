@@ -1052,3 +1052,58 @@ class TestManuscriptRefrains(unittest.TestCase):
             refrains=[("the blade at his side", 8)])
         self.assertIn("the blade at his side", text)
         self.assertIn("refrain", text.lower())
+
+
+class TestSceneIsPeopled(unittest.TestCase):
+    """The spec put two people in the room and the prose gave them nothing to say.
+
+    Found by reading the middle of a 71-scene book. Scene 38 is one character alone in a ruin,
+    touching statues and remembering, and every check passed it — including `summary_distance`,
+    because the flashback it becomes is narrated in simple past.
+
+    The measurement then showed the emptying-out is a shape rather than a level: dialogue runs at
+    21% of words across the opening eighteen scenes, 15% in the next, 10% in the third and 9% in
+    the last, with silent scenes going from 2 of 18 to 9 of 18. Twenty of the 71 were populated
+    by the plan and silent on the page, including all four three-character scenes of the climax.
+    """
+
+    SILENT = ("Vael walked between the statues. The air smelled of dust. He crouched beside one "
+              "and traced the ridges of it. The memory came back to him slowly, the way water "
+              "seeps through a crack, and he stayed there a while longer than he meant to.")
+    SPOKEN = ("Vael crouched beside the statue. “You said the records were burned,” he "
+              "said. Sera did not look up from the ledger. “I said they were filed. Those "
+              "are different words and you know it.” He put the blade down on the stone.")
+
+    def _spec(self, *characters):
+        return make_spec(characters=list(characters))
+
+    def test_two_characters_and_no_dialogue_is_reported(self):
+        found = checks.check_scene_is_peopled(self._spec("vael", "sera"), scene(self.SILENT))
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0].kind, "unpeopled_scene")
+
+    def test_it_is_advisory(self):
+        """Two people can share a scene in silence, and no corpus here says what rate is normal
+        in good fiction. It must not gate on a number nobody has calibrated."""
+        found = checks.check_scene_is_peopled(self._spec("vael", "sera"), scene(self.SILENT))
+        self.assertIs(found[0].severity, Severity.MINOR)
+
+    def test_a_scene_where_they_speak_is_clean(self):
+        self.assertEqual(
+            checks.check_scene_is_peopled(self._spec("vael", "sera"), scene(self.SPOKEN)), [])
+
+    def test_one_character_alone_is_not_flagged(self):
+        """A solitary scene the plan asked for is the plan's business, not the prose's."""
+        self.assertEqual(
+            checks.check_scene_is_peopled(self._spec("vael"), scene(self.SILENT)), [])
+
+    def test_dialogue_share_counts_spoken_words(self):
+        self.assertGreater(checks.dialogue_share(self.SPOKEN), 0.2)
+        self.assertEqual(checks.dialogue_share(self.SILENT), 0.0)
+        self.assertEqual(checks.dialogue_share(""), 0.0)
+
+    def test_it_runs_as_part_of_the_scene_checks(self):
+        found = checks.run_all(scene(self.SILENT),
+                               make_spec(word_target=50, characters=["vael", "sera"]),
+                               make_story())
+        self.assertIn("unpeopled_scene", {v.kind for v in found})

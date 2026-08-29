@@ -784,6 +784,53 @@ def check_character_overlap(spec: SceneSpec, previous_characters: list[str]) -> 
 # 7. cross-manuscript repetition  (RESEARCH.md section 6 — homogeneity)
 # --------------------------------------------------------------------------------------
 
+_SPOKEN = re.compile(r"[\"“”]([^\"“”]{2,400})[\"“”]")
+
+
+def dialogue_share(text: str) -> float:
+    """Share of a scene's words spoken aloud."""
+    words = len(text.split())
+    if not words:
+        return 0.0
+    return sum(len(m.split()) for m in _SPOKEN.findall(text)) / words
+
+
+def check_scene_is_peopled(spec: SceneSpec, scene: Scene, floor: float = 0.02) -> list[Violation]:
+    """The spec put two people in the room and the prose gave them nothing to say.
+
+    Not a judgement about quality — a discrepancy between the spec and the prose, which is the
+    kind of thing this orchestrator is allowed to have an opinion about. The plan declares who is
+    present; a scene with two or three of them and no dialogue at all has quietly become a solo
+    scene, whatever the spec says.
+
+    Found by reading the middle of a 71-scene book. Scene 38 is Vael alone in a ruin touching
+    statues and remembering, and it reads exactly as flat as that sounds — but every check passed
+    it, including `summary_distance`, because the flashback it turns into is narrated in simple
+    past. What the measurement then showed is that the emptying-out is a *shape*: dialogue runs
+    at 21% of words in the opening eighteen scenes, 15% in the next, 10% in the third and 9% in
+    the last, and silent scenes go from 2 of 18 to 9 of 18. Twenty of the 71 were populated by
+    the plan and silent on the page, clustered in the second half — including all four
+    three-character scenes of the climax.
+
+    Advisory, and deliberately so. Two people can share a scene in silence, and there is no
+    corpus here saying what rate is normal in good fiction, so this must not hold a gate on a
+    number nobody has calibrated. It earns its place in candidate selection, where preferring the
+    draft in which the people present actually speak costs nothing.
+    """
+    if len(spec.characters) < 2:
+        return []
+    share = dialogue_share(scene.text)
+    if share >= floor:
+        return []
+    names = ", ".join(spec.characters)
+    return [Violation(
+        "unpeopled_scene", Severity.MINOR,
+        f"the spec puts {len(spec.characters)} characters in this scene ({names}) and none of "
+        f"them speaks — {share:.0%} of the scene is dialogue. It has become one person "
+        f"remembering.",
+        "check_scene_is_peopled")]
+
+
 def manuscript_refrains(committed_texts: list[str], n: int = 5, min_scenes: int = 3,
                         limit: int = 10) -> list[tuple[str, int]]:
     """Phrases this book has already used in several separate scenes, worst first.
@@ -1277,6 +1324,7 @@ def run_all(
     out += check_recap_block(scene)
     out += check_gesture_density(scene)
     out += check_gesture_tic(scene)
+    out += check_scene_is_peopled(spec, scene)
     out += check_anaphora(scene)
     out += check_absolute_stack(scene)
     return out

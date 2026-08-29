@@ -793,6 +793,11 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                                  round(checks.duplication_ratio(row[1].text) * 20),
                                  round(checks.summary_distance(row[1].text) * 10),
                                  round(checks.gesture_rate(row[1].text)),
+                                 # Prefer the draft in which the people the spec put in the room
+                                 # actually speak. A 71-scene book had 20 scenes the plan
+                                 # populated and the prose left silent, clustered in its second
+                                 # half, and this is the one place that costs nothing to act on.
+                                 -round(min(checks.dialogue_share(row[1].text), 0.2) * 20),
                                  abs(row[1].word_count() - spec.word_target)))
     _, scene, det_violations = scored[0]
     result.scene = scene
