@@ -204,7 +204,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`progress.py`](redthread/progress.py) | Orchestrator view — stages, timings, thread state | — |
 | [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` | — |
 
-**335 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**340 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
 
