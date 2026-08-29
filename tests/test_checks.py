@@ -363,6 +363,68 @@ class TestBriefLeakage(unittest.TestCase):
         self.assertEqual(found, [])
 
 
+class TestSentenceSpans(unittest.TestCase):
+    """The splice primitive. Every localised repair addresses text by these offsets."""
+
+    def test_spans_cover_the_text_in_order(self):
+        text = "She read it. He did not. The stove ticked."
+        spans = checks.sentence_spans(text)
+        self.assertEqual([text[a:b].strip() for a, b in spans],
+                         ["She read it.", "He did not.", "The stove ticked."])
+
+    def test_trailing_text_without_a_terminator_is_a_final_span(self):
+        text = "She read it. And then"
+        spans = checks.sentence_spans(text)
+        self.assertEqual(text[spans[-1][0]:spans[-1][1]].strip(), "And then")
+
+    def test_unpunctuated_text_is_linear_not_quadratic(self):
+        """The original pattern matched whole sentences with `[^.!?…]*[.!?…]+`, which on text
+        with no terminator consumes to the end at every start position and backtracks the whole
+        way: 3.7 seconds for four thousand words. A truncated draft is exactly that shape, and
+        `check_truncated` and `_surgical` both land here."""
+        import time
+        text = "word " * 8000
+        start = time.perf_counter()
+        spans = checks.sentence_spans(text)
+        elapsed = time.perf_counter() - start
+        self.assertEqual(len(spans), 1)
+        self.assertLess(elapsed, 0.5, f"took {elapsed:.2f}s — the quadratic path is back")
+
+
+class TestForbiddenPhrase(unittest.TestCase):
+    """The quote has to be something a repair can find and rewrite."""
+
+    STORY = None
+
+    def _story(self):
+        return make_story(style=StyleContract(forbidden_phrases=["truth", "everything changed"]))
+
+    TEXT = ("She put the ledger down. He wanted the truth and she did not have it. "
+            "The stove ticked. After that everything changed for the two of them. "
+            "Nobody said the truth out loud again.")
+
+    def test_every_occurrence_gets_its_own_violation(self):
+        found = checks.check_forbidden(scene(self.TEXT), self._story())
+        self.assertEqual(len(found), 3)
+        self.assertEqual(len({v.quote for v in found}), 3)
+
+    def test_each_quote_locates_in_the_scene(self):
+        """A five-letter ban like "truth" is shorter than `locate_quote`'s floor, so quoting the
+        phrase produced a violation no repair could reach — it fell through to whole-scene repair
+        and held scene 1 of a live book."""
+        for v in checks.check_forbidden(scene(self.TEXT), self._story()):
+            with self.subTest(quote=v.quote):
+                self.assertIsNotNone(checks.locate_quote(self.TEXT, v.quote))
+
+    def test_the_detail_still_names_the_phrase(self):
+        found = checks.check_forbidden(scene(self.TEXT), self._story())
+        self.assertTrue(any('"truth"' in v.detail for v in found))
+
+    def test_clean_prose_passes(self):
+        self.assertEqual(checks.check_forbidden(scene("She put the ledger down."),
+                                                self._story()), [])
+
+
 class TestBeatIsProse(unittest.TestCase):
     """A beat written as prose is prose the writer copies back. Only quoted dialogue is checked,
     because that is the unambiguous mark — and the ambiguous one bit immediately."""

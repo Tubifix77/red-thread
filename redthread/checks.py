@@ -32,7 +32,7 @@ def sentences(text: str) -> list[str]:
     return [s.strip() for s in _SENTENCE_SPLIT.split(text.strip()) if s.strip()]
 
 
-_SENTENCE_SPAN = re.compile(r"[^.!?…]*[.!?…]+[\"'”’)]*", re.S)
+_SENTENCE_END = re.compile(r"[.!?…]+[\"'”’)]*", re.S)
 
 
 def sentence_spans(text: str) -> list[tuple[int, int]]:
@@ -41,12 +41,18 @@ def sentence_spans(text: str) -> list[tuple[int, int]]:
     Span-aware so a repair can splice a single sentence out of a scene by offset instead of
     asking a model to reproduce the whole scene minus one line — which is the step small local
     models reliably fumble. Trailing text without terminal punctuation is one final span.
+
+    Scans for the terminators and slices between them, rather than matching whole sentences with
+    `[^.!?…]*[.!?…]+`. That pattern is quadratic on text containing no terminator at all: at every
+    start position it consumes to the end, fails to find one, and backtracks the whole way. Four
+    thousand unpunctuated words took 3.7 seconds, which is not hypothetical — a truncated draft is
+    exactly that shape, and `check_truncated` and `_surgical` both land here.
     """
     spans: list[tuple[int, int]] = []
     pos = 0
-    for m in _SENTENCE_SPAN.finditer(text):
-        if m.group().strip():
-            spans.append((m.start(), m.end()))
+    for m in _SENTENCE_END.finditer(text):
+        if text[pos:m.end()].strip():
+            spans.append((pos, m.end()))
         pos = m.end()
     if text[pos:].strip():
         spans.append((pos, len(text)))
@@ -378,12 +384,41 @@ def check_brief_leak(scene: Scene, spec: SceneSpec) -> list[Violation]:
 
 
 def check_forbidden(scene: Scene, story: StorySpec) -> list[Violation]:
+    """One violation per occurrence, quoting the sentence rather than the phrase.
+
+    The phrase alone is unusable as a repair target twice over. `locate_quote` refuses a needle
+    shorter than six characters — a floor that exists so a judge's short paraphrase cannot match
+    by accident — so a contract banning "truth" produced a violation that located nowhere,
+    fell through to whole-scene repair, and held scene 1 of a live book with a five-letter word
+    no repair could reach. And a phrase that appears three times needs three sentences rewritten,
+    which is the same scope lesson `check_somatic` and `check_brief_leak` each learned.
+
+    Quoting the containing sentence solves both: it is long enough to locate, and it is the exact
+    span `_surgical` will rewrite.
+    """
+    out: list[Violation] = []
     lowered = scene.text.lower()
-    return [
-        Violation("forbidden_phrase", Severity.MAJOR,
-                  f'style contract forbids "{p}"', "check_forbidden", p)
-        for p in story.style.forbidden_phrases if p.lower() in lowered
-    ]
+    if not any(p.strip() and p.strip().lower() in lowered
+               for p in story.style.forbidden_phrases):
+        return out
+    spans = sentence_spans(scene.text)
+    for phrase in story.style.forbidden_phrases:
+        needle = phrase.strip().lower()
+        if not needle:
+            continue
+        start = lowered.find(needle)
+        seen: set[tuple[int, int]] = set()
+        while start >= 0:
+            covering = next(((lo, hi) for lo, hi in spans if lo <= start < hi), None)
+            span = covering or (start, start + len(needle))
+            if span not in seen:
+                seen.add(span)
+                out.append(Violation(
+                    "forbidden_phrase", Severity.MAJOR,
+                    f'style contract forbids "{phrase}", and this sentence uses it',
+                    "check_forbidden", scene.text[span[0]:span[1]].strip()))
+            start = lowered.find(needle, start + len(needle))
+    return out
 
 
 # --------------------------------------------------------------------------------------
