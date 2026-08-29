@@ -572,6 +572,23 @@ class TestSeamRepair(PipelineCase):
                          result.notes)
         self.assertNotIn("seam_echo", {v.kind for v in result.violations})
 
+    def test_deletion_is_bounded_by_sentence_count_as_well(self):
+        """A live run cut 34 sentences — a quarter of the scene — off one opening to clear a
+        single echo. The word fraction allowed it; the largest genuine case needed eleven."""
+        previous = fakes.clean_prose(900, variant=2)
+        tail = " ".join(previous.split()[-150:])
+        # The whole scene echoes: no cut within the cap can clear it, so none should be made.
+        copied = Scene(spec_id="s2", index=2, text=previous + " " + previous)
+        flagged = checks.check_seam(copied, tail)
+        notes: list[str] = []
+
+        _deseam(copied, tail, flagged, notes)
+
+        for note in notes:
+            if "deseam: deleted" in note:
+                dropped = int(note.split("deleted ")[1].split(" ")[0])
+                self.assertLessEqual(dropped, 12, note)
+
     def test_deletion_is_refused_when_it_would_gut_the_scene(self):
         """Past a few sentences the copy is not a seam artefact but an empty scene."""
         first = Scene(spec_id="s1", index=1, text=fakes.clean_prose(120))

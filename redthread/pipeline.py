@@ -205,7 +205,10 @@ def _deseam(scene: Scene, previous_tail: str, violations: list[Violation],
     # Four sentences could not reach it, so nothing did. What actually matters is the fraction:
     # a quarter of a scene can be duplicate and the rest still be a scene, and the shortfall is
     # a job `_expand` already does. Past a quarter there is no scene here and a redraft is right.
-    for drop in range(1, max(2, len(spans) - 2)):
+    # Two bounds, not one. The word fraction alone let a live run cut 34 sentences — 253 words,
+    # a quarter of the scene — off one opening to clear a single echo, which is not a seam repair
+    # any more but a redraft with extra steps. The largest genuine case needed eleven.
+    for drop in range(1, min(13, max(2, len(spans) - 2))):
         kept = spans[:-drop] if from_end else spans[drop:]
         if len(kept) < 3:
             return None
