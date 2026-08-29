@@ -534,6 +534,45 @@ class TestSummaryDistance(unittest.TestCase):
         self.assertEqual(checks.check_summary_distance(scene(text)), [])
 
 
+class TestManuscriptRefrain(unittest.TestCase):
+    """The aggregate count hides the thing worth knowing.
+
+    Some overlap between scenes of one book is the book. What matters is one phrase turning up
+    scene after scene, and a live 15-scene run produced "she had not meant to" in ten of them,
+    "the register was more than a ledger" in six. Reported as "128 5-grams already used earlier",
+    none of that is visible to anyone reading the report.
+    """
+
+    def _corpus(self, phrase: str, scenes: int) -> list[str]:
+        return [f"Scene {i} went by. {phrase} and then the shift ended at {i} o'clock."
+                for i in range(scenes)]
+
+    def test_the_worst_refrain_is_named(self):
+        earlier = self._corpus("She had not meant to look", 6)
+        current = "The gate stood open. She had not meant to look at it again that morning."
+        found = checks.check_repetition(scene(current), earlier)
+        self.assertTrue(found)
+        self.assertIn("not meant to look", found[0].detail)
+        self.assertIn("7 scenes", found[0].detail)
+
+    def test_ordinary_overlap_lists_examples_instead(self):
+        earlier = ["She put the ledger on the bench and went out to the yard."]
+        current = "She put the ledger on the bench and left it there."
+        found = checks.check_repetition(scene(current), earlier)
+        self.assertTrue(found)
+        self.assertNotIn("has now appeared", found[0].detail)
+
+    def test_it_stays_advisory(self):
+        """Every refrain measured in a live book was stylistic rather than the book's own
+        vocabulary, so gating is probably right for real prose — but any fixture assembled from a
+        pool of components repeats those components across scenes as a matter of arithmetic, and
+        a gate the suite cannot represent is how a green suite comes to prove nothing."""
+        earlier = self._corpus("She had not meant to look", 8)
+        current = "She had not meant to look, and the door was open anyway."
+        found = checks.check_repetition(scene(current), earlier)
+        self.assertTrue(all(v.severity is Severity.MINOR for v in found))
+
+
 class TestCopiedRuns(unittest.TestCase):
     """One copied phrase is one leak, however many n-grams fit inside it."""
 

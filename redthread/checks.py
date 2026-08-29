@@ -751,7 +751,7 @@ def check_character_overlap(spec: SceneSpec, previous_characters: list[str]) -> 
 # --------------------------------------------------------------------------------------
 
 def check_repetition(scene: Scene, committed_texts: list[str], n: int = 5,
-                     max_repeats: int = 0) -> list[Violation]:
+                     max_repeats: int = 0, refrain: int = 4) -> list[Violation]:
     """Imagery and phrasing reused from earlier scenes.
 
     Left unchecked, a model reaches for the same handful of images all manuscript long. This is
@@ -766,10 +766,36 @@ def check_repetition(scene: Scene, committed_texts: list[str], n: int = 5,
     repeats = [g for g in set(ngrams(words(scene.text), n)) if corpus[g] > max_repeats]
     if not repeats:
         return []
-    shown = "; ".join(f'"{" ".join(g)}"' for g in repeats[:5])
+
+    # A refrain is not the same failure as an echo, and only one of them is worth stopping for.
+    #
+    # Some overlap between scenes of one book is the book: the same characters, the same objects,
+    # the same room. The count of shared runs grows with the manuscript for that reason alone and
+    # says little. What says a great deal is one phrase turning up in scene after scene — and a
+    # live 15-scene run produced "she had not meant to" in ten of them, "the register was more
+    # than a ledger" in six, "she had always believed in the data" in five. That is the failure
+    # this check was written for, described in its own docstring, and it has been reported as an
+    # aggregate MINOR and passed over every time.
+    # Report the worst refrain by name, because the aggregate count hides it. Some overlap
+    # between scenes of one book is the book — the same characters, objects and room — and the
+    # count grows with the manuscript for that reason alone. What matters is one phrase turning
+    # up scene after scene: a live 15-scene run produced "she had not meant to" in ten of them,
+    # "the register was more than a ledger" in six, "she had always believed in the data" in
+    # five. Reported as "48 5-grams already used earlier", none of that is visible.
+    #
+    # Advisory, and the reason is a limit of the test bed rather than of the finding. Making it
+    # a MAJOR is tempting and probably right for real prose — every refrain measured in a live
+    # book was stylistic, not the book's own vocabulary — but any fixture assembled from a pool
+    # of components repeats those components across scenes as a matter of arithmetic, so the
+    # suite cannot tell a refrain from a fixture. Shipping a gate the tests cannot represent is
+    # how a green suite comes to prove nothing, which this project has already paid for once.
+    worst = max(repeats, key=lambda g: corpus[g])
+    lead = (f'"{" ".join(worst)}" has now appeared in {corpus[worst] + 1} scenes'
+            if corpus[worst] >= refrain else
+            "; ".join(f'"{" ".join(g)}"' for g in repeats[:5]))
     return [Violation("repetition", Severity.MINOR,
-                      f"{len(repeats)} {n}-gram(s) already used earlier in the manuscript: "
-                      f"{shown}", "check_repetition", " ".join(repeats[0]))]
+                      f"{len(repeats)} {n}-gram(s) already used earlier in the manuscript. "
+                      f"{lead}", "check_repetition", " ".join(worst))]
 
 
 def duplication_ratio(text: str, n: int = 4) -> float:

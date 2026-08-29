@@ -88,7 +88,7 @@ class ScriptedBackend(Backend):
         # replacement shorter than 40% of the block it replaces.
         # Longer than any thin passage a test will hand it, so the "came back
         # shorter" guard in `_expand_passage` does not reject it.
-        "passage": " ".join(_FILLER) + " " + " ".join(_FILLER),
+        "passage": " ".join(_FILLER) + " " + " ".join(_combinatorial_filler(11)[:40]),
         "excise": "NONE",
         "fulfil": ("She put the vial on the bench and slid it across to him. He did not "
                    "pick it up. The tally sheet went into the stove and the stove door "
@@ -287,15 +287,46 @@ _TAILS = [
 ]
 
 
-def _combinatorial_filler() -> list[str]:
+_NOUNS = [
+    "log", "requisition", "wall chart", "handover book", "calibration slip", "docket",
+    "noticeboard", "folder", "weighbridge ticket", "maintenance card", "fuel return",
+    "roster", "receipt", "index card", "pump reading", "visitors' book", "tally sheet",
+    "delivery note", "inspection form", "spare-parts list",
+]
+
+_QUALIFIERS = [
+    "for that week", "from the back office", "by the door", "in the second drawer",
+    "nobody had signed", "from the Tuesday run", "with the corner torn", "kept above the sink",
+    "from before the changeover", "that lived on the nail", "under the till",
+    "the auditor had asked for", "pinned to the frame", "in the green folder",
+    "from the previous quarter", "wedged behind the pipe",
+]
+
+
+# One per fixture scene. Any text assembled from a fixed pool of components repeats those
+# components across scenes — that is arithmetic, not a bug in the generator — and
+# `check_repetition` reads it as the refrain it is. Real prose varies far more than a
+# combinatorial fixture can, so rather than write six hundred genuinely distinct sentences, each
+# scene gets its own place name and every sentence carries it. Artificial, and openly so: the
+# point of this fixture is to be clean under the checks, not to read well.
+_PLACES = ["at Hald", "at Braaten", "at Vinge", "at Skare", "at Molde", "at Rud", "at Ness",
+           "at Sund", "at Bern", "at Kvam", "at Foss", "at Aal"]
+
+
+def _combinatorial_filler(variant: int = 0) -> list[str]:
     """Sentences that share almost no four-word runs, in a deterministic order."""
     out = []
-    for i in range(len(_SUBJECTS) * 8):
+    for i in range(len(_SUBJECTS) * 40):
         subject = _SUBJECTS[i % len(_SUBJECTS)]
         verb = _VERBS[(i * 7 + 3) % len(_VERBS)]
-        obj = _OBJECTS[(i * 3 + 1) % len(_OBJECTS)]
-        tail = _TAILS[(i * 5 + 2) % len(_TAILS)]
-        out.append(f"{subject} {verb} {obj}, {tail}")
+        # The object is combinatorial too. With sixteen fixed objects across six hundred
+        # sentences each one turned up forty times, so every scene shared them however the pool
+        # was sliced — a refrain, which is the defect this fixture is used to test for.
+        noun = _NOUNS[(i * 3 + 1) % len(_NOUNS)]
+        qualifier = _QUALIFIERS[(i * 11 + 5) % len(_QUALIFIERS)]
+        tail = _TAILS[(i * 13 + 2) % len(_TAILS)]
+        place = _PLACES[variant % len(_PLACES)]
+        out.append(f"{subject} {place} {verb} the {noun} {qualifier}, {tail}")
     return out
 
 
@@ -376,10 +407,12 @@ def clean_prose(words: int = 900, variant: int | None = None) -> str:
     # once. Cycling a 24-sentence list to reach 900 words put this fixture at 351 repeated
     # 4-grams per 1000 — worse than the median scene an 8B commits, and enough to make it
     # useless for testing a repetition check.
-    pool = _FILLER + _combinatorial_filler()
-    # Rotate per variant so consecutive scenes do not share their filler run-up to their
-    # (already distinct) closing sentences.
-    start = (variant or 0) * 3
+    pool = _FILLER + _combinatorial_filler(variant or 0)
+    # A *disjoint slice* per variant, not a rotation. Ten fixture scenes rotating three
+    # sentences apart in one pool share almost every sentence, which is a refrain running through
+    # the manuscript — the exact defect `check_repetition` now flags. A fixture cannot carry the
+    # defect it is used to test for; that has now been true of this file three times.
+    start = (variant or 0) * 60
     # Two passes at most: the pool holds roughly 1,300 words, and the runaway-length fixtures
     # ask for 2,300. Repeating is what those tests are *for* — they need an over-long scene, not
     # a clean one — so the second lap is allowed and the first is not.

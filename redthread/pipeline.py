@@ -90,6 +90,8 @@ REMEDIES = {
                         "complete beat instead."),
     "internal_repetition": "Vary the repeated phrasing.",
     "slop": "Replace the flagged phrasing with something plainer.",
+    "repetition": ("This phrasing has already run through several earlier scenes. Write this "
+                   "sentence with different words and a different image."),
 }
 
 # Violation kinds whose remedy is deletion of the offending sentence. For these, when the quote
@@ -445,10 +447,11 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
                 lowered = replacement.lower()
                 failed_verify = any(p.strip() and p.strip().lower() in lowered
                                     for p in (forbidden or []))
-            elif v.kind == "internal_repetition":
-                # The tic must actually be gone. A writer asked to vary a phrase it has already
-                # used five times reaches for it again, the way it does with the body and with
-                # a banned word — and the detail carries the phrase in leading quotes, which is
+            elif v.kind in ("internal_repetition", "repetition"):
+                # The phrase must actually be gone — the tic within this scene, or the refrain
+                # running through the book. A writer asked to vary something it has already
+                # written five times reaches for it again, the way it does with the body and
+                # with a banned word. The detail carries the phrase in leading quotes, which is
                 # the only place it exists once the quote became the whole sentence.
                 phrase = v.detail.split('"')[1] if '"' in v.detail else ""
                 failed_verify = bool(phrase) and phrase in " ".join(
