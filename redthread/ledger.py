@@ -83,6 +83,28 @@ def is_moveable_pair(a: Fact, b: Fact) -> bool:
     return bool(_PLACE.search(a.object) and _PLACE.search(b.object))
 
 
+_MIND = re.compile(
+    r"\b(?:believ\w*|belief|beliefs|think\w*|thought|thoughts|assum\w*|suspect\w*|"
+    r"doubt\w*|know|knows|known|knew|understand\w*|understood|convinced|certain|unsure|"
+    r"trust\w*|suspicion)\b", re.IGNORECASE)
+
+
+def is_belief_pair(a: Fact, b: Fact) -> bool:
+    """Are these two facts both about what somebody believes or knows?
+
+    A mind changing across a story is the story. A live run blocked scene 7 on
+    `Marta | has | belief that the register is correct` against
+    `Marta | has known | system is broken` — the arc the book exists to trace, reported as a
+    detail given two different values.
+
+    The genuine knowledge failure is different in shape: a character acting on what they have
+    not been told yet. That is what `Ledger.knows` and the brief's knowledge section are for,
+    and neither goes through this pairing.
+    """
+    return bool(_MIND.search(f"{a.predicate} {a.object}")
+                and _MIND.search(f"{b.predicate} {b.object}"))
+
+
 def same_claim(a: Fact, b: Fact) -> bool:
     """Do these two quadruples assert the same thing, differently split?
 
@@ -209,6 +231,7 @@ class Ledger:
                     continue
                 if (normalise(old.object) == normalise(nf.object) or same_claim(old, nf)
                         or is_moveable_pair(old, nf)
+                        or is_belief_pair(old, nf)
                         or claim_class(old) != claim_class(nf)):
                     continue
                 mark = (id(old), id(nf))
@@ -229,6 +252,7 @@ class Ledger:
                     continue
                 if (normalise(old.object) == normalise(nf.object) or same_claim(old, nf)
                         or is_moveable_pair(old, nf)
+                        or is_belief_pair(old, nf)
                         or claim_class(old) != claim_class(nf)):
                     continue
                 mark = (id(old), id(nf))

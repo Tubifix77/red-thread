@@ -173,6 +173,21 @@ class TestConflictCandidates(unittest.TestCase):
             with self.subTest(obj=obj):
                 self.assertEqual(claim_class(f("x", "is", obj, 1)), expected)
 
+    def test_a_mind_changing_is_not_a_contradiction(self):
+        """A live run blocked scene 7 on `Marta | has | belief that the register is correct`
+        against `Marta | has known | system is broken` — the arc the book exists to trace,
+        reported as a detail given two different values."""
+        ledger = Ledger([f("Marta", "has", "belief that the register is correct", 5)])
+        new = f("Marta", "has known", "system is broken", 7)
+        ledger.add(new)
+        self.assertEqual(ledger.conflict_candidates([new]), [])
+
+    def test_a_physical_detail_is_not_a_belief(self):
+        ledger = Ledger([f("Siv", "has", "grey eyes", 1, FactKind.DETAIL)])
+        new = f("Siv", "has", "brown eyes", 6, FactKind.DETAIL)
+        ledger.add(new)
+        self.assertEqual(len(ledger.conflict_candidates([new])), 1)
+
     def test_a_fixed_detail_in_two_places_is_still_a_candidate(self):
         """A DETAIL is "a concrete particular the prose has now fixed and cannot change". A scar
         on the left hand against one on the right is the contradiction this system is for."""
