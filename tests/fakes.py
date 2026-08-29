@@ -58,9 +58,9 @@ def threads_one_missed(n: int = 0) -> str:
                        "prohibitions": [{"n": i, "violated": False} for i in range(12)]})
 
 
-def threads_one_prohibition_violated(n: int = 0) -> str:
+def threads_one_prohibition_violated(n: int = 0, quote: str = "she told him everything") -> str:
     prohibitions = [{"n": i, "violated": False} for i in range(12)]
-    prohibitions[n] = {"n": n, "violated": True, "quote": "she told him everything"}
+    prohibitions[n] = {"n": n, "violated": True, "quote": quote}
     return json.dumps({"requirements": [{"n": i, "verdict": "met"} for i in range(12)],
                        "prohibitions": prohibitions})
 

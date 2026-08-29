@@ -685,6 +685,49 @@ class TestExpansionIsLocal(PipelineCase):
         self.assertEqual(backend.count("passage"), 0)
 
 
+class TestLeakedProhibition(PipelineCase):
+    """A premature reveal is deleted, not rewritten.
+
+    `REMEDIES` has always said "Remove what was revealed", and surgical repair was rewriting the
+    sentence instead — which on an 8B tends to reveal it again in different words. Scene 4 of a
+    live book leaked a concealment, was under its word target so the length guard forbade
+    deletion, had the leaking sentence rewritten, leaked it again, and was blocked.
+    """
+
+    # Plain reportage, so nothing else flags it: the only thing wrong is that the reader is not
+    # meant to know it yet.
+    LEAK = " He said the second hand in the book was her mother's."
+
+    def _models(self):
+        return fakes.scripted_models({
+            "threads": fakes.threads_one_prohibition_violated(0, quote=self.LEAK.strip())})
+
+    def test_the_leaking_sentence_is_cut_without_a_model_call(self):
+        models, backend = self._models()
+        backend.queue("draft", fakes.clean_prose(950) + self.LEAK)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertTrue(any("deleted the thread_prohibition sentence" in n
+                            for n in result.notes), result.notes)
+        self.assertEqual(backend.count("surgical"), 0, "deletion needs no model")
+
+    def test_a_blocker_outranks_the_length_guard(self):
+        """Deleting gloss can shrink a scene under its floor, which is why the guard exists. A
+        reveal cannot be un-read by any later scene; a short scene has `_expand` waiting."""
+        models, backend = self._models()
+        # Under target, so `can_delete` is False and the old code rewrote instead.
+        backend.queue("draft", fakes.clean_prose(600) + self.LEAK)
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertTrue(any("deleted the thread_prohibition sentence" in n
+                            for n in result.notes), result.notes)
+        self.assertNotIn("second hand in the book", result.scene.text)
+
+
 class TestMissedObligation(PipelineCase):
     """A missed obligation is the one violation with nothing to point at: the judge says the
     scene never delivered X, so there is no quote and sentence-local surgery has no purchase.

@@ -94,7 +94,7 @@ REMEDIES = {
 # locates in the text, no model is needed at all: the sentence is spliced out in code. That is
 # the cheapest possible repair and — for narrator-gloss, which lives in self-contained sentences
 # like "And she knew that no one else would ever see it." — usually the correct one.
-DELETE_KINDS = {"thematic_gloss", "tell_thematic_gloss"}
+DELETE_KINDS = {"thematic_gloss", "tell_thematic_gloss", "thread_prohibition"}
 
 # Violation kinds handled by a dedicated repair action rather than by a REMEDIES prompt line,
 # and the kinds no repair can address at all. Kept as data so `tests/test_repair_coverage.py`
@@ -329,7 +329,12 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
     can_delete = scene.word_count() > spec.word_target
     for lo, hi, v in sorted(spans, key=lambda s: s[0], reverse=True):
         original = text[lo:hi].strip()
-        if v.kind in DELETE_KINDS and can_delete:
+        # A BLOCKER outranks the length guard. Deleting gloss repeatedly can shrink a scene
+        # under its floor, which is why `can_delete` exists — but a premature reveal cannot be
+        # un-read by any later scene, while a short scene has `_expand` waiting for it. Scene 4
+        # of a live book leaked a concealment, was under target, and so had its leaking sentence
+        # *rewritten* instead of cut; the rewrite leaked it again and the scene was blocked.
+        if v.kind in DELETE_KINDS and (can_delete or v.severity is Severity.BLOCKER):
             replacement = ""
             notes.append(f"surgical: deleted the {v.kind} sentence (no model call)")
         else:
@@ -337,9 +342,12 @@ def _surgical(scene: Scene, spec: SceneSpec, violations: list[Violation], models
             after = text[hi:hi + 160].strip()[:140]
             remedy = REMEDIES.get(v.kind, "Rewrite it.")
             if v.kind == "forbidden_phrase":
-                remedy = (f'The words "{v.quote}" must not appear in your sentence, in any '
-                          f'form. Say the thing another way entirely.')
-            if v.kind in DELETE_KINDS:
+                # The quote is the whole sentence now — `check_forbidden` quotes the sentence so
+                # the span can be located at all — so the banned phrase itself comes from the
+                # detail line, which names it.
+                remedy = ("The phrase named above must not appear in your replacement, in any "
+                          "form. Say the thing another way entirely.")
+            elif v.kind in ("thematic_gloss", "tell_thematic_gloss"):
                 remedy = ("Replace it with one concrete sentence: a physical action, a thing "
                           "seen, or words spoken. No meaning, no realisation, no summary.")
             prompt = SENTENCE_PROMPT.format(
