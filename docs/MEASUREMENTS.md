@@ -133,6 +133,33 @@ The distinction matters when reading a green suite. A check that is quiet becaus
 upstream of it works is doing its job; a check that is quiet because nothing has ever tested it
 is an unknown wearing the same colour.
 
+### The other end: checks that are constants
+
+The mirror of a check that never fires. Measured over the 392 scene records every run has left
+behind, five kinds fire on more than half of all scenes and are carried into the commit almost
+every time:
+
+| kind | fires on | committed carrying it |
+|---|---:|---:|
+| `repetition` | 94% | 369 of 369 |
+| `tell_thematic_gloss` | 84% | 330 of 331 |
+| `tell_summarised` | 76% | 296 of 297 |
+| `internal_repetition` | 57% | 221 of 222 |
+| `slop` | 56% | 218 of 218 |
+
+None of this is a defect, and two of them are documented as expected. `probe_tells` has a known
+false-positive floor — its own docstring records that qwen3:8b flags "The tally sheet had been
+photocopied so often that the column headings had closed up", a pure physical description, as
+thematic gloss 3 times out of 3 — which is exactly why it is advisory. And the research it
+implements puts thematic over-explanation in 77% of machine-written stories, so an 84% detection
+rate may be *accurate*. A property present in four scenes out of five does not discriminate
+between them either way.
+
+What the table is for is cost. `tell_thematic_gloss` and `tell_summarised` are the output of one
+model call per scene, and that call has earned its place as a *discovery* tool — findings it
+surfaced became `_GLOSS_PATTERNS` entries that now run for free. As a per-scene signal it is a
+constant.
+
 ---
 
 ## Four checks reverted for firing on the reference plan
