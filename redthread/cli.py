@@ -691,6 +691,87 @@ def cmd_rate(args) -> int:
     return 0
 
 
+def cmd_forecast(args) -> int:
+    """Generate blind predictions for a finished book, or score ones already generated.
+
+    Two modes on purpose. The first calibration of this idea ran in a throwaway script and its
+    predictions were never written down, so a semantic re-score — which the plan assumed was
+    free — had to pay for the generation a second time. Predictions are data now.
+    """
+    from .embed import Embedder
+    from .forecast import (generate, lexical_scorer, load, prediction_spread, save, score,
+                           semantic_scorer)
+    from .replicate import committed_texts
+
+    root = Path(args.project)
+    texts = committed_texts(root)
+    if len(texts) < 10:
+        raise SystemExit(f"{root} has {len(texts)} committed scenes; this needs a finished book")
+    store = Path(args.out) if args.out else root / "forecast.json"
+
+    if not args.score_only:
+        models, _writer, critic = _build_models(args)
+        print(f"\n  Predicting {args.scenes} scenes of {len(texts)}, k={args.k}, "
+              f"critic {critic}")
+        if args.k > 1 and args.temperature == 0.0:
+            # k samples at temperature 0 are one sample repeated, and the spread step 12
+            # measures would be identically zero — a clean-looking result meaning nothing.
+            raise SystemExit("--k above 1 needs --temperature above 0, or the k predictions "
+                             "are one prediction repeated")
+        predictions = generate(
+            texts, models, wanted=args.scenes, k=args.k, temperature=args.temperature,
+            on_scene=lambda i, g: print(f"    scene {i + 1:>3}  "
+                                        f"{(g[0][:64] + '…') if g else 'no prediction'}"))
+        save(predictions, store)
+        print(f"\n  {len(predictions)} predictions written to {store}")
+    else:
+        if not store.exists():
+            raise SystemExit(f"no predictions at {store} — run without --score-only first")
+        predictions = load(store)
+        print(f"\n  {len(predictions)} predictions loaded from {store}")
+
+    embedder = Embedder(args.embed_model, args.base_url,
+                        cache_dir=root / ".embeddings")
+    results = [score(predictions, texts, lexical_scorer, "lexical overlap", seed=args.seed),
+               score(predictions, texts, semantic_scorer(embedder), "embedding cosine",
+                     seed=args.seed)]
+
+    print("\n  Each prediction scored against the scene it predicted, and against a random")
+    print("  other scene from the same book. The win rate is the only comparable column —")
+    print("  an absolute similarity is a property of the book's vocabulary.\n")
+    print(f"  {'scorer':<20} {'on target':>10} {'on control':>11} {'win rate':>9}  verdict")
+    for result in results:
+        print(f"  {result.name:<20} {result.on_target:>10.3f} {result.on_control:>11.3f} "
+              f"{result.win_rate:>8.0%}  {result.verdict(args.floor)}")
+
+    best = max(results, key=lambda r: r.win_rate)
+    if best.win_rate < args.floor:
+        print(f"\n  Neither scorer reaches {args.floor:.0%}. Meaning overlap has failed the same "
+              f"way\n  word overlap did, and the answer is not a different threshold — it is to "
+              f"stop\n  comparing a prediction against a scene at all. See --k above 1.")
+
+    if any(len(p.predictions) > 1 for p in predictions):
+        # Step 12. This never touches the actual scene, so the shared vocabulary that killed
+        # both earlier attempts cannot reach it.
+        spreads = [(p.index, prediction_spread(p, embedder))
+                   for p in predictions if len(p.predictions) > 1]
+        values = [s for _i, s in spreads]
+        mean = sum(values) / len(values)
+        print(f"\n  Disagreement among the k predictions for each scene "
+              f"(higher = less predictable)")
+        print(f"    mean {mean:.3f}   range {min(values):.3f} to {max(values):.3f}   "
+              f"n={len(values)}")
+        flat = [i for i, s in spreads if s < mean * 0.6]
+        if flat:
+            print(f"    lowest-spread scenes (the model can call these): "
+                  f"{', '.join(str(i + 1) for i in flat[:12])}")
+        print("    This is a distribution, not a verdict. It needs the same control everything "
+              "\n    else here does before any scene is called slack.")
+
+    print(f"\n  {embedder.calls} embedding call(s), {embedder.cached} served from cache\n")
+    return 0
+
+
 # --------------------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -849,6 +930,29 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", help="directory for the sheet and key (default: here)")
     p.set_defaults(func=cmd_sample)
+
+    p = add_project(sub.add_parser(
+        "forecast", help="blind predictions for a finished book, scored against a control"))
+    p.add_argument("--scenes", type=int, default=35, help="how many scenes to predict")
+    p.add_argument("--k", type=int, default=1,
+                   help="predictions per scene; above 1 enables the disagreement measure")
+    p.add_argument("--temperature", type=float, default=0.0,
+                   help="must be above 0 when --k is above 1")
+    p.add_argument("--score-only", action="store_true",
+                   help="score predictions already on disk instead of generating them")
+    p.add_argument("--out", help="where the predictions live (default <run>/forecast.json)")
+    p.add_argument("--embed-model", default="nomic-embed-text")
+    p.add_argument("--floor", type=float, default=0.65,
+                   help="win rate below which a scorer has failed (default 0.65)")
+    p.add_argument("--seed", type=int, default=0, help="seed for the control's random scene")
+    p.add_argument("--writer", default="claude-opus-5")
+    p.add_argument("--critic", default="claude-sonnet-5")
+    p.add_argument("--local", metavar="MODEL", help="local model")
+    p.add_argument("--all-local", metavar="MODEL", help="alias for --local")
+    p.add_argument("--local-critic", metavar="MODEL", help="a second local model")
+    p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
+    p.add_argument("--openai-compat", action="store_true")
+    p.set_defaults(func=cmd_forecast)
 
     p = sub.add_parser("rate", help="read a filled-in sentence sheet and report what it shows")
     p.add_argument("sheet", help="the filled-in sheet")

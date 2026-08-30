@@ -118,10 +118,27 @@ The forecast probe fails because a two-sentence prediction and an 800-word scene
 *vocabulary* for lexical overlap to separate a right guess from a wrong one. `nomic-embed-text`
 has been installed on the target machine the whole time and never used.
 
-**9. Add an embedding backend.** Ollama's `/api/embed`, cached by text hash, no new dependency.
+**9. Add an embedding backend.** ✅ Ollama's `/api/embed`, cached by text hash, no new dependency.
 
-**10. Re-score the existing 35 predictions semantically.** They are already on disk — a free
-repeat of a failed experiment with one variable changed.
+*`redthread/embed.py`. Verified live: 768 dimensions, batching endpoint, disk cache keyed by
+model **and** text — sharing a cache across embedding models would produce cosines between two
+different vector spaces, which is a number that looks exactly like a measurement. Two related
+sentences score .798 and two unrelated ones .427, which is the reason nothing here ever prints a
+raw cosine as a result: only a difference between two of them means anything.*
+
+**10. Re-score the existing 35 predictions semantically.** ⚠️ **The premise was wrong — they were
+never on disk.** ~~They are already on disk — a free repeat of a failed experiment with one
+variable changed.~~
+
+*`probe_forecast` only records a Violation when the overlap clears its threshold, and across the
+whole corpus none ever did, so the original calibration ran in a throwaway script and left
+nothing behind. The re-score was not free; the generation had to be paid for a second time.*
+
+*That is the more useful half of the finding, and it is now fixed rather than worked around:
+`redthread/forecast.py` persists each prediction **with the context that produced it**, so a
+re-score cannot silently change what the model was shown. An experiment whose only output is a
+pass/fail verdict cannot be re-analysed, and this project's most expensive negative result was
+stored that way.*
 
 **11. Run the control before believing anything.** Predicted scene against a random other scene
 from the same book. Lexical overlap won 41% of the time, worse than chance. **Kill criterion:**
