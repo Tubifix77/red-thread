@@ -286,6 +286,41 @@ itself or against a fixed list*, never one field against another.
 
 ---
 
+## How much does a measure move when nothing changes?
+
+Two findings were retracted on 30 August within an hour of each other, both for the same reason:
+a difference was measured before anyone measured how much the same thing varies against itself.
+Long speeches "rose" from 1% to 4%; somatic beats "rose" from 27% to 45%. Neither survived.
+
+Across the three runs of one plan that differ only in ledger changes — which have nothing to do
+with prose register — the measures move like this:
+
+| measure | run 1 | run 2 | run 3 | spread / mean |
+|---|---:|---:|---:|---:|
+| dialogue share | .223 | .211 | .211 | **6%** |
+| recap grammar | .042 | .041 | .044 | **7%** |
+| duplication, book-wide | .055 | .065 | .066 | 17% |
+| gesture rate | 2.09 | 1.90 | 1.73 | 19% |
+| somatic share | 38% | 59% | 42% | 45% |
+| rhythm fires on | 2.8% | 2.8% | 1.4% | 60% |
+| worst refrain | 15 | 10 | 7 | **75%** |
+| gesture density fires on | 2.8% | 1.4% | 4.2% | 100% |
+| duplication, per scene | .001 | .003 | .001 | **153%** |
+
+Read that table carefully, because it does not say what it first appears to. Those three runs
+**are** the conditions being compared, so the spread is effect and noise together and cannot
+separate them. There is no true replicate in this project — no two runs of the same plan with no
+change between them.
+
+What it does establish: dialogue share and recap grammar barely moved across three sets of ledger
+changes, so they are stable enough that a difference in them means something. And the headline
+result of the ledger work — the worst refrain falling 15 → 10 → 7 — has a range identical to its
+own claimed effect. It may be real; nothing here shows it is.
+
+*A replicate run is the fix and is the obvious missing experiment.*
+
+---
+
 ## Controls: measures tested against something they should *not* match
 
 Five findings this project nearly shipped turned out to be properties of the measuring apparatus.
