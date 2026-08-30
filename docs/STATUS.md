@@ -1,7 +1,8 @@
 # Where this stands
 
-*Measured 30 August 2026. All figures from `runs/` and `docs/evidence`; nothing here is
-an estimate — but read "What a day of measuring changed" below before trusting any single one.*
+*Measured 30 August 2026, instruments rebuilt 31 August. All figures from `runs/` and
+`docs/evidence`; nothing here is an estimate — but read "What a day of measuring changed" below
+before trusting any single one.*
 
 A percentage would be a lie, because three separate things are being built and they are at very
 different places. This document is the honest read on each.
@@ -308,7 +309,7 @@ difference.
 | **426,614** | words drafted locally |
 | **467** | scenes committed |
 | **0** | API calls |
-| **578** | tests passing |
+| **744** | tests passing |
 
 The longest is now 61,733 words, and running it found exactly what was predicted: defects that
 do not exist below about forty scenes. What it also found is the one measure that gets *worse*
@@ -337,11 +338,49 @@ follow it, and the gap is not incremental — duplication .279 against .002, rec
 "the committed corpus" were calibrated on the first group, which is correct for catching a defect
 and wrong as a description of what this project now writes.
 
-**There are no error bars.** Every comparison here is one run against one run. Across three runs
-of one plan, dialogue share and recap grammar move about 6% of their own value — small enough to
-trust — while the worst-refrain count moves 75% and per-scene duplication 153%. Those three runs
-*are* the conditions being compared, so effect and noise cannot be separated from them. A true
-replicate is running for the first time.
+**There were no error bars. Now there are, and they are enforced.** Every comparison here used
+to be one run against one run. Across three runs of one plan, dialogue share and recap grammar
+move about 6% of their own value — small enough to trust — while the worst-refrain count moves
+75% and per-scene duplication 153%. Those three runs *are* the conditions being compared, so
+effect and noise cannot be separated from them.
+
+A true replicate has since been run and its floor lives in `checks.NOISE_FLOOR`, keyed identically
+to the measure panel and asserted in both directions, so a number cannot be reported here without
+one. `checks.clears_noise` is the gate a difference has to pass through, and it **raises** on a
+measure nobody has measured a floor for — because *"I have not measured this"* and *"this is not
+different"* are different sentences, and confusing them is what three retracted claims were made
+of. A four-run floor is generating.
+
+**And every mechanism can now be switched off.** Four shipped in two days with no way to ablate
+them, which made each unfalsifiable: the only available comparison was against a run from before
+the code existed, with other changes in it. `--no-refrain-feedback`, `--no-gesture-feedback`,
+`--no-model-refrains`, `--no-repeople`. Whether any of the four earns its place is the next
+question, and it is now askable.
+
+## What changed on 31 August
+
+The instruments, and two answers.
+
+**Phase 4 asked whether the plan is a lever for a second quality axis, and the answer is no.**
+Two prose measures of refusal pass every bar the refuted POV-agency proxy failed — 25% of 538
+scenes contain none at all, and `refusal_per_ask` moves **0.3%** between identical runs, the
+steadiest measure in the panel. But an outline naming a refusal predicts them at r = +0.217
+against a 0.4 bar, while the one lever that worked scores +0.446 on the same corpus with the same
+crude method. The controls are clean, so this is a result and not a broken instrument. `want`,
+`obstacle` and `cost` were **not** added to the scene spec.
+[evidence/want-obstacle-cost.md](evidence/want-obstacle-cost.md).
+
+**The rule this project has been keeping is now written down and enforced by a test.** The gate
+may refuse only on evidence code can locate; the plan may be shaped by anything, including a
+model's reading. A bad plan costs one re-ask, a bad gate costs a book that never finishes.
+`tests/test_rule.py` walks the source for every `Severity.BLOCKER` and refuses any whose source
+has not recorded what a person could check by hand.
+
+One thing found by accident is worth more than either. **`probe_forecast`'s calibration could not
+be re-analysed** — it records a violation only above threshold, none ever cleared it, so the 35
+predictions were never written down and the whole experiment had to be paid for twice. An
+experiment whose only output is a pass/fail verdict cannot be re-analysed, and this project's
+most expensive negative result was stored that way.
 
 ## The short answer
 
@@ -349,3 +388,8 @@ The orchestrator is close to shippable. The writer is not. What remains is not a
 is one unanswered question about whether a plan can be made dramatic enough that a small local
 model has something worth writing about. Everything measured says the plumbing works. Nothing
 measured says the book is good, because nothing measures that.
+
+The one thing that could is a hundred sentences read blind, and the sheet is built and waiting:
+[evidence/sentences/sentences.md](evidence/sentences/sentences.md). It needs twenty minutes of a
+person, and it is the only item on the whole plan that the machine which wrote the sentences
+cannot do for itself.

@@ -40,7 +40,15 @@ corpus and several are unquoted reported speech, where past perfect is doing leg
 | cross-scene gesture repeats | 0 in a 9-scene book; 13 scenes in a 71-scene one | fed into the next brief |
 | `manuscript_refrains` | .015 book-wide at 9 scenes, .055 at 71 | fed into the next brief |
 | dialogue share | .077 vs .223 between two books of the same plan | advisory; selection |
-| beats naming a spoken act | r = +0.672 with dialogue in the prose | the planner prompt |
+| beats naming a spoken act | r = +0.446 with dialogue in the prose, over 538 scenes | the planner prompt |
+| `refusal_rate` | 0.83 to 2.29 across books; 14% between identical runs | the panel |
+| `refusal_per_ask` | .343 to .973 across books; **0.3%** between identical runs | the panel |
+
+*The spoken-act correlation was reported here as r = +0.672. That was measured on 108 scenes; the
+same measure over 538 gives **+0.446**. The direction and the ranking hold — it is still, by a
+factor of two, the strongest plan-to-prose link in the project — and the magnitude does not. A
+correlation from a hundred scenes is not a constant, which this project has now been caught by
+twice.*
 
 ## Measures that did not
 
@@ -57,6 +65,17 @@ curve from a book known to be good, the number says nothing, and there is no suc
 **POV agency.** Share of sentences where the point-of-view character leads, and the share of
 those where they are only perceiving. Flat at 0.13–0.20 in every quarter of every book. Built as
 a proxy for "does a character want something" and it discriminates nothing.
+
+*Its replacement works and its plan-side lever does not.* `refusal_rate` and `refusal_per_ask`
+pass every bar POV agency failed — 25% of 538 scenes contain no refusal at all, the median is
+1.41 per thousand words and the maximum 12.55, and both separate books far more than they
+separate two runs of one plan. But an outline naming a refusal predicts them at only **r =
++0.217**, against a 0.4 bar and against +0.446 for the one lever that worked. So the measure is
+kept and the intervention is not built. Full result, with its controls, in
+[evidence/want-obstacle-cost.md](evidence/want-obstacle-cost.md).
+
+**A plan naming a price.** r = +0.075 against refusal in the prose. Same corpus, same method,
+and the weakest of the three plan features tried.
 
 **Within-scene gesture variety.** Distinct gesture pairs over total gestures sits at ~1.0 across
 four books. Gestures are already varied *inside* a scene; the repetition is between scenes, which
@@ -183,9 +202,17 @@ real prose. Not broken, not exercised.
 
 ### The rule this suggests
 
-**A check over a field the scheduler constructs can only ever confirm the scheduler.** Four
-checks in this project are quiet for that reason — subplot independence, state legality, midpoint
-stall, uniform scene length — and all four read as coverage in an audit that lists them. They are
+**A check over a field the scheduler constructs can only ever confirm the scheduler.** Six
+checks in this project are quiet for that reason — subplot independence, the three state-legality
+kinds, midpoint stall and uniform scene length — and all six read as coverage in an audit that
+lists them.
+
+*They are now named in code, as `checks.SCHEDULER_GUARANTEED`, with `check_somatic` in a separate
+`INSTRUCTION_CONFIRMING` table because its guarantee is different in kind: the scheduler's holds
+because code makes it hold, and the brief's holds because a model is complying, which could stop
+being true at any time without anything here changing. `redthread audit` prints both beside its
+own result, and a test asserts every named kind is still one the codebase can emit — so a rename
+cannot leave the disclaimer pointing at nothing.* They are
 worth keeping for hand-authored plans, where the property is not guaranteed, and worth discounting
 entirely when reading a generated one.
 
@@ -323,6 +350,27 @@ count are stable to within 4% between identical runs, duplication and recap to w
 **anything counting a maximum — worst refrain, worst gesture — swings by half its own value**.
 Maxima are the least trustworthy statistic in this project and were the ones quoted most often.
 
+### The floor now lives in code, and stating a difference has to pass through it
+
+`checks.NOISE_FLOOR` holds it, keyed identically to `checks.manuscript_measures` — a test asserts
+the two sets match in both directions, so a measure cannot be reported without an error bar, nor
+keep one after it is deleted. `checks.clears_noise(measure, a, b)` is the gate, and it **raises**
+on a measure with no measured floor rather than returning a verdict: *"I have not measured this"*
+and *"this is not different"* are different sentences, and confusing them is what three retracted
+claims were made of.
+
+Two things fell out of building it, both worth recording because both were the same error in
+different clothes.
+
+**The first floor table failed its own self-test.** Four measures of the very pair the floor was
+derived from came back as *clearing* it, because the figures published above had been rounded
+down for the write-up and the code used the rounded ones. The table now holds observed values and
+a test asserts that a difference exactly the size of a measure's own floor is never a result.
+
+**`repetition_concentration` was given a floor of .20 by guesswork.** The pair says .28. That is
+precisely the error the KeyError guard exists to prevent, committed by the person writing the
+guard, in the same file, on the same afternoon.
+
 ---
 
 ## Controls: measures tested against something they should *not* match
@@ -389,6 +437,15 @@ many is unknown.
 
 **`probe_forecast` — fails.** Scored against the scene it predicted versus a random other scene
 from the same book, the real scene wins 41% of the time. Detail above.
+
+*And the experiment could not be re-analysed, which turned out to matter more than the result.*
+`probe_forecast` records a Violation only when the overlap clears its threshold, and across the
+whole corpus none ever did — so the 35 predictions were never written anywhere, the calibration
+lived in a throwaway script, and repeating it with embeddings instead of word overlap meant paying
+for the generation a second time. **An experiment whose only output is a pass/fail verdict cannot
+be re-analysed**, and this project's most expensive negative result was stored that way.
+`redthread/forecast.py` now persists each prediction with the context that produced it, so a
+re-score cannot silently change what the model was shown.
 
 **`check_gesture_density` — failed on its calibration cohort**, four of whose five scenes contain
 no dialogue. Detail above.

@@ -198,7 +198,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`models.py`](redthread/models.py) | Threads, transitions, specs, quadruple facts, violations | ConWriter, DOME |
 | [`ledger.py`](redthread/ledger.py) | Fact store, scoped retrieval, character knowledge, conflict candidates | DOME |
 | [`brief.py`](redthread/brief.py) | The scene brief — the most important file here | Liu et al., STORYTELLER, StoryScope |
-| [`checks.py`](redthread/checks.py) | 32 checks — scene-level, manuscript-level and a plan audit. No model calls | StoryScope, Antislop |
+| [`checks.py`](redthread/checks.py) | 33 checks — scene-level, manuscript-level and a plan audit. The measure panel, the noise floor, and the tables that make the gate rule enforceable. No model calls | StoryScope, Antislop |
 | [`verify.py`](redthread/verify.py) | 5 single-purpose LLM probes: extraction, contradiction, thread satisfaction, anti-tells, tension | DOME, ConWriter, Re3 |
 | [`pipeline.py`](redthread/pipeline.py) | The state machine and the commit gate | ConWriter, Re3 |
 | [`schedule.py`](redthread/schedule.py) | Deterministic thread scheduling — both markers by construction | CONCOCT |
@@ -207,18 +207,33 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`llm.py`](redthread/llm.py) | Native Ollama backend (thinking control, JSON mode), OpenAI-compat + Anthropic, role split, truncation salvage | — |
 | [`ollama.py`](redthread/ollama.py) | Discovery: what is installed, what plausibly fits, name resolution | — |
 | [`progress.py`](redthread/progress.py) | Orchestrator view — stages, timings, thread state | — |
-| [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` | — |
+| [`replicate.py`](redthread/replicate.py) | N books from one plan, and the panel with error bars | — |
+| [`embed.py`](redthread/embed.py) | Ollama `/api/embed`, cached by model and text | — |
+| [`forecast.py`](redthread/forecast.py) | Blind predictions, persisted, always scored against a control | Re3 |
+| [`sample.py`](redthread/sample.py) | Sentences with no context and no scores; the blind rating sheet | — |
+| [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` `replicate` `measures` `forecast` `depends` `sample` `rate` | — |
 
-**578 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**744 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
 
+Some of them now test the *measuring*, not the machinery, and those are the ones worth reading
+first. `tests/test_rule.py` walks the source tree for every `Severity.BLOCKER` and refuses any
+whose source has not written down what a person could check by hand — writing it caught a source
+mislabelled from memory and refuted the claim that only one blocker comes from a model.
+`tests/test_replicate.py` asserts that a difference exactly the size of a measure's own noise
+floor is never reported as a result, which the first floor table failed on four measures.
+
 That principle has since found its own limit. Run every check over all 467 committed scenes and
 **20 of 48 violation kinds have never fired once**, and the reasons divide: blocking kinds are
-absent from committed prose by construction, four checks test properties the scheduler already
-guarantees, and two are simply untested by any run. A check quiet because the gate upstream works
-is doing its job; a check quiet because nothing has ever tested it is an unknown wearing the same
-colour. Both are catalogued in [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md).
+absent from committed prose by construction, six checks test properties the scheduler or the
+brief already guarantees, and two are simply untested by any run. A check quiet because the gate
+upstream works is doing its job; a check quiet because nothing has ever tested it is an unknown
+wearing the same colour. Both are catalogued in [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md).
+
+The six are now named in code as `checks.SCHEDULER_GUARANTEED` and
+`checks.INSTRUCTION_CONFIRMING`, and `redthread audit` prints them beside its own result — so a
+clean audit can never again read as coverage it does not provide.
 
 They still cannot be the last word, and it is worth saying why. The fixtures in `tests/fakes.py`
 are prose *I* wrote, and I wrote it to pass the checks — one comment in there says outright that
@@ -434,23 +449,34 @@ rather than as a habit.
 ## Next
 
 The full plan — 25 steps, six phases, ordered by what blocks what — is in
-**[docs/PLAN.md](docs/PLAN.md)**. The short version:
+**[docs/PLAN.md](docs/PLAN.md)**, kept up to date as each step lands. Where it stands:
 
-**Nothing can be judged until the instruments are.** Four mechanisms shipped in the last two days
-have no off switch, so none can be ablated, and the noise floor rests on a single replicate pair.
-A replicate harness, a four-run floor, and ablation flags come before any new work.
+**The instruments are built.** `redthread replicate` writes N books from one plan with nothing
+varying but the sampling; `redthread measures --against` puts every difference through
+`checks.clears_noise`, which **raises** rather than guessing on a measure whose noise floor nobody
+has measured. All four mechanisms that shipped without an off switch now have one. The four-run
+floor is generating.
 
-**Then confirm or delete what exists.** Refrain feedback, gesture feedback and the re-people pass
-each have machinery and none has evidence that clears the floor. At least one of them should
-probably come out.
+**Two phases have concluded, and one of them concluded no.** Phase 4 went looking for a second
+quality axis, found two prose measures that vary properly — `refusal_rate` and `refusal_per_ask`,
+the latter moving 0.3% between identical runs — and then failed its own correlation bar at
+r = 0.217 against 0.4. So `want`/`obstacle`/`cost` were **not** added to the scene spec. The
+controls are clean and the method reproduces the one intervention that worked at +0.446 on the
+same corpus, which is what makes that a result rather than a broken instrument.
+[docs/evidence/want-obstacle-cost.md](docs/evidence/want-obstacle-cost.md).
 
-**Then the instruments that do not exist.** `nomic-embed-text` has been installed on the target
-machine the whole time and never used, and it is the obvious answer to two failures — the tension
-probe and the causality measure both died on *lexical* overlap. The stronger form is the one the
-source paper actually describes: measure how much several predictions disagree with each other,
-which never needs the scene at all.
+**Phase 6 wrote the rule down and made a test enforce it.** The gate may refuse only on evidence
+code can locate; the plan may be shaped by anything, including a model's reading. A bad plan costs
+one re-ask, a bad gate costs a book that never finishes at three in the morning.
 
-**And one step that needs a person.** A hundred sentences, half from each era, shuffled and
-unlabelled, rated by hand once. It is the only thing on the list that can say whether two days of
-measurable improvement produced prose anyone prefers, and if the answer is no, most of the
-instrument panel needs rethinking rather than extending.
+**What is left needs the GPU, or a person.** Phase 1 has to confirm or delete the refrain
+feedback, the gesture feedback and the re-people pass — each has machinery and none has evidence
+that clears the floor, and at least one of them should probably come out.
+
+And one step needs Tue for twenty minutes. A hundred sentences, half from each era, shuffled and
+unlabelled, rated by hand once —
+[docs/evidence/sentences/sentences.md](docs/evidence/sentences/sentences.md). It is the only
+thing on the list that can say whether two days of measurable improvement produced prose anyone
+prefers, and if the answer is no, most of the instrument panel needs rethinking rather than
+extending. Building the sheet already found a confound nobody had noticed: the two sides come
+back 12% and 42% spoken, so the key records the flag and `redthread rate` splits on it.
