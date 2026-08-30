@@ -1150,7 +1150,8 @@ def gesture_rate(text: str) -> float:
     return len(gesture_pairs(text)) / words * 1000 if words else 0.0
 
 
-def check_gesture_density(scene: Scene, heavy: float = 3.0) -> list[Violation]:
+def check_gesture_density(scene: Scene, base: float = 3.0, per_dialogue: float = 12.0
+                          ) -> list[Violation]:
     """A scene made of small movements. Advisory, because it is a register.
 
     Same shape as `check_summary_distance` and for the same reason: it is not localised in a few
@@ -1159,18 +1160,33 @@ def check_gesture_density(scene: Scene, heavy: float = 3.0) -> list[Violation]:
     nothing — candidate selection, which prefers the draft that is doing something to the draft
     that is fidgeting.
 
-    Measured per thousand words: the three reference drafts in `docs/evidence` and the two
-    scenes `gemma3:12b` committed inside this orchestrator top out at 2.5, with a median of 2.0.
-    The 121 committed scenes here run to a median of 3.6, a p90 of 9.6 and a worst of 15.6.
+    **The threshold allows for dialogue, and the first version did not.** It was set at a flat
+    3.0 per thousand words from a five-scene clean cohort — and four of those five scenes contain
+    *no dialogue at all*, because they are cold opening scenes. Applied to a book that is 15%
+    dialogue it fired on 34 of 71 scenes, and the scenes it fired on had *higher* dialogue than
+    the ones it spared. It was penalising the scenes that had got better.
+
+    Dialogue genuinely carries more physical business, and that is measured rather than assumed:
+    across 160 scenes of four books, correlation between dialogue share and gesture rate is
+    r = +0.303, and the group means run 1.9 (silent) → 2.4 → 3.5 (dialogue-led) → 3.4. Gestures
+    are the beats between lines. So the allowance rises with dialogue: at no dialogue the
+    threshold is 3.0, at 15% it is 4.8.
+
+    Two honest limits. The slope is fitted to this project's own scenes, not to a corpus of good
+    fiction, so it says what is unusual *here* rather than what is too much. And within-scene
+    variety turns out not to discriminate at all — measured across four books it sits at ~1.0
+    everywhere, because the repetition is between scenes, not inside them. A gesture used in
+    nine separate scenes is what `manuscript_refrains` is shaped for and this check cannot see.
     """
     rate = gesture_rate(scene.text)
-    if rate < heavy:
+    limit = base + per_dialogue * dialogue_share(scene.text)
+    if rate < limit:
         return []
     return [Violation(
         "gesture_density", Severity.MINOR,
         f"{rate:.1f} small physical gestures per thousand words — fingers tracing, a jaw "
-        f"tightening, a head tilting. The cleanest drafts measured sit at 2.0 and none exceeds "
-        f"2.5. The scene is fidgeting rather than acting.",
+        f"tightening, a head tilting — against {limit:.1f} allowed for a scene with this much "
+        f"dialogue. The scene is fidgeting rather than acting.",
         "check_gesture_density")]
 
 

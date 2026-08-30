@@ -964,6 +964,47 @@ class TestGesture(unittest.TestCase):
         self.assertEqual(len(found), 1)
         self.assertIs(found[0].severity, Severity.MINOR)
 
+    def test_the_allowance_rises_with_dialogue(self):
+        """The first threshold was flat and calibrated on a biased sample.
+
+        It was set at 3.0 per thousand words from a five-scene clean cohort, four of which
+        contain no dialogue at all because they are cold opening scenes. Applied to a book that
+        is 15% dialogue it fired on 34 of 71 scenes, and the scenes it fired on had *higher*
+        dialogue than the ones it spared — penalising exactly the scenes that had improved.
+
+        Dialogue carries physical business: across 160 scenes of four books, r = +0.303 between
+        dialogue share and gesture rate, with group means 1.9 silent to 3.5 dialogue-led.
+        """
+        # Four gestures in about nine hundred words — 4.5 per thousand, over the 3.0 a silent
+        # scene is allowed and under the 4.2 a scene at 10% dialogue is given.
+        filler = "She counted the crates and wrote the number on the docket. " * 80
+        gestures = ("Her fingers traced the rail. He tilted his head. Her jaw tightened. "
+                    "His hand hovered over the ledger. ")
+        speech = " ".join(
+            f'"{line}," she said.' for line in
+            ("The ledger is in the drawer and it has been since Tuesday morning",
+             "You signed it yourself and then you told the inspector you had not",
+             "I did not ask you that and you know perfectly well what I asked",
+             "Then say what you did ask, and say it the way you said it to him",
+             "It was never about the money and I am not going to pretend it was",
+             "You can put that in the report or you can leave it out entirely",
+             "The inspector will read it either way and he will know what is missing"))
+        silent = gestures + filler
+        talky = gestures + filler + " " + speech
+
+        self.assertAlmostEqual(checks.gesture_rate(silent), 4.5, delta=0.3)
+        self.assertTrue(checks.check_gesture_density(self._scene(silent)),
+                        "this rate in a silent scene is over the allowance")
+        self.assertEqual(checks.check_gesture_density(self._scene(talky)), [],
+                         "the same gestures in a dialogue scene are the beats between its lines")
+
+    def test_within_scene_variety_is_not_the_signal(self):
+        """Recorded because it was measured and refuted. Distinct gesture pairs over total
+        gestures sits at ~1.0 across four books — the repetition is between scenes, not inside
+        them, which is why this check cannot see the gesture that appears in nine of them."""
+        pairs = [(p, v) for p, v, _ in checks.gesture_pairs(self.FIDGET)]
+        self.assertGreaterEqual(len(set(pairs)) / len(pairs), 0.9)
+
     def test_the_clean_cohort_never_trips_the_density(self):
         """The threshold's justification: three reference drafts and the two scenes gemma3:12b
         committed inside this orchestrator top out at 2.5 per thousand words."""
