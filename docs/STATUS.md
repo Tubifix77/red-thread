@@ -44,7 +44,7 @@ So it has now finished a brand-new book unassisted, once, at novella length.
 and repeated phrasing is down 65%. Recap grammar has not moved, was being under-measured, and is
 now the dominant defect — it has repairs as of today but no evidence yet that they close it.
 
-**3 — Not started.** Nothing in 31 checks and 509 tests has an opinion about whether a scene is
+**3 — Not started.** Nothing in 32 checks and 515 tests has an opinion about whether a scene is
 interesting. This is the distance.
 
 ---
@@ -214,6 +214,44 @@ happened to draft the scene, with no gate, no repair, and no record of whether i
 - Is any sentence worth rereading?
 - Does the book have a subject beyond restating its premise?
 
+### The first real purchase on this half — 30 August
+
+Reading the middle of the 71-scene book found scene 38: one character alone in a ruin, touching
+statues and remembering. Every check passed it, `summary_distance` included, because the
+flashback it becomes is narrated in simple past.
+
+Measuring outward from that scene found the emptying-out is a **shape**. Dialogue runs at 21% of
+words across the opening eighteen scenes, then 15%, 10%, 9% — and 20 of the 71 scenes the plan
+had populated with two or three characters came back with no dialogue at all, clustered in the
+second half, including all four three-character scenes of the climax.
+
+The cause is upstream of the prose. Across those 70 two-character scenes:
+
+| beats naming something said | scenes | mean dialogue | came back silent |
+|---|---:|---:|---:|
+| none | 33 | .029 | **20 of 33** |
+| one | 27 | .101 | 6 of 27 |
+| two or more | 10 | .203 | **0 of 10** |
+
+r = **+0.672**, against the r = 0.141 that refuted the earlier "inert beats cause recap"
+hypothesis. Not one scene whose spec named two spoken acts came back silent. The model writes
+what it is asked for.
+
+Selection cannot reach it, and that was measured rather than assumed: three fresh candidates for
+two of the silent scenes came back at .003/.006/.008 and .001/.009/.001. There is nothing to
+choose between.
+
+So the fix is one line in `SCENES_PROMPT`. Replanning the same premise moved the beats — 7 of 9
+peopled scenes name a spoken act, up from 5 — and rewriting the book took silent-but-peopled
+scenes from **3 of 9 to 1 of 9**. Mean dialogue did not move (.103 to .104): it lifted the floor,
+not the ceiling. Nine scenes is a weak test and the run is confounded by the gesture checks
+landing at the same time; the 70-scene correlation is the evidence, not this.
+
+A check for it was built and removed — it flagged three scenes of the hand-authored reference
+plan, whose beats describe interaction without any verb from a list. The correlation was measured
+on planner-generated beats and does not transfer to a human's. Third check reverted in this
+project for firing on that plan, and the invariant is worth more than the check.
+
 > Everything measurable about the prose is close to done. Everything that makes prose worth
 > reading has no measurement at all.
 
@@ -234,7 +272,7 @@ difference.
 |---|---|---|
 | Plan & thread state machines | built | Pre / Post / Forbid per scene, audited before a word is written |
 | Commit gate & ledger | built | nothing enters memory until the scene passes |
-| Scene checks | built | 31 checks; thresholds set from a 91-scene corpus, never from taste |
+| Scene checks | built | 32 checks; thresholds set from a 91-scene corpus, never from taste |
 | Repair ladder | built | 10 rungs, narrowest first; a test asserts every blocking kind has a repair that can reach it |
 | Resume after failure | built | five books finished; restart picks up at the last committed scene |
 | Candidate selection | partial | ranks on violations, then duplication, then recap, then length — blind to repair cost |
@@ -253,7 +291,7 @@ difference.
 | **144,248** | words drafted locally |
 | **145** | scenes committed |
 | **0** | API calls |
-| **509** | tests passing |
+| **515** | tests passing |
 
 The longest is now 61,733 words, and running it found exactly what was predicted: defects that
 do not exist below about forty scenes. What it also found is the one measure that gets *worse*
