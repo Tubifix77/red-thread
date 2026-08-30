@@ -169,6 +169,34 @@ itself or against a fixed list*, never one field against another.
 
 ---
 
+## A cap that was read as a quota
+
+The extraction prompt said *"AT MOST 15 FACTS. A hard limit, not a guideline."* Across every book
+in the project the distribution of facts per scene is:
+
+```
+     5 facts     1 scene
+    14 facts    70 scenes
+    15 facts   301 scenes
+    30 facts     4 scenes
+```
+
+**100% of scenes produced 14 or more.** A spike sitting on the cap is not what extraction looks
+like — scenes differ in how much they establish, and these did not. The padding is where
+"Kai | is | in a room" and "Mir | is | inside" come from, in a ledger whose own prompt says
+atmosphere is not a fact.
+
+*Where the cost is, precisely.* Not in unreached facts: 83–91% of extracted facts reach a brief
+at least once, so almost everything gets used eventually. The cost is per-brief. At scene 71 of a
+71-scene novel, 888 facts match the scene's subjects and 40 are shown — if half the pool is
+padding, half the forty are too, in the same forty slots that were stratified so an ending could
+see the beginning of its own book.
+
+*Not yet validated.* The prompt now gives a typical range of three to eight and frames fifteen as
+a ceiling, but no book has been written with it.
+
+---
+
 ## The pattern behind every surviving refrain
 
 Chasing the worst repeated phrase in each of three novels found the same shape three times: not
