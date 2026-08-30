@@ -18,7 +18,7 @@ been through `checks.clears_noise`.
 | 1 — confirm what exists | 0 of 4 | unblocked once step 2 lands |
 | 2 — tension on embeddings | 1 of 5 | steps 10-12 running now |
 | 3 — dependency graph | 2 of 3 | step 16 needs a plan carrying the new field |
-| 4 — want, obstacle, cost | 0 of 3 | |
+| 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.217 vs a 0.4 bar) |
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
 | 6 — write the rule down | 2 of 3 | step 25 is the final panel; needs phase 1 |
 
@@ -196,19 +196,56 @@ dependencies yet, so this runs when the next book is planned.*
 Exactly one quality axis has moved, and it moved by finding a countable prose property, finding
 its plan-level correlate, and changing one line of the planner prompt. Do not deviate.
 
-**17. Find the countable property first** — the symptom, not the fix. Candidates: how often the
-POV character's action is negated or refused; how often a scene's outcome differs from what they
-sought. One proxy is already refuted: POV-as-sentence-subject is flat at .13–.20 everywhere.
+**17. Find the countable property first** — the symptom, not the fix. ✅ Candidates: how often
+the POV character's action is negated or refused; how often a scene's outcome differs from what
+they sought. One proxy is already refuted: POV-as-sentence-subject is flat at .13–.20 everywhere.
 **Kill criterion:** a measure that does not vary cannot be improved.
 
-**18. Correlate it against plan fields.** Beats naming a spoken act correlated with dialogue at
-**r = +0.672**, against r = 0.141 for the hypothesis that was discarded. **Kill criterion:** below
-about r = 0.4, the plan is not the lever for this axis. Say so and stop.
+*Two measures pass, both now in the panel with floors. `refusal_rate` counts a refusal being
+**performed** — a head shaken, a request declined, a "won't" — deliberately excluding "could
+not" and "did not", which catch every negated verb in the language; a measure firing on "she did
+not sit down" is measuring English. `refusal_per_ask` divides by the asking, because a scene with
+ten requests and ten grants is a scene of errands however busy it is.*
 
-**19. Add `want`, `obstacle` and `cost` to the scene spec.** Mirror the thread-operator shape:
-named fields with their own audit, not prose. Write the prompt instruction as an expectation and
-stop — the conditional wording took solo scenes from 10 to 34, and explaining the exception
-quadrupled it.
+*Both clear the bar comfortably. 25% of 538 committed scenes contain no refusal at all, median
+1.41 per thousand words, maximum 12.55 — so it is not saturated. Between two identical runs of
+one plan `refusal_rate` moves 14% and `refusal_per_ask` moves **0.3%**, the steadiest measure in
+the whole panel; across eight books they range 0.83–2.29 and .343–.973. What they separate is
+books, not samplings.*
+
+**18. Correlate it against plan fields.** ⛔ **Kill criterion fired.** Beats naming a spoken act
+correlated with dialogue at **r = +0.672**, against r = 0.141 for the hypothesis that was
+discarded. **Kill criterion:** below about r = 0.4, the plan is not the lever for this axis. Say
+so and stop.
+
+*So: saying so and stopping.* Across 538 committed scenes from 16 runs, an outline naming a
+refusal, a denial or a blocking correlates with `refusal_rate` at **r = +0.217** and with
+`refusal_per_ask` at +0.200. An outline naming a price scores +0.075. All are below 0.4.
+
+*The controls are clean, which is what makes this a result rather than a broken instrument: the
+same plan features score +0.001 and −0.021 against gesture rate, so they are not simply
+predicting how talkative a scene is. And the method is not at fault either — on the identical
+corpus, "the outline names a spoken act" against dialogue share reproduces at **+0.446**, using
+the same crude regex over the same fields. The one axis that moved still scores twice what this
+one does.*
+
+*The effect is real and small: scenes whose plan names a refusal average 2.25 refusals per
+thousand words against 1.54, and 16% contain none against 30%. The plan moves this axis about
+half as hard as it moves dialogue. Recorded in `plan_names_a_refusal`'s docstring so a later
+attempt starts from "this scored 0.217" rather than from the same hypothesis unexamined.*
+
+*(The r = +0.672 figure was measured on 108 scenes; the same measure on 538 gives +0.446. The
+direction and the ranking hold, the magnitude does not — one more reminder that a correlation
+from a hundred scenes is not a constant.)*
+
+**19. Add `want`, `obstacle` and `cost` to the scene spec.** ⛔ **Not done, by step 18's kill
+criterion.** ~~Mirror the thread-operator shape: named fields with their own audit, not prose.~~
+
+*Adding three fields to every scene spec on r = 0.217 would be building the intervention the
+evidence says will not carry. The fields are cheap; the brief they would swell is not — everything
+in there arrives in every one of seventy scenes, and this project already has a rule about that.
+If this axis is worth another attempt, the next move is a better prose measure or a different
+lever, not this one on weaker evidence.*
 
 ## Phase 5 — the sentence  *(no GPU, one human evening)*
 

@@ -1445,6 +1445,84 @@ def check_rhythm(scene: Scene, min_stdev: float = 6.0) -> list[Violation]:
 # --------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------
+# want, obstacle, cost  (docs/PLAN.md phase 4, step 17)
+#
+# Exactly one quality axis in this project has moved, and it moved by finding a countable prose
+# property, finding its plan-level correlate, and changing one line of the planner prompt. This
+# is the same move attempted on a second axis: does anything in these books stand in the way of
+# what a character wants?
+#
+# One proxy was already refuted — POV-as-sentence-subject sits flat at .13 to .20 in every
+# quarter of every book, and a measure that does not vary cannot be improved. These do vary.
+# --------------------------------------------------------------------------------------
+
+_REFUSAL = re.compile(
+    r"\b(?:refus\w+|declin\w+|would not|wouldn.t|will not|won.t|shook (?:his|her|their) head"
+    r"|said no\b|turned (?:him|her|them) down)\b", re.I)
+
+_ASKED = re.compile(
+    r"\b(?:asked|demanded|wanted|needed|tried to|meant to|set out to)\b", re.I)
+
+
+def refusal_rate(text: str) -> float:
+    """Refusals per thousand words.
+
+    Deliberately narrow. It counts a refusal being *performed* — a head shaken, a request
+    declined, a "won't" — and not the far larger class of things merely going wrong, because
+    "could not" and "did not" catch every negated verb in the language and a measure that fires
+    on "she did not sit down" is measuring English.
+
+    It varies, which is the bar step 17 set: 25% of 538 committed scenes contain none at all,
+    the median is 1.41 and the maximum 12.55. Between two identical runs of one plan it moves
+    14%, and across eight books it ranges from 0.83 to 2.29 — so what it separates is books, not
+    samplings.
+    """
+    n = len(text.split())
+    return len(_REFUSAL.findall(text)) / n * 1000 if n else 0.0
+
+
+def refusal_per_ask(text: str) -> float:
+    """Refusals as a share of asks — how often somebody wanting something is told no.
+
+    The rate above rises with any scene that is busy. This one is closer to the actual question,
+    because a scene with ten requests and ten grants is a scene of errands however much dialogue
+    it contains. Across the two runs of one plan it reads .817 and .820 — the steadiest measure
+    in the whole panel — and across books it runs from .343 to .973.
+    """
+    asks = len(_ASKED.findall(text))
+    return len(_REFUSAL.findall(text)) / asks if asks else 0.0
+
+
+_PLAN_REFUSAL = re.compile(
+    r"\b(?:refus\w+|declin\w+|withhold\w*|denies|deny|denied|will not|won.t|refuses to say"
+    r"|keeps? (?:it |them )?back|blocks?|bars?|turns? (?:him|her|them) away)\b", re.I)
+
+
+def plan_names_a_refusal(spec: SceneSpec) -> bool:
+    """Does this scene's own outline say somebody is refused, blocked or denied?
+
+    The plan-side half of step 18, and the answer it gave was no. Across 538 committed scenes it
+    correlates with `refusal_rate` at **r = +0.217** and with `refusal_per_ask` at +0.200, against
+    a bar of 0.4 — while the same crude method scores +0.446 for "the outline names a spoken act"
+    against dialogue share on the identical corpus, which is the intervention that worked.
+
+    The effect is real and small: scenes whose plan names a refusal average 2.25 refusals per
+    thousand words against 1.54, and 16% of them contain none against 30%. So the plan moves this
+    axis about half as hard as it moves dialogue, and the honest conclusion is the one phase 4's
+    kill criterion asks for — the plan is not the lever here, and `want`/`obstacle`/`cost` fields
+    were not added on this evidence.
+
+    Kept because the measurement is the finding, and because a later attempt should start from
+    "this scored 0.217" rather than from the same hypothesis unexamined.
+    """
+    parts = [spec.summary] + [b.summary for b in spec.beats]
+    for op in spec.thread_ops.values():
+        parts.extend(op.post or [])
+        parts.extend(op.forbid or [])
+    return bool(_PLAN_REFUSAL.search(" ".join(str(p) for p in parts)))
+
+
+# --------------------------------------------------------------------------------------
 # The measure panel, and what a difference in it is worth
 #
 # Everything above measures one scene. These read a whole manuscript, and they exist as one
@@ -1504,6 +1582,8 @@ def manuscript_measures(committed_texts: list[str]) -> dict[str, float]:
         "somatic_share": sum(1 for t in committed_texts if somatic_beats(t)) / n,
         "repetition_concentration": concentration,
         "worst_refrain": float(worst),
+        "refusal_rate": sum(refusal_rate(t) for t in committed_texts) / n,
+        "refusal_per_ask": sum(refusal_per_ask(t) for t in committed_texts) / n,
     }
 
 
@@ -1532,6 +1612,8 @@ NOISE_FLOOR: dict[str, float] = {
     "somatic_share": 0.67,
     "repetition_concentration": 0.28,
     "worst_refrain": 0.45,
+    "refusal_rate": 0.15,
+    "refusal_per_ask": 0.01,
 }
 
 NOISE_FLOOR_SOURCE = "docs/evidence/replicate-noise-floor.md"

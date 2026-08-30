@@ -268,3 +268,53 @@ class TestReplicateHarness(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRefusalMeasures(unittest.TestCase):
+    """Phase 4, step 17: a countable property of the want/obstacle/cost axis that varies."""
+
+    def test_counts_a_performed_refusal(self):
+        self.assertGreater(checks.refusal_rate("She refused to hand over the ledger."), 0)
+
+    def test_ignores_a_merely_negated_verb(self):
+        # The narrow scope is the design. "could not" and "did not" catch every negated verb in
+        # the language, and a measure that fires on "she did not sit down" is measuring English.
+        self.assertEqual(checks.refusal_rate("She did not sit down. She could not see it."), 0.0)
+
+    def test_a_shaken_head_counts(self):
+        self.assertGreater(checks.refusal_rate("He shook his head and went back to the bench."),
+                           0)
+
+    def test_empty_text_is_zero(self):
+        self.assertEqual(checks.refusal_rate(""), 0.0)
+        self.assertEqual(checks.refusal_per_ask(""), 0.0)
+
+    def test_per_ask_is_a_share_of_asking(self):
+        self.assertEqual(
+            checks.refusal_per_ask("She asked for the ledger. He refused to hand it over."), 1.0)
+
+    def test_per_ask_is_zero_when_nobody_asks(self):
+        # Not undefined and not one: a scene where nothing is wanted has no refusals to have.
+        self.assertEqual(checks.refusal_per_ask("He refused."), 0.0)
+
+    def test_both_are_in_the_panel_with_floors(self):
+        panel = checks.manuscript_measures([fakes.clean_prose(400)])
+        self.assertIn("refusal_rate", panel)
+        self.assertIn("refusal_per_ask", panel)
+        self.assertIn("refusal_rate", checks.NOISE_FLOOR)
+        self.assertIn("refusal_per_ask", checks.NOISE_FLOOR)
+
+    def test_the_plan_side_feature_reads_beats_and_posts(self):
+        from redthread.models import Beat, SceneSpec, Transition
+        spec = SceneSpec(id="s", index=1, summary="They meet.",
+                         beats=[Beat(summary="Ardo refuses to say who set the type")])
+        self.assertTrue(checks.plan_names_a_refusal(spec))
+
+        quiet = SceneSpec(id="s", index=1, summary="They meet.",
+                          beats=[Beat(summary="Ardo hands over the proof sheet")])
+        self.assertFalse(checks.plan_names_a_refusal(quiet))
+
+        via_post = SceneSpec(id="s", index=1, summary="They meet.",
+                             beats=[Beat(summary="Ardo hands over the proof sheet")])
+        via_post.thread_ops["T"] = Transition(post=["Vesna is denied the register"])
+        self.assertTrue(checks.plan_names_a_refusal(via_post))
