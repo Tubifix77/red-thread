@@ -1,0 +1,106 @@
+# What has been measured, and what turned out not to measure anything
+
+Every threshold in this project is set from a corpus rather than from taste, which means a lot of
+candidate measures get built, tested and thrown away. This file is the record of both halves.
+The refuted list is the more useful one: it is what stops the same afternoon being spent twice.
+
+Corpus as of 30 August 2026: 13 completed books, 325 scenes, 307,060 words, `qwen3:8b` in every
+role. Reference band is three cold single scenes from `gemma3:12b`, `phi4:14b` and `qwen3:8b`
+with no orchestration, in `docs/evidence`.
+
+---
+
+## Measures that discriminate
+
+| measure | what separates | where it is used |
+|---|---|---|
+| `duplication_ratio` | .009 reference vs .340 early corpus | selection, and the signal the sampler fix was found with |
+| `summary_distance` | .105 reference vs .420 early corpus | advisory; selection |
+| `recap_blocks` | reference tops out at 2 consecutive; corpus reaches 46 | MAJOR, with two repairs |
+| gesture rate | 1.4 reference vs 3.8 early corpus | advisory; selection. Allowance rises with dialogue |
+| cross-scene gesture repeats | 0 in a 9-scene book; 13 scenes in a 71-scene one | fed into the next brief |
+| `manuscript_refrains` | .015 book-wide at 9 scenes, .055 at 71 | fed into the next brief |
+| dialogue share | .077 vs .223 between two books of the same plan | advisory; selection |
+| beats naming a spoken act | r = +0.672 with dialogue in the prose | the planner prompt |
+
+## Measures that did not
+
+**Facts extracted per scene.** Flat across a 71-scene book — 14.9 / 15.7 / 15.4 / 14.9 by
+quarter, with a floor of 14. It measures the extractor's output budget, not the story.
+
+**New vocabulary per fact.** Declines monotonically, .416 → .131 across a book. That is what any
+coherent novel does when its first quarter names the cast and the setting. Without a reference
+curve from a book known to be good, the number says nothing, and there is no such curve.
+
+**Scenes ending on a portent.** 56% in one book against 33% in the reference drafts (n = 3) and
+**0%** in another cohort of this project's own scenes. Too noisy to build on.
+
+**POV agency.** Share of sentences where the point-of-view character leads, and the share of
+those where they are only perceiving. Flat at 0.13–0.20 in every quarter of every book. Built as
+a proxy for "does a character want something" and it discriminates nothing.
+
+**Within-scene gesture variety.** Distinct gesture pairs over total gestures sits at ~1.0 across
+four books. Gestures are already varied *inside* a scene; the repetition is between scenes, which
+is why `manuscript_gestures` exists and `check_gesture_density` cannot see it.
+
+**Inert beats as a cause of recap.** r = 0.141 across 108 scenes. The same beat property
+correlates with *dialogue* at r = +0.672, so the hypothesis was not wrong in kind — it was
+pointed at the wrong outcome.
+
+---
+
+## Measurements that were really measuring the instrument
+
+Three times a promising result turned out to be a property of the measuring apparatus. All three
+were caught by asking "what would this look like if the code were wrong", and all three would
+have shipped as findings otherwise.
+
+**"Every scene is load-bearing."** Zero scenes in 70 contributed facts that were never retrieved
+again — because `Ledger.about` retrieves by subject-name overlap and the cast recurs. It measures
+entity overlap, not dependency.
+
+**"The ending never reaches past the last three scenes."** Median retrieval distance of 2 scenes,
+nothing beyond 20. True, and a description of `Ledger.about`'s recency cap rather than of the
+book. At scene 71, 888 facts matched the scene's subjects and 40 survived, the oldest from scene
+68. Fixed by stratifying the slice; the measure is now meaningless for the reason it was built.
+
+**Gesture density against a "clean cohort".** The threshold was set at a flat 3.0 per thousand
+words from five reference scenes — four of which contain *no dialogue at all*, being cold opening
+scenes. Applied to a book that is 15% dialogue it fired on 34 of 71 scenes, and the scenes it
+fired on had higher dialogue than the ones it spared. It was penalising the scenes that had
+improved.
+
+---
+
+## The pattern behind every surviving refrain
+
+Chasing the worst repeated phrase in each of three novels found the same shape three times: not
+the model inventing a tic, but the model faithfully repeating material the brief injects into
+every scene.
+
+| the phrase | scenes of 71 | its source |
+|---|---:|---|
+| "this is not a matter of morality" | 27 | a catchphrase the planner wrote into a character's voice |
+| "the weight of thirty years" | 15 | a figure of speech in a style sample, paraphrased |
+| jaw tightening, gaze lingering | 13 | the same movement, reworded every time |
+
+The first is the sharpest: the brief was simultaneously telling the model that the character
+*often uses the phrase* and listing that phrase as a refrain to avoid. Characterisation beats
+prohibition, and always will — one is what the character is, the other is a rule about wording.
+
+Auditing every field the brief injects, across two finished books, finds the residue:
+
+```
+  7 scenes  [premise]                 "stole thirty years"
+  5 scenes  [style samples]           "casting long shadows"
+  5 scenes  [style samples]           "pressing against ribs"
+```
+
+All three are paraphrases below `check_style_leak`'s six-word copy threshold. The premise one is
+the story's own subject and is not fixable; the sample ones are, and are the reason
+`drop_story_shaped_samples` exists. Sample leakage touches 1–11% of scenes depending on the book
+and is spread evenly across it, so it is real and modest, and dropping samples later in a book
+would not target it.
+
+**The generalisation worth keeping:** before adding anything to the brief, ask what it will look
+like repeated seventy times. Everything in there arrives in every scene.

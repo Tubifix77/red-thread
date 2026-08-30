@@ -16,7 +16,8 @@ Every architectural decision traces to a cited source in **[docs/RESEARCH.md](do
 fetched live under the zero-assumption contract. Nothing here is from model memory.
 
 How close this is to being an unassisted writer — measured, not estimated — is in
-**[docs/STATUS.md](docs/STATUS.md)**. Short version: the orchestrator is close to shippable, the
+**[docs/STATUS.md](docs/STATUS.md)**, and what has been measured, what discriminates and what
+was tried and thrown away is in **[docs/MEASUREMENTS.md](docs/MEASUREMENTS.md)**. Short version: the orchestrator is close to shippable, the
 writer is not, and the gap is everything no check can see.
 
 ---
