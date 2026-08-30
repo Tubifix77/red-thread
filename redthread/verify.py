@@ -135,12 +135,18 @@ Not a contradiction:
 - WHERE something or someone is. A register on the table in one scene and in a drawer in another
   is a register somebody moved; a character in the office and later at the pass is a character
   who walked there. Position is never a contradiction.
+- WHAT SOMEBODY IS HOLDING. A character carrying a blade in one scene and a bundle in another
+  put one down and picked the other up. Carrying, holding, wearing, gripping, touching — none of
+  these is a contradiction, for the same reason position is not.
 - a transient physical description — warm, cold, damp, dusty, dark. Those change by the hour.
+
+Each fact is labelled with the scene it comes from. Facts many scenes apart have had a great deal
+of story in between; assume time passed unless the pair is from adjacent scenes.
 
 A contradiction:
 - the same unchanging detail given two different values (eye colour, a scar's location, a name)
 - a character knowing something before the scene where they learn it
-- a physical state that cannot have changed in the time available
+- a physical state that could not have changed between two ADJACENT scenes
 
 FACT PAIRS:
 {pairs}

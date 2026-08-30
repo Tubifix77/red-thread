@@ -1897,3 +1897,30 @@ class TestForecastProbeAsksBlind(unittest.TestCase):
             "prediction": "Vael confronts Sorin at the gate and demands the ledger back."}))
         other = Scene(spec_id="s", index=2, text="Rain fell on the harbour and nobody came.")
         self.assertEqual(probe_forecast(other, "Vael has been tracking Sorin.", models), [])
+
+
+class TestTheConflictPromptSaysWhatTheCodeGuardsSay(unittest.TestCase):
+    """The judge's prompt and the deterministic guards must agree, or one of them is a bug.
+
+    `is_moveable_pair` and `is_possession_pair` stop these pairs reaching the judge at all, so
+    the prompt is belt and braces — but a prompt that contradicts the code is a prompt that will
+    produce a wrong answer the moment a pair slips past a guard, and two of those slipped past
+    within one 71-scene run.
+    """
+
+    def test_position_and_possession_are_both_named_as_not_contradictions(self):
+        from redthread.verify import CONFLICT_PROMPT
+        head = CONFLICT_PROMPT[:CONFLICT_PROMPT.index("A contradiction:")]
+        self.assertIn("Position is never a contradiction", head)
+        self.assertIn("HOLDING", head)
+        for verb in ("arrying", "olding", "earing"):
+            self.assertIn(verb, head)
+
+    def test_the_judge_is_told_that_distance_means_time_passed(self):
+        """It has no notion of elapsed time and will call any two different objects a
+        contradiction. The old prompt asked it to rule on "the time available", which is a
+        question it cannot answer; it now rules only on adjacent scenes."""
+        from redthread.verify import CONFLICT_PROMPT
+        self.assertIn("assume time passed", CONFLICT_PROMPT)
+        self.assertNotIn("the time available", CONFLICT_PROMPT)
+        self.assertIn("ADJACENT", CONFLICT_PROMPT)
