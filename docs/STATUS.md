@@ -1,6 +1,7 @@
 # Where this stands
 
-*Measured 29 August 2026. All figures from `runs/` and `docs/evidence`; nothing here is an estimate.*
+*Measured 30 August 2026. All figures from `runs/` and `docs/evidence`; nothing here is
+an estimate — but read "What a day of measuring changed" below before trusting any single one.*
 
 A percentage would be a lie, because three separate things are being built and they are at very
 different places. This document is the honest read on each.
@@ -13,23 +14,27 @@ Illustrated version: <https://claude.ai/code/artifact/9ef610d1-1ca6-4a0f-a937-15
 
 | | Question | State |
 |---|---|---|
-| 1 | Can it get to the end of a book without help? | **close** |
-| 2 | Is the prose free of the obvious machine tells? | **largely** |
-| 3 | Is the finished book worth reading? | **not started** |
+| 1 | Can it get to the end of a book without help? | **yes, at novel length** |
+| 2 | Is the prose free of the obvious machine tells? | **per scene, yes** |
+| 3 | Is the finished book worth reading? | **one of five axes started** |
 
-**1 — Close.** Seven books, 145 scenes, 144,248 words, zero API calls. It plans, drafts, checks,
-repairs, commits, and resumes after a crash.
+**1 — Yes, at novel length.** **Eight distinct books** across **15 completed runs** — 467 scenes,
+426,614 words, zero API calls. The gap between those two numbers is deliberate: five runs are one
+premise rewritten to test code changes, which is how anything here gets attributed to a change
+rather than to luck.
 
-The seventh is the scale test this document has listed as the largest gap since the first
-manuscript: *The Debt of Years* at **71 scenes and 61,733 words**, twice the longest previous run,
-all four threads terminal. It halted four times. Three of those were one bug — the ledger calling
+**Four consecutive 71-scene runs have gone start to finish with no halt and no intervention**, the
+last three from an identical plan.
+
+The scale test this document listed as its largest gap is done: *The Debt of Years* at
+**71 scenes and 61,733 words**, twice the longest previous run, all four threads terminal. It halted four times. Three of those were one bug — the ledger calling
 a character who puts something down and picks something else up a contradiction — which only
 exists at length, because across every ledger in the project there are just three
 subject-and-predicate keys carrying more than one object. The fourth was not a defect at all:
 a scene rejected on sampling that committed on a second whole attempt with nothing changed.
 Full record in [evidence/sixty-thousand-word-run.md](evidence/sixty-thousand-word-run.md).
 
-The sixth is the one that matters. *The Keeper's Fourth Book* was planned and written from a
+The one that mattered most is *The Keeper's Fourth Book*, planned and written from a
 premise the system had never seen, to test the standing claim that every new premise costs one
 to three code fixes. **It cost one, and the plan gate caught it before a word was generated** —
 the planner had banned "truth", "right", "memory" and "silence", which are words a novel is made
@@ -40,12 +45,15 @@ no model call. Full record in
 
 So it has now finished a brand-new book unassisted, once, at novella length.
 
-**2 — Partly.** Three tells that fired in roughly half of all early scenes now fire in none,
-and repeated phrasing is down 65%. Recap grammar has not moved, was being under-measured, and is
-now the dominant defect — it has repairs as of today but no evidence yet that they close it.
+**2 — Per scene, yes. Per manuscript, no.** Every countable per-scene tell now sits at or below
+the reference band: duplication .002, recap .047, and none of the three prose tells in any of the
+373 scenes written since the sampler fix. What does not hold is the book: duplication across a
+whole manuscript is .066 against .002 within any scene of it, and that gap widens with length.
 
-**3 — Not started.** Nothing in 32 checks and 515 tests has an opinion about whether a scene is
-interesting. This is the distance.
+**3 — One of five axes started.** Dialogue stopped being unmeasurable and moved — .077 to .223,
+scenes where the plan put people in a room and the prose left them silent from 23 of 71 to zero.
+The other four are untouched, and the instrument built for one of them (forecastability) was
+calibrated and found to report noise.
 
 ---
 
@@ -294,11 +302,11 @@ difference.
 
 | | |
 |---:|---|
-| **8** | books finished end to end |
-| **204,662** | words drafted locally |
-| **216** | scenes committed |
+| **8** | distinct books finished |
+| **426,614** | words drafted locally |
+| **467** | scenes committed |
 | **0** | API calls |
-| **515** | tests passing |
+| **578** | tests passing |
 
 The longest is now 61,733 words, and running it found exactly what was predicted: defects that
 do not exist below about forty scenes. What it also found is the one measure that gets *worse*
