@@ -384,6 +384,18 @@ def cmd_status(args) -> int:
     project = _load(args.project)
     for key, value in project.status().items():
         print(f"{key:20} {value}")
+    # Manuscript-level prose measures. Neither can be a scene check — they are properties of the
+    # whole book — and the second is here because the first misleads on its own: duplication
+    # cannot tell two hundred mild echoes from one phrase in fifteen scenes, and across five
+    # runs of one plan it rose while the worst refrain fell from 28 scenes to 7.
+    texts = project.committed_texts()
+    if len(texts) > 3:
+        concentration, worst = checks.repetition_concentration(texts)
+        print(f"{'duplication':20} {checks.duplication_ratio(chr(10).join(texts)):.3f} "
+              f"across the manuscript")
+        print(f"{'worst refrain':20} one phrase in {worst} scenes; the worst 1% of phrases "
+              f"carry {concentration:.0%} of all repetition")
+
     print("\nThreads:")
     for t in project.story.threads:
         mark = "✓" if t.is_resolved() else " "

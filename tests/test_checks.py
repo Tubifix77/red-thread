@@ -1253,3 +1253,59 @@ class TestModelRefrains(unittest.TestCase):
         self.assertIn("the edge of the", text)
         self.assertIn("every book you write", text,
                       "the two are different claims and must not be presented as one")
+
+
+class TestRepetitionConcentration(unittest.TestCase):
+    """`duplication_ratio` cannot tell many mild echoes from one dominant refrain.
+
+    Across five runs of one plan the aggregate rose while the book got better:
+
+        run                      duplication   top 1% share   worst phrase
+        before the dialogue fix      .041           2.8%           8 scenes
+        + dialogue fix               .061           6.5%          28
+        + catchphrase fix            .055           3.1%          15
+        latest                       .066           2.4%           7
+
+    The two books that matter most are the extremes: the one with a phrase in 28 scenes has
+    *lower* duplication than the one whose worst phrase is in 7. Reporting duplication alone
+    inverts the ranking a reader would give them.
+    """
+
+    # No two base scenes may share a five-word run, or the scaffolding is itself the refrain.
+    # Two earlier versions of this fixture reported a worst phrase of 20 scenes in both arms,
+    # once from a shared sentence and once from a shared template.
+    def _book(self, refrain=None, refrain_scenes=0, n=20):
+        words = ("alder birch cedar dogwood elm fir gorse hazel ivy juniper larch maple "
+                 "nettle oak pine quince rowan sallow thorn willow yew ash beech cherry "
+                 "damson elder fig gean holly").split()
+        scenes = []
+        for i in range(n):
+            w = [words[(i * 7 + k) % len(words)] for k in range(12)]
+            scenes.append(" ".join(w) + ".")
+        for i in range(refrain_scenes):
+            scenes[i] += f" {refrain}"
+        return scenes
+
+    def test_one_dominant_refrain_concentrates(self):
+        spread = self._book()
+        peaked = self._book("the blade at his side glinted", 12)
+        _, worst_spread = checks.repetition_concentration(spread)
+        conc_peak, worst_peak = checks.repetition_concentration(peaked)
+        self.assertGreater(worst_peak, worst_spread)
+        self.assertGreater(conc_peak, 0.0)
+
+    def test_it_reports_the_worst_phrase_scene_count(self):
+        _, worst = checks.repetition_concentration(
+            self._book("the blade at his side glinted", 9))
+        self.assertGreaterEqual(worst, 9)
+
+    def test_nothing_to_report_without_a_manuscript(self):
+        self.assertEqual(checks.repetition_concentration([]), (0.0, 0))
+        self.assertEqual(checks.repetition_concentration(["one scene only."])[1], 0)
+
+    def test_it_disagrees_with_duplication_where_it_should(self):
+        """The whole reason it exists: a book can have less duplication and a worse refrain."""
+        many_mild = self._book(n=40)
+        one_bad = self._book("the blade at his side glinted in the low sun", 15, n=20)
+        self.assertGreater(checks.repetition_concentration(one_bad)[1],
+                           checks.repetition_concentration(many_mild)[1])

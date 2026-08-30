@@ -891,6 +891,39 @@ def manuscript_refrains(committed_texts: list[str], n: int = 5, min_scenes: int 
     return hot[:limit]
 
 
+def repetition_concentration(committed_texts: list[str], n: int = 5) -> tuple[float, int]:
+    """How much of a manuscript's repetition is carried by its worst offenders.
+
+    `duplication_ratio` counts repeated n-grams and cannot tell two hundred mild echoes from one
+    phrase appearing in fifteen scenes. Those read completely differently, and across five runs
+    of one plan the aggregate moved the wrong way while the book got better:
+
+        run                      duplication   top 1% share   worst phrase
+        before the dialogue fix      .041           2.8%           8 scenes
+        + dialogue fix               .061           6.5%          28
+        + catchphrase fix            .055           3.1%          15
+        + stratified ledger          .065           3.0%          10
+        latest                       .066           2.4%           7
+
+    Duplication rises monotonically after the dialogue work and says the book is getting worse.
+    Concentration tracks the worst phrase instead, which is what a reader meets. The right
+    reading of both together is that repetition stopped clustering rather than stopped happening.
+
+    Returns (share of all cross-scene repetition carried by the worst 1% of phrases, worst
+    phrase's scene count).
+    """
+    if not committed_texts:
+        return 0.0, 0
+    seen: Counter[tuple[str, ...]] = Counter()
+    for text in committed_texts:
+        seen.update(set(ngrams(words(text), n)))
+    repeated = sorted((c for c in seen.values() if c >= 2), reverse=True)
+    if not repeated:
+        return 0.0, 0
+    worst = repeated[: max(1, len(repeated) // 100)]
+    return sum(worst) / sum(repeated), repeated[0]
+
+
 def manuscript_gestures(committed_texts: list[str], min_scenes: int = 4,
                         limit: int = 6) -> list[tuple[str, int]]:
     """Movements this book keeps reaching for, across separate scenes.
