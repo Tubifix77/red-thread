@@ -277,6 +277,7 @@ difference.
 | Resume after failure | built | five books finished; restart picks up at the last committed scene |
 | Candidate selection | partial | ranks on violations, then duplication, then recap, then length — blind to repair cost |
 | Redraft on exhaustion | partial | fires, but a fresh draft is not reliably better than the one it replaces |
+| Ledger slice reaches back | built | stratified so an ending can see its own beginning; measured effect on the prose is a wash ([A/B](evidence/ledger-slice-ab.md)) |
 | Recap-grammar repair | built | `unrecap` rewrites a block, `cutrecap` deletes it; verified live |
 | Dramatic planning | **missing** | beats are valid and inert; want, obstacle and cost are not modelled |
 | Any judgement of quality | **missing** | by design, and the design is now the constraint |
