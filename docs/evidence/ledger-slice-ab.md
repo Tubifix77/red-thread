@@ -79,10 +79,18 @@ Retiring superseded placements undid run 2's per-scene duplication regression ex
 to .001 — which is the mechanism that writeup predicted: a brief carrying old locations invites
 prose that re-describes them.
 
-## The result worth having
+## The result worth having — retracted
 
-The worst single refrain more than halved across the three runs, 15 scenes → 10 → 7, and the
-gesture rate fell every time. Manuscript-wide duplication nevertheless rose, .055 → .066, and
+**A replicate run has since measured the noise floor, and this section does not survive it.** Two
+runs of one plan with identical code give a worst refrain of 7 and 11, and gesture rates of 1.73
+and 2.36. The claimed effects below are the same size as the variation between runs that differ in
+nothing at all. See [replicate-noise-floor.md](replicate-noise-floor.md).
+
+The paragraph is kept as written, because the reasoning was sound and only the evidence was
+missing, and because a retracted claim is more useful visible than deleted.
+
+~~The worst single refrain more than halved across the three runs, 15 scenes → 10 → 7, and the
+gesture rate fell every time.~~ Manuscript-wide duplication nevertheless rose, .055 → .066, and
 those two facts look contradictory until the distribution is counted:
 
 | | phrases in 3+ scenes | phrases in 8+ scenes | worst |

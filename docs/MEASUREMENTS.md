@@ -317,7 +317,11 @@ changes, so they are stable enough that a difference in them means something. An
 result of the ledger work — the worst refrain falling 15 → 10 → 7 — has a range identical to its
 own claimed effect. It may be real; nothing here shows it is.
 
-*A replicate run is the fix and is the obvious missing experiment.*
+*A replicate has since been run, and it retracts three claims made the same day.* The floor is
+in [evidence/replicate-noise-floor.md](evidence/replicate-noise-floor.md): dialogue share and word
+count are stable to within 4% between identical runs, duplication and recap to within a third, and
+**anything counting a maximum — worst refrain, worst gesture — swings by half its own value**.
+Maxima are the least trustworthy statistic in this project and were the ones quoted most often.
 
 ---
 
@@ -339,11 +343,15 @@ across three or more books, and none across more. What a book repeats physically
 not a habit the model carries between premises. No model-level gesture list is warranted on that
 evidence.
 
-*And it works on what it names.* In the newest book its list stays empty until scene 37, names
-"gaze flickered" at four scenes, and that gesture appears **0 times in the 34 scenes after**. In
-the book written before the feedback existed, the list would have been non-empty from scene 15 —
-so repetition now builds less than half as fast. One named gesture is thin evidence for
-suppression; the delay from scene 15 to scene 37 is not.
+*Whether it works on what it names is unsettled.* In one book its list stays empty until scene
+37, names "gaze flickered" at four scenes, and that gesture appears 0 times in the 34 scenes
+after — against scene 15 in the book written before the feedback existed. That looked like the
+mechanism working.
+
+**A replicate of the same code and plan first fires at scene 19.** Against 15 without the
+feedback, that is nothing, so the delay was run-to-run variation and not the feedback. One
+suppressed gesture remains the only evidence, and it is one. See
+[evidence/replicate-noise-floor.md](evidence/replicate-noise-floor.md).
 
 **`dialogue_share` — passes, and raised a better question than the control did.** It counts words
 inside quotation marks, so the risk is quoted documents or scare quotes. Sampling 1,403 spans:
