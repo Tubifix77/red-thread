@@ -106,6 +106,9 @@ class ScriptedBackend(Backend):
             "She set the second ledger on the bench and opened it to the middle. The "
             "spine cracked. Otto looked over and said nothing at all, and she wrote the "
             "date at the top of the page before she lost her nerve about it."),
+        # An empty object is the honest default: a repeople call that returns no scenes
+        # changes nothing, which is what a test that has not queued one should see.
+        "repeople": '{"scenes": []}',
         "draft": "",
         }
         self.defaults.update(defaults or {})
