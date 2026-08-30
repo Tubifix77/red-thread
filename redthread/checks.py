@@ -637,10 +637,15 @@ def check_somatic(scene: Scene, max_allowed: int = 1) -> list[Violation]:
     Read as coverage in an audit, it provides none, the same way `midpoint_stall` and
     `uniform_scene_length` do.
 
-    What it cannot see is more interesting than what it does. The share of scenes carrying a
-    somatic beat is **45% in the current era against 27% before the prose work** — the prose has
-    moved the wrong way on the one StoryScope tell measured at 81% AI against 38% human, and
-    every scene stays inside its allowance while doing so.
+    What it cannot see is a corpus-level drift, and whether there is one here is unsettled. The
+    share of scenes carrying a somatic beat reads 45% in the current era against 27% before the
+    prose work, which looks like movement in the wrong direction — but three runs of one
+    identical plan, differing only in ledger changes that have nothing to do with bodily
+    description, give 38%, 59% and 42%. The between-run swing is wider than the between-era gap,
+    so the gap establishes nothing.
+
+    The structural point stands regardless: a per-scene cap cannot detect a distributional shift,
+    and this check would not report one if it happened.
     """
     found: list[str] = []
     for pattern in _SOMATIC_PATTERNS:

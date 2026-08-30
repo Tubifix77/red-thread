@@ -159,11 +159,18 @@ committed scenes **no scene contains more than one somatic beat**, and the check
 The brief tells the writer "at most one somatic beat in this scene" and the writer complies, so
 the check confirms an instruction rather than catching a violation.
 
-What it cannot see matters more. The share of scenes carrying a somatic beat is **45% in the
-current era against 27% before the prose work** — moving the wrong way on the StoryScope tell
-measured at 81% AI against 38% human, with every scene inside its allowance the whole time. A
-per-scene cap cannot detect a corpus-level drift, and this is the clearest instance of that in
-the project.
+What it cannot see is a corpus-level drift — and the attempt to show one here failed. The share
+of scenes carrying a somatic beat reads 45% in the current era against 27% before the prose work,
+which looks like movement in the wrong direction on a tell measured at 81% AI against 38% human.
+
+Three runs of **one identical plan**, differing only in ledger changes unrelated to bodily
+description, give **38%, 59% and 42%**. The between-run swing is wider than the between-era gap.
+The gap establishes nothing, and the r = +0.44 correlation with dialogue share across eight books
+has its own counterexample: `scale60` carries old-era dialogue at .077 and new-era somatic at 44%.
+
+The structural point survives the retraction: a per-scene cap cannot detect a distributional
+shift, and this check would not report one if it happened. That is worth knowing separately from
+whether one has.
 
 `uniform_scene_length` is blind the same way and more obviously: it fires only when every scene
 in a plan carries an identical word target, and `schedule.word_targets` varies them by seed — ten
