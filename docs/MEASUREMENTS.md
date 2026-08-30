@@ -145,6 +145,31 @@ The distinction matters when reading a green suite. A check that is quiet becaus
 upstream of it works is doing its job; a check that is quiet because nothing has ever tested it
 is an unknown wearing the same colour.
 
+### The slop list, checked and left alone
+
+`slop` fires on 56% of scenes, and the most-flagged entry across every run is **"nodded"** with
+119 of 395 hits. Characters nod; banning the word looked like the mistake
+`check_ban_is_avoidable` exists to prevent — a word the prose is made of, fought in every scene.
+
+Measured against the corpus, that reading is wrong. Share of the 472 committed scenes each
+single-word entry appears in:
+
+```
+   25%  nodded
+   14%  flickered
+    5%  glinting
+    2%  thrummed, nestled
+   <1%  everything else
+```
+
+**Zero entries appear in 30% or more of scenes, and 70 of the 75 single-word entries appear in
+under 5%.** The list is well targeted. It is one word, not a systemic problem, and the entry is
+externally measured — antislop's data says "nodded" is over-represented in machine fiction, and
+25% of scenes is not the same as unavoidable.
+
+Nothing changed. Recorded because the hypothesis was reasonable, the fix would have been easy,
+and the data did not support it.
+
 ### The other end: checks that are constants
 
 The mirror of a check that never fires. Measured over the 392 scene records every run has left
