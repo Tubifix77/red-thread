@@ -861,6 +861,33 @@ def manuscript_refrains(committed_texts: list[str], n: int = 5, min_scenes: int 
     return hot[:limit]
 
 
+def manuscript_gestures(committed_texts: list[str], min_scenes: int = 4,
+                        limit: int = 6) -> list[tuple[str, int]]:
+    """Movements this book keeps reaching for, across separate scenes.
+
+    `manuscript_refrains` does this for wording and cannot see these, because what repeats is the
+    movement and the words differ every time. Both feed the same brief section for the same
+    reason: a refrain belongs to the manuscript, and nothing done to scene 60 removes a gesture
+    from scenes 4, 9 and 22.
+
+    Measured on two 71-scene books. The first has a jaw tightening in 13 separate scenes; the
+    second, written after the dialogue fix, has eyes flicking in 13, a gaze lingering in 12 and
+    fingers curling in 10 — and 11 distinct gestures reaching four or more scenes, against 5 in
+    the first. More dialogue means more beats between lines, and the model draws them from the
+    same short stock. A nine-scene book has none, so like the phrase refrains this is a defect
+    that only appears with length.
+    """
+    if not committed_texts:
+        return []
+    scenes_with: Counter[tuple[str, str]] = Counter()
+    for text in committed_texts:
+        for pair in {(p, v) for p, v, _ in gesture_pairs(text)}:
+            scenes_with[pair] += 1
+    hot = [(f"{part} {verb}", c) for (part, verb), c in scenes_with.items() if c >= min_scenes]
+    hot.sort(key=lambda kv: (-kv[1], kv[0]))
+    return hot[:limit]
+
+
 def check_repetition(scene: Scene, committed_texts: list[str], n: int = 5,
                      max_repeats: int = 0, refrain: int = 4) -> list[Violation]:
     """Imagery and phrasing reused from earlier scenes.

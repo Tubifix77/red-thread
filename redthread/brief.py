@@ -147,6 +147,7 @@ def render_brief(
     previous_characters: list[str] | None = None,
     slop_sample: list[str] | None = None,
     refrains: list[tuple[str, int]] | None = None,
+    gestures: list[tuple[str, int]] | None = None,
 ) -> str:
     """Assemble the complete brief for one scene-writing session."""
     previous_characters = previous_characters or []
@@ -251,6 +252,18 @@ def render_brief(
             f"of them again, and do not reach for the image behind them — a new wording of the "
             f"same picture is the same refrain: "
             + "; ".join(f'"{p}" (in {c} scenes)' for p, c in refrains)
+        )
+    if gestures:
+        # The same argument as the phrase refrains, for the thing the phrase check cannot see.
+        # Two 71-scene books had a jaw tightening in 13 scenes and a gaze lingering in 12 — never
+        # in the same words, so nothing that counts wording catches it. Worded to refuse the
+        # synonym, because that is what the model reaches for when told a movement repeats.
+        prohibitions.append(
+            f"{len(ANTI_TELLS)+4}. THIS BOOK keeps reaching for the same small movements: "
+            + "; ".join(f"{p} (in {c} scenes)" for p, c in gestures)
+            + ". Do not use them here, and do not reword them — a different verb for the same "
+              "movement is the same movement. Give the character something to do with an "
+              "object or another person, or let them be still."
         )
     parts.append("\n".join(prohibitions))
 

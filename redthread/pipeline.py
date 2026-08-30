@@ -731,9 +731,10 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
 
     slop_sample = checks.slop_sample(config.slop_sample)
     refrains = checks.manuscript_refrains(committed_texts)
+    gestures = checks.manuscript_gestures(committed_texts)
 
     brief = render_brief(spec, project.story, project.ledger, previous_tail,
-                         previous_characters, slop_sample, refrains)
+                         previous_characters, slop_sample, refrains, gestures)
     progress.stage("brief", f"{len(brief.split()):,} words in, "
                             f"{len(project.ledger.as_of(spec.index - 1))} facts available")
 

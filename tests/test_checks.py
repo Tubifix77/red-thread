@@ -1148,3 +1148,50 @@ class TestSceneIsPeopled(unittest.TestCase):
                                make_spec(word_target=50, characters=["vael", "sera"]),
                                make_story())
         self.assertIn("unpeopled_scene", {v.kind for v in found})
+
+
+class TestManuscriptGestures(unittest.TestCase):
+    """The refrain the phrase check cannot see, because the words differ every time.
+
+    Two 71-scene books measured: the first has a jaw tightening in 13 separate scenes; the
+    second, written after the dialogue fix, has eyes flicking in 13, a gaze lingering in 12 and
+    fingers curling in 10 — and 11 distinct gestures reaching four or more scenes, against 5 in
+    the first. More dialogue means more beats between lines and the model draws them from the
+    same short stock. A nine-scene book has none of these, so like the phrase refrains it is a
+    defect that only appears with length.
+    """
+
+    def _scenes(self, gesture, count, other="She counted the crates and signed the docket."):
+        return [f"{gesture} {other} Scene {i} of the book." for i in range(count)]
+
+    def test_a_gesture_in_four_scenes_is_reported(self):
+        # Worded differently every time, so nothing that counts n-grams sees it.
+        scenes = ["Her jaw tightened as she read it.",
+                  "His jaw was tightening before she finished the sentence.",
+                  "His jaw tightened and he said nothing at all.",
+                  "Her jaw tightened once, then let go."]
+        found = checks.manuscript_gestures(scenes)
+        self.assertTrue(any(p == "jaw tight" for p, _ in found), found)
+        self.assertEqual(checks.manuscript_refrains(scenes), [],
+                         "the phrase check must see nothing here — that is the whole point")
+
+    def test_three_scenes_is_not_yet_a_pattern(self):
+        self.assertEqual(checks.manuscript_gestures(self._scenes("Her jaw tightened.", 3)), [])
+
+    def test_nothing_before_there_is_a_manuscript(self):
+        self.assertEqual(checks.manuscript_gestures([]), [])
+
+    def test_the_list_is_capped_and_worst_first(self):
+        scenes = (self._scenes("Her jaw tightened.", 9)
+                  + self._scenes("Her fingers traced the rail.", 5))
+        found = checks.manuscript_gestures(scenes, limit=2)
+        self.assertLessEqual(len(found), 2)
+        self.assertEqual(found[0][1], 9)
+
+    def test_it_reaches_the_brief_and_refuses_the_synonym(self):
+        from redthread import brief as briefmod
+        from redthread.ledger import Ledger
+        text = briefmod.render_brief(make_spec(), make_story(), Ledger(),
+                                     gestures=[("jaw tight", 13)])
+        self.assertIn("jaw tight", text)
+        self.assertIn("same movement", text)
