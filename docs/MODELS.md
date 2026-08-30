@@ -374,6 +374,23 @@ before (1100-word default)   mean 1197 words   duplication 0.330
 after  ( 850-word default)   mean  880 words   duplication 0.108
 ```
 
+### That curve no longer holds, and the reason matters
+
+Every scene behind the table above was sampled with Ollama's `repeat_penalty` at its default of
+1.0 — which is *disabled* — because `qwen3:8b`'s own Modelfile pins it there. The curve was not a
+property of scene length. It was a model with no repetition penalty given more room to repeat in.
+
+Re-swept with the penalty set from measurement, across 850, 1100 and 1400-word targets:
+duplication reads **.007 / .004 / .008**. Flat, and an order of magnitude below the old table at
+every length. A 2,437-word draft measured .014.
+
+`DEFAULT_SCENE_WORDS` remains 850, and its docstring now says what it actually rests on: the
+architecture's premise of many small briefed sessions, and the fact that fifteen completed runs
+used it. Those are design arguments, not measurements. What is untested is whether longer scenes
+commit as reliably through the whole pipeline — seams, obligations and beat coverage are all
+per-scene, and a 71-scene book at 850 words is a different risk profile from a 50-scene book at
+1200.
+
 A 67% reduction in repeated prose from one number, and the number came from measurement rather
 than taste. It is a property of the writer, not of prose in general — re-measure before raising
 it for a stronger model, and `bench` is the place to do that.
