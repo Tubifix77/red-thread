@@ -249,6 +249,38 @@ itself or against a fixed list*, never one field against another.
 
 ---
 
+## Controls: measures tested against something they should *not* match
+
+Five findings this project nearly shipped turned out to be properties of the measuring apparatus.
+The cheapest defence is a control — score the measure against something it has no business
+matching, and see whether it notices. These are the ones that have had one.
+
+**`manuscript_refrains` — passes, and the failures were the finding.** A book's reported refrains
+were scored against books with *different premises by the same model*. 77% appear in no other
+book, so the measure is mostly finding what it claims. The 23% that leak are the model's own
+constructions rather than any book's: "the edge of the" is a refrain in **all seven** books,
+"the weight of the" in six. Those now live in `data/model_refrains.txt`, because a check that
+reads one manuscript is blind to them by construction.
+
+**`manuscript_gestures` — passes cleanly.** The same control finds only two gestures recurring
+across three or more books, and none across more. What a book repeats physically is that book's,
+not a habit the model carries between premises. No model-level gesture list is warranted on that
+evidence.
+
+*And it works on what it names.* In the newest book its list stays empty until scene 37, names
+"gaze flickered" at four scenes, and that gesture appears **0 times in the 34 scenes after**. In
+the book written before the feedback existed, the list would have been non-empty from scene 15 —
+so repetition now builds less than half as fast. One named gesture is thin evidence for
+suppression; the delay from scene 15 to scene 37 is not.
+
+**`probe_forecast` — fails.** Scored against the scene it predicted versus a random other scene
+from the same book, the real scene wins 41% of the time. Detail above.
+
+**`check_gesture_density` — failed on its calibration cohort**, four of whose five scenes contain
+no dialogue. Detail above.
+
+---
+
 ## A cap that was read as a quota
 
 The extraction prompt said *"AT MOST 15 FACTS. A hard limit, not a guideline."* Across every book
