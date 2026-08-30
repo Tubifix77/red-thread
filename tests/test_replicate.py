@@ -318,3 +318,22 @@ class TestRefusalMeasures(unittest.TestCase):
                              beats=[Beat(summary="Ardo hands over the proof sheet")])
         via_post.thread_ops["T"] = Transition(post=["Vesna is denied the register"])
         self.assertTrue(checks.plan_names_a_refusal(via_post))
+
+
+class TestEmitFloor(unittest.TestCase):
+    """Step 2's deliverable as something to paste rather than something to retype."""
+
+    def test_the_flag_exists(self):
+        from redthread.cli import build_parser
+        args = build_parser().parse_args(["measures", "a", "b", "--emit-floor"])
+        self.assertTrue(args.emit_floor)
+
+    def test_it_rounds_up_rather_than_to_nearest(self):
+        # Not cosmetic. The first floor table was built from figures rounded *down* for a
+        # write-up, and four measures of the very pair it came from were then reported as
+        # clearing it.
+        import math
+        floor = observed_floor([("a", [fakes.clean_prose(300)]),
+                                ("b", [fakes.clean_prose(310, 1)])])
+        for name, value in floor.items():
+            self.assertGreaterEqual(math.ceil(value * 100) / 100, value, name)

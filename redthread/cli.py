@@ -528,6 +528,26 @@ def cmd_measures(args) -> int:
         raise SystemExit("no committed scenes in any of the given runs")
 
     means = print_group(args.label or "Group A", runs)
+
+    if args.emit_floor:
+        # Step 2's deliverable, as something to paste rather than something to retype. Rounding
+        # up matters and is not cosmetic: the first floor table was built from figures rounded
+        # *down* for a write-up, and four measures of the very pair it came from were then
+        # reported as clearing it.
+        from .replicate import observed_floor
+        import math
+        if len(runs) < 2:
+            raise SystemExit("--emit-floor needs at least two runs of one plan")
+        print(f"\n# Observed across {len(runs)} runs of one plan, rounded up.")
+        print("NOISE_FLOOR: dict[str, float] = {")
+        for name, value in observed_floor(runs).items():
+            print(f'    "{name}": {math.ceil(value * 100) / 100:.2f},')
+        print("}")
+        print(f"\n  Paste into checks.py and set NOISE_FLOOR_N = {len(runs)}. Only do this for a "
+              f"\n  set with nothing varying between its runs — a set with an ablation flag "
+              f"\n  flipped yields an effect size, and the arithmetic cannot tell the "
+              f"difference.\n")
+
     if not args.against:
         return 0
 
@@ -1053,6 +1073,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="a second group; differences are reported against the noise floor")
     p.add_argument("--label", help="name for the first group")
     p.add_argument("--against-label", help="name for the second group")
+    p.add_argument("--emit-floor", action="store_true",
+                   help="print a NOISE_FLOOR table from these runs; only valid when nothing "
+                        "varied between them")
     p.set_defaults(func=cmd_measures)
 
     add_project(sub.add_parser("status", help="progress and thread state")) \
