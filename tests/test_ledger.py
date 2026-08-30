@@ -371,3 +371,53 @@ class TestTheSliceReachesBackIntoTheBook(unittest.TestCase):
         led = Ledger([Fact("Siv", "knows", f"secret {s}", s, FactKind.KNOWLEDGE)
                       for s in range(1, 71)])
         self.assertEqual(len(led.knows("Siv", 71)), 70)
+
+
+class TestSupersededPlacementsAreRetired(unittest.TestCase):
+    """A STATE is "true until changed", and nothing ever changed it.
+
+    Every placement a character has ever had accumulated and was handed to the brief under the
+    heading "Already established (do not contradict)". At scene 71 of a live novel, 12 of the 18
+    states in the slice were superseded by a newer state in the same slice — the model was told
+    Kai was in a room, on a bench, and in a room with a jagged ceiling, and told to contradict
+    none of them.
+
+    Recency-capping hid most of this by accident. Stratifying the slice so an ending can see the
+    beginning of its own book removed that accident, which makes this a precondition of that
+    change rather than an improvement on it.
+    """
+
+    def _led(self, *facts):
+        return Ledger(list(facts))
+
+    def test_the_older_placement_is_dropped(self):
+        led = self._led(Fact("Kai", "is", "in a room", 22, FactKind.STATE),
+                        Fact("Kai", "is", "in a room with a jagged ceiling", 39, FactKind.STATE))
+        got = led.about(["Kai"], 40)
+        self.assertEqual([f.scene for f in got], [39])
+
+    def test_a_different_subject_keeps_its_own_placement(self):
+        led = self._led(Fact("Kai", "is", "in a room", 22, FactKind.STATE),
+                        Fact("Mir", "is", "inside the hall", 37, FactKind.STATE))
+        self.assertEqual(len({f.subject for f in led.about(["Kai", "Mir"], 40)}), 2)
+
+    def test_two_conditions_may_both_hold(self):
+        """Nobody is in two rooms; plenty of people have a leg injury and a bad temper."""
+        led = self._led(Fact("Kai", "has", "a leg injury", 22, FactKind.STATE),
+                        Fact("Kai", "is", "out of breath", 39, FactKind.STATE))
+        self.assertEqual(len(led.about(["Kai"], 40)), 2)
+
+    def test_a_prepositional_phrase_that_is_not_a_placement_survives(self):
+        """`claim_class` reads any object containing a preposition as a position, which makes
+        "pain in his leg" a placement. Superseding on that reading would retire real facts."""
+        led = self._led(Fact("Kai", "feels", "pain in his leg", 22, FactKind.STATE),
+                        Fact("Kai", "is", "near the desk", 39, FactKind.STATE))
+        got = led.about(["Kai"], 40)
+        self.assertEqual(len(got), 2)
+        self.assertTrue(any("pain" in f.object for f in got))
+
+    def test_a_detail_is_never_retired(self):
+        """A DETAIL is a particular the prose has fixed. It does not go stale."""
+        led = self._led(Fact("Kai", "has", "a scar on his wrist", 4, FactKind.DETAIL),
+                        Fact("Kai", "is", "in the yard", 39, FactKind.STATE))
+        self.assertEqual(len(led.about(["Kai"], 40)), 2)

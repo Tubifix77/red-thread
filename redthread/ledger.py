@@ -64,6 +64,49 @@ def claim_class(fact: Fact) -> str:
     return "condition"
 
 
+_WHERE = re.compile(
+    r"^(?:in|on|at|near|inside|outside|beside|under|behind|beneath|above|atop|within|"
+    r"next to|in front of|across from)\b", re.IGNORECASE)
+
+
+def is_where(fact: Fact) -> bool:
+    """Does this state say where its subject is, rather than what it is or how it is?
+
+    Deliberately narrower than `claim_class`, which reads any object containing a preposition as
+    a position and therefore calls "pain in his leg" and "aware of the Ledger being between
+    Mir's palms" placements. Superseding on that reading would retire real facts. The object has
+    to *begin* with a place preposition, which misses "sitting on a narrow bench" and is the
+    right way round to be wrong.
+    """
+    return fact.kind is FactKind.STATE and bool(_WHERE.match(fact.object.strip()))
+
+
+def current_only(facts: list[Fact]) -> list[Fact]:
+    """Drop placements a later placement has replaced.
+
+    A `STATE` is "something now true that stays true until something changes it" — and nothing
+    ever changed it. Every placement a character has ever had accumulates and is handed to the
+    brief under the heading "Already established (do not contradict)". At scene 71 of a live
+    novel, 12 of the 18 states in the slice were superseded by a newer state in the same slice:
+    the model was being told Kai was in a room, on a bench, and in a room with a jagged ceiling,
+    and told to contradict none of them.
+
+    Recency-capping used to hide most of this by accident. Stratifying the slice so the ending
+    can see the beginning of its own book removed that accident, which makes retiring
+    superseded placements a precondition of that change rather than an improvement on it.
+
+    Only placements, and only for the same subject. Two conditions can both hold — a character
+    can have a leg injury and be out of breath — but nobody is in two rooms.
+    """
+    latest: dict[str, int] = {}
+    for f in facts:
+        if is_where(f):
+            who = normalise(f.subject)
+            latest[who] = max(latest.get(who, -1), f.scene)
+    return [f for f in facts
+            if not is_where(f) or f.scene >= latest.get(normalise(f.subject), -1)]
+
+
 def is_moveable_pair(a: Fact, b: Fact) -> bool:
     """Do these two facts just say where something was at two different moments?
 
@@ -232,6 +275,10 @@ class Ledger:
                     or (content_tokens(f.subject) & wanted_tokens)
                     or (content_tokens(f.object) & wanted_tokens)):
                 hits.append(f)
+        # Retire placements a later placement replaced, before anything is selected. Doing it
+        # first matters: a superseded fact that survives the stratified spread costs a slot the
+        # brief could have spent on something still true.
+        hits = current_only(hits)
         hits.sort(key=lambda f: f.scene, reverse=True)
         if len(hits) <= limit:
             return hits
