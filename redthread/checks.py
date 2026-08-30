@@ -1627,6 +1627,22 @@ NOISE_FLOOR: dict[str, float] = {
 # measured. It may well be a real difference. Nothing here can say so.
 DEGENERATE_FLOOR: frozenset[str] = frozenset({"scenes", "recap_block_share"})
 
+# Measures that grow with the length of the book, so two manuscripts of different lengths cannot
+# be compared on them at all — the difference is the length.
+#
+# This is measured, not assumed. `manuscript_refrains` reads .015 book-wide at nine scenes and
+# .055 at seventy-one, and per-scene duplication reads .001 in the same book whose manuscript-wide
+# duplication reads .030: a book of individually clean scenes is repetitive, and the more scenes
+# there are the more repetitive it is. Anything counting across the whole manuscript inherits
+# that; anything averaged per scene does not.
+#
+# The trap this exists for is concrete. `measures --against` will happily compare a 71-scene book
+# to a 9-scene one and report the manuscript-wide measures as clearing their floors by 126%,
+# which is true and means nothing.
+LENGTH_SENSITIVE: frozenset[str] = frozenset({
+    "words", "scenes", "duplication_manuscript", "repetition_concentration", "worst_refrain",
+})
+
 NOISE_FLOOR_SOURCE = "docs/evidence/replicate-noise-floor.md"
 NOISE_FLOOR_N = 2
 """Replicates the floor above was measured from. Two runs give a range, not a distribution, and

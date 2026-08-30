@@ -559,10 +559,26 @@ def cmd_measures(args) -> int:
 
     print(f"\nDifference, against a floor from {checks.NOISE_FLOOR_N} identical runs "
           f"({checks.NOISE_FLOOR_SOURCE})")
+
+    # Comparing two books of different lengths on a manuscript-wide measure compares their
+    # lengths. Said before the table rather than after it, because the table is what gets quoted.
+    ratio = (max(means["scenes"], other_means["scenes"])
+             / max(1e-9, min(means["scenes"], other_means["scenes"])))
+    mismatched = ratio > 1.25
+    if mismatched:
+        print(f"  ⚠ {means['scenes']:.0f} scenes against {other_means['scenes']:.0f}. "
+              f"These do not compare on "
+              f"{', '.join(sorted(checks.LENGTH_SENSITIVE - {'scenes'}))} —"
+              f"\n    those grow with the length of the book, so the difference is the length.")
     survived = []
     for name in checks.NOISE_FLOOR:
-        print("  " + checks.describe_difference(name, means[name], other_means[name]))
+        line = checks.describe_difference(name, means[name], other_means[name])
+        if mismatched and name in checks.LENGTH_SENSITIVE:
+            line += "   [length]"
+        print("  " + line)
         if checks.clears_noise(name, means[name], other_means[name]):
+            if mismatched and name in checks.LENGTH_SENSITIVE:
+                continue
             survived.append(name)
     unestablished = [n for n in survived if not checks.floor_is_established(n)]
     survived = [n for n in survived if checks.floor_is_established(n)]

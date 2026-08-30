@@ -382,3 +382,38 @@ class TestDegenerateFloors(unittest.TestCase):
 
     def test_a_real_difference_in_a_real_measure_still_reads_as_clearing(self):
         self.assertIn("clears", checks.describe_difference("gesture_rate", 1.0, 4.0))
+
+
+class TestLengthSensitiveMeasures(unittest.TestCase):
+    """Two books of different lengths cannot be compared on a manuscript-wide measure.
+
+    Measured, not assumed: `manuscript_refrains` reads .015 book-wide at nine scenes and .055 at
+    seventy-one, and per-scene duplication reads .001 in the same book whose manuscript-wide
+    duplication reads .030. The trap is concrete — before this, `measures --against` compared a
+    71-scene book to a 9-scene one and reported duplication_manuscript as clearing its floor by
+    126%, which is true and means nothing.
+    """
+
+    def test_manuscript_wide_measures_are_marked(self):
+        for name in ("duplication_manuscript", "worst_refrain", "repetition_concentration"):
+            self.assertIn(name, checks.LENGTH_SENSITIVE)
+
+    def test_per_scene_averages_are_not(self):
+        # These are means over scenes, so adding scenes does not move them by construction.
+        for name in ("dialogue_share", "gesture_rate", "recap_grammar", "duplication_scene",
+                     "somatic_share", "refusal_rate", "refusal_per_ask"):
+            self.assertNotIn(name, checks.LENGTH_SENSITIVE)
+
+    def test_every_named_measure_is_in_the_panel(self):
+        for name in checks.LENGTH_SENSITIVE:
+            self.assertIn(name, checks.NOISE_FLOOR)
+
+    def test_the_claim_holds_on_real_manuscripts(self):
+        # The property itself, asserted against the fixtures rather than taken on trust: the
+        # same prose repeated more times has higher manuscript-wide duplication and identical
+        # per-scene duplication.
+        short = [fakes.clean_prose(300, 0), fakes.clean_prose(300, 1)]
+        long = short + [fakes.clean_prose(300, 0), fakes.clean_prose(300, 1)]
+        a, b = checks.manuscript_measures(short), checks.manuscript_measures(long)
+        self.assertGreater(b["duplication_manuscript"], a["duplication_manuscript"])
+        self.assertAlmostEqual(b["duplication_scene"], a["duplication_scene"], places=6)
