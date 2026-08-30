@@ -43,6 +43,18 @@ a proxy for "does a character want something" and it discriminates nothing.
 four books. Gestures are already varied *inside* a scene; the repetition is between scenes, which
 is why `manuscript_gestures` exists and `check_gesture_density` cannot see it.
 
+**A stated pronoun as a cure for gender drift.** Reading a late scene found Vay Sorel called
+"her" in one book and "He" in another, and the bibles say nothing about gender — so the theory was
+that an unstated pronoun lets each scene guess. Measured: characters *with* a pronoun in their
+description drift at 9.1% (n = 29) and those without at 6.6% (n = 7). The wrong way round, and
+Otto Renner in the reference plan has no stated pronoun and 0% drift.
+
+The measurement is also unsound, which is the more useful half. It counts pronouns within ninety
+characters after a character's name, and cannot tell that character's pronoun from a nearby one's:
+the passage that prompted it reads "Vay stood nearby … back to **Kai's** face. He said nothing",
+where "He" is genuinely ambiguous to a reader too. Any number built this way inherits that
+ambiguity. Nothing was shipped.
+
 **Inert beats as a cause of recap.** r = 0.141 across 108 scenes. The same beat property
 correlates with *dialogue* at r = +0.672, so the hypothesis was not wrong in kind — it was
 pointed at the wrong outcome.
