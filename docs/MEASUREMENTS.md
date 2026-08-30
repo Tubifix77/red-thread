@@ -55,6 +55,22 @@ the passage that prompted it reads "Vay stood nearby … back to **Kai's** face.
 where "He" is genuinely ambiguous to a reader too. Any number built this way inherits that
 ambiguity. Nothing was shipped.
 
+**Forecastability as a measure of tension.** The `--forecast` probe asks a model to predict the
+next scene from the story so far, then scores the guess against what the scene actually contained.
+Rebuilt so the prediction is blind — the old version had the scene in the prompt and let the model
+mark its own work — and then calibrated over 35 scenes of a finished novel. The distribution looks
+plausible: mean .538, range .26 to .73.
+
+The control kills it. Each prediction scored against **the scene it was predicting** gives .540;
+against **a random other scene from the same book**, .492. The scene actually predicted scores
+higher only **41% of the time**, worse than chance. Weighting by rarity across the book, so cast
+names and recurring objects count for less, moves it to 51%. Still chance.
+
+A two-sentence prediction and an eight-hundred-word scene share too little distinctive vocabulary
+for lexical overlap to separate a right guess from a wrong one, and what they do share is the
+book's furniture. Left in the codebase, off, with the control result in its docstring — the idea
+is sourced and one book is one book, but this implementation reports noise.
+
 **Inert beats as a cause of recap.** r = 0.141 across 108 scenes. The same beat property
 correlates with *dialogue* at r = +0.672, so the hypothesis was not wrong in kind — it was
 pointed at the wrong outcome.

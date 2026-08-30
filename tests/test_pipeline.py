@@ -2002,3 +2002,27 @@ class TestTheFactCapIsEnforcedInCode(PipelineCase):
                               self.project.story, self._models(30))
         objects = [f.object for f in facts]
         self.assertEqual(objects, sorted(objects, key=lambda o: int(o.split()[-1])))
+
+
+class TestTheForecastProbeIsKnownNotToDiscriminate(unittest.TestCase):
+    """Calibrated and refuted. The docstring must keep saying so.
+
+    Over 35 scenes of a finished novel the overlap distribution looks reasonable — mean .538 —
+    and the control kills it: a prediction scores .540 against the scene it predicted and .492
+    against a random other scene from the same book, winning only 41% of the time. Rarity
+    weighting moves that to 51%. Still chance.
+
+    This test exists because the probe is one flag away from producing numbers that look like
+    measurements, and it has already spent months in the codebase with the answer in its prompt.
+    """
+
+    def test_the_docstring_records_the_control(self):
+        from redthread.verify import probe_forecast
+        doc = probe_forecast.__doc__ or ""
+        self.assertIn("does not discriminate", doc)
+        self.assertIn("41%", doc)
+        self.assertIn("random other", doc)
+
+    def test_it_is_still_off_by_default(self):
+        from redthread.pipeline import Config
+        self.assertFalse(Config().with_forecast)

@@ -545,8 +545,24 @@ def probe_forecast(scene: Scene, story_so_far: str, models: Models,
     which is the same move `judge_conflicts` makes when it refuses a quote that does not locate.
     Ask the model for the thing only a model can produce, and do the measuring in code.
 
-    The threshold is not yet calibrated against a corpus, so this stays MINOR and stays behind
-    `--forecast`. It reports a smell; it does not gate.
+    **Calibrated against a corpus, and it does not discriminate. Do not enable this.**
+
+    Run over 35 scenes of a finished 71-scene novel, the overlap distribution looks reasonable —
+    mean .538, range .26 to .73. The control is what kills it. Scoring each prediction against
+    the scene it was predicting gives .540; scoring the same prediction against a *random other
+    scene from the same book* gives .492, and the scene actually predicted scores higher only
+    **41% of the time**, which is worse than chance.
+
+    Weighting words by rarity across the book — so cast names and recurring objects count for
+    less — moves that to 51%. Still chance. A two-sentence prediction and an eight-hundred-word
+    scene share too little distinctive vocabulary for lexical overlap to tell a correct forecast
+    from a wrong one, and the words they do share are the book's furniture.
+
+    Kept, off, and documented rather than deleted: the idea that tension is measurable as
+    forecastability is sourced (RESEARCH.md section 9), the cited work measures the entropy of a
+    forecasting distribution rather than one sample, and one book is one book. What is settled is
+    that *this* implementation reports noise, and a number that looks like a measurement is worse
+    than no number.
     """
     if not story_so_far.strip():
         return []
