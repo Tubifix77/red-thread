@@ -534,16 +534,32 @@ def cmd_measures(args) -> int:
         # up matters and is not cosmetic: the first floor table was built from figures rounded
         # *down* for a write-up, and four measures of the very pair it came from were then
         # reported as clearing it.
-        from .replicate import observed_floor
+        from .replicate import group_panel, observed_floor
         import math
         if len(runs) < 2:
             raise SystemExit("--emit-floor needs at least two runs of one plan")
+        floor = observed_floor(runs)
+        panel = group_panel(runs)
         print(f"\n# Observed across {len(runs)} runs of one plan, rounded up.")
         print("NOISE_FLOOR: dict[str, float] = {")
-        for name, value in observed_floor(runs).items():
+        for name, value in floor.items():
             print(f'    "{name}": {math.ceil(value * 100) / 100:.2f},')
         print("}")
-        print(f"\n  Paste into checks.py and set NOISE_FLOOR_N = {len(runs)}. Only do this for a "
+        # Emitted alongside, because a floor of exactly zero means "every run gave the same
+        # value" and not "this measure was measured to be perfectly stable". For a continuous
+        # measure that is not luck — it means the measure was constant across the set, either
+        # because nothing moved it (`recap_block_share` is zero in every current-era scene) or
+        # because it cannot move within one plan at all (`scenes`). Pasting the floor without
+        # this set would let any later difference read as clearing a floor nobody measured,
+        # which is the exact bug that reached the first table.
+        print("\nDEGENERATE_FLOOR: frozenset[str] = frozenset({")
+        for name in sorted(n for n, v in floor.items() if v == 0.0):
+            values = panel[name]
+            print(f'    "{name}",'
+                  f'{"" if values[0] else "   # zero in every run"}')
+        print("})")
+        print(f"\n  Paste both into checks.py and set NOISE_FLOOR_N = {len(runs)}. Only do this "
+              f"for a "
               f"\n  set with nothing varying between its runs — a set with an ablation flag "
               f"\n  flipped yields an effect size, and the arithmetic cannot tell the "
               f"difference.\n")

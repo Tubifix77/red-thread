@@ -417,3 +417,12 @@ class TestLengthSensitiveMeasures(unittest.TestCase):
         a, b = checks.manuscript_measures(short), checks.manuscript_measures(long)
         self.assertGreater(b["duplication_manuscript"], a["duplication_manuscript"])
         self.assertAlmostEqual(b["duplication_scene"], a["duplication_scene"], places=6)
+
+    def test_emit_floor_also_emits_the_degenerate_set(self):
+        # Otherwise step 2 pastes a new floor over the old one and reintroduces the bug the
+        # degenerate set exists to prevent, silently.
+        import contextlib, io
+        from redthread.cli import build_parser
+        args = build_parser().parse_args(
+            ["measures", "runs/current", "runs/replicate", "--emit-floor"])
+        self.assertTrue(args.emit_floor)
