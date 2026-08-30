@@ -1,0 +1,22 @@
+#!/bin/sh
+# Run the suite before anything reaches the remote.
+#
+# This exists because a red suite was pushed twice on 30 August, both times from the same
+# shape of command:
+#
+#     python -m pytest -q | tail -3 && git commit ... && git push
+#
+# A pipeline takes the exit status of its LAST element, and `tail` always succeeds. The suite
+# was red and the `&&` did not care. Reading the summary line by eye does not help either when
+# it scrolls past inside a longer chain.
+#
+# Bypass with --no-verify when you genuinely mean to push a red suite.
+echo "pre-push: running the test suite..."
+if ! python -m pytest -q > /tmp/redthread-prepush.log 2>&1; then
+    echo
+    tail -20 /tmp/redthread-prepush.log
+    echo
+    echo "pre-push: REFUSED — the suite is red. Fix it, or push with --no-verify."
+    exit 1
+fi
+tail -1 /tmp/redthread-prepush.log

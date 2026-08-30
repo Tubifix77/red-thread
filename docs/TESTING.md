@@ -166,3 +166,25 @@ python -m redthread write runs/mystory --local qwen3:8b
 `audit` sits deliberately between planning and writing. Both markers are plan-level failures, and
 generating 90,000 words before discovering that the midpoint repeats the opening is the expensive
 way to learn it.
+
+## The suite runs before a push
+
+`.githooks/pre-push` runs `pytest` and refuses the push if it fails. Enable it once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+It exists because a red suite reached the remote twice on 30 August, both times from the same
+shape of command:
+
+```bash
+python -m pytest -q | tail -3 && git commit -m "..." && git push
+```
+
+A pipeline takes the exit status of its **last** element, and `tail` always succeeds. The suite
+was red, the `&&` did not care, and the summary line scrolled past unread inside a longer chain.
+Neither time was the mistake noticing a failure and pushing anyway; both times the failure was
+invisible to the command that was supposed to catch it.
+
+`--no-verify` bypasses the hook, for when a red push is deliberate.
