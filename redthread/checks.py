@@ -629,6 +629,18 @@ def check_somatic(scene: Scene, max_allowed: int = 1) -> list[Violation]:
     This is the most mechanical of the StoryScope tells and the easiest to catch by pattern.
     The threshold is engineering judgement, not a sourced number: one somatic beat per scene
     is deliberate, four is a tic.
+
+    **It has never fired, and cannot.** Across 456 committed scenes no scene contains more than
+    *one* somatic beat, so a threshold of "more than one" has nothing to reach. The brief's
+    anti-tell says "at most one somatic beat in this scene", and the model complies — which
+    makes this a check that confirms an instruction rather than one that catches a violation.
+    Read as coverage in an audit, it provides none, the same way `midpoint_stall` and
+    `uniform_scene_length` do.
+
+    What it cannot see is more interesting than what it does. The share of scenes carrying a
+    somatic beat is **45% in the current era against 27% before the prose work** — the prose has
+    moved the wrong way on the one StoryScope tell measured at 81% AI against 38% human, and
+    every scene stays inside its allowance while doing so.
     """
     found: list[str] = []
     for pattern in _SOMATIC_PATTERNS:

@@ -154,6 +154,17 @@ sag would mean measuring the *prose* — and the two prose measures tried for it
 and vocabulary novelty, are recorded above as refuted. Dialogue share is the only one that ever
 showed the shape, and it now sits at .157/.130/.175/.162 by quarter, flat.
 
+`check_somatic` is blind for a third reason: nothing ever exceeds its threshold. Across 456
+committed scenes **no scene contains more than one somatic beat**, and the check fires above one.
+The brief tells the writer "at most one somatic beat in this scene" and the writer complies, so
+the check confirms an instruction rather than catching a violation.
+
+What it cannot see matters more. The share of scenes carrying a somatic beat is **45% in the
+current era against 27% before the prose work** — moving the wrong way on the StoryScope tell
+measured at 81% AI against 38% human, with every scene inside its allowance the whole time. A
+per-scene cap cannot detect a corpus-level drift, and this is the clearest instance of that in
+the project.
+
 `uniform_scene_length` is blind the same way and more obviously: it fires only when every scene
 in a plan carries an identical word target, and `schedule.word_targets` varies them by seed — ten
 scenes come back with eight distinct values. Zero of 28 plans are uniform. It can only ever
