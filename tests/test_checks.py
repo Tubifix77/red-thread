@@ -1309,3 +1309,42 @@ class TestRepetitionConcentration(unittest.TestCase):
         one_bad = self._book("the blade at his side glinted in the low sun", 15, n=20)
         self.assertGreater(checks.repetition_concentration(one_bad)[1],
                            checks.repetition_concentration(many_mild)[1])
+
+
+class TestInternalRepetitionThreshold(unittest.TestCase):
+    """A four-word run appearing twice in eight hundred words is English, not a defect.
+
+    `max_repeats` was 1 until the prose improved past it. On the 373 scenes written since the
+    sampler fix that fires on 39% of them, and the findings say so themselves: "1 phrase(s)
+    repeated within the scene (0% of it is repeated material)".
+
+        max_repeats   current era   pre-prose-work
+             1            39%            100%
+             2             2%             99%
+             3             0%             94%
+    """
+
+    # Filler must not repeat, or the scaffolding is the finding. This file has now made that
+    # mistake three times in one day with three hand-rolled generators; `fakes.clean_prose` is
+    # maintained for exactly this and has a test asserting its own duplication stays low.
+    def _filler(self):
+        return " " + fakes.clean_prose(700, 0) + " "
+
+    def _scene(self, text):
+        return Scene(spec_id="s", index=1, text=text)
+
+    def test_a_phrase_twice_is_not_reported(self):
+        text = ("She looked at it for a moment and then went out. " + self._filler()
+                + "He looked at it for a moment too.")
+        self.assertEqual(checks.check_internal_repetition(self._scene(text)), [])
+
+    def test_a_phrase_three_times_is(self):
+        text = ("She looked at it for a moment. " + self._filler()
+                + "He looked at it for a moment. They looked at it for a moment.")
+        self.assertTrue(checks.check_internal_repetition(self._scene(text)))
+
+    def test_the_tic_arm_is_untouched(self):
+        """Five uses is still a tic with its own MAJOR, which is the arm that repairs."""
+        text = "She turned it over in her hands. " * 6 + "The kettle boiled and she took it off."
+        found = checks.check_internal_repetition(self._scene(text))
+        self.assertTrue(any(v.severity is Severity.MAJOR for v in found))

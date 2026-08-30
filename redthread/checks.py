@@ -1029,9 +1029,25 @@ def duplication_ratio(text: str, n: int = 4) -> float:
     return 1 - len(set(grams)) / len(grams)
 
 
-def check_internal_repetition(scene: Scene, n: int = 4, max_repeats: int = 1,
+def check_internal_repetition(scene: Scene, n: int = 4, max_repeats: int = 2,
                               tic: int = 5) -> list[Violation]:
-    """The same phrase twice inside one scene. Engineering judgement, not sourced.
+    """The same phrase three times inside one scene. Engineering judgement, not sourced.
+
+    **`max_repeats` was 1 — a phrase appearing twice — until the prose improved past it.** On the
+    373 scenes written since the sampler fix that fires on 39%, and the findings say so
+    themselves: "1 phrase(s) repeated within the scene (0% of it is repeated material)". A
+    four-word run appearing twice in eight hundred words is English, not a defect.
+
+    Swept against both halves of the corpus, and the separation is nearly clean:
+
+        max_repeats   current era   pre-prose-work
+             1            39%            100%
+             2             2%             99%
+             3             0%             94%
+
+    Two keeps essentially all of the detection the check was built for and drops the
+    false-positive rate on good prose from 39% to 2%. Three would go silent on the current era
+    entirely, which is a threshold that has stopped measuring anything.
 
     Advisory on purpose, and the reasoning is worth recording because the obvious move is wrong.
     The duplication ratio discriminates beautifully — clean drafts sit at 0.00, the median scene
