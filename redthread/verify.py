@@ -14,7 +14,7 @@ purpose-built rerankers for exactly this reason (docs/RESEARCH.md section 1).
 from __future__ import annotations
 
 from . import checks as _checks
-from .ledger import Ledger
+from .ledger import Ledger, content_tokens
 from .llm import LLMError, Models, parse_json
 from .models import (Fact, FactKind, Scene, SceneSpec, Severity, StorySpec, Thread,
                      Violation)
@@ -452,42 +452,75 @@ def probe_tells(scene: Scene, models: Models) -> list[Violation]:
 # 5. forecastability — tension as unpredictability  (RESEARCH.md section 9)
 # ======================================================================================
 
-FORECAST_PROMPT = """Here is a novel's story so far, in summary, followed by what actually \
-happens next.
+FORECAST_PROMPT = """Here is a novel's story so far, in summary.
 
-Before reading what happens next, predict it. Then score how close your prediction was.
+Write what you think happens in the very next scene. Two or three sentences: who is there, what they do, and how it ends. Commit to a specific answer — the most likely continuation, not a hedge covering several.
 
 STORY SO FAR:
 {context}
 
-WHAT HAPPENS NEXT:
-{next_scene}
-
 {json_only}
 Schema:
-{{"prediction": "what you would have predicted, 2 sentences",
-  "closeness": 0.0, "obvious_beats": ["..."]}}
+{{"prediction": "what happens next, 2-3 sentences"}}"""
 
-"closeness" is 0.0 if what happened was genuinely unforeseeable from the story so far, and 1.0 \
-if it was the only thing that could have happened. Be honest — a high score is useful \
-information, not a failure on your part."""
+
+def _stems(text: str) -> set[str]:
+    """Content words with their commonest inflections stripped.
+
+    Crude on purpose, and necessary: a prediction saying "demands the ledger" against a scene
+    saying "demanded the ledger back" scored 0.71 without this, because two of its seven content
+    words were the same verb in a different tense. Untensed comparison is not optional when one
+    side is a forecast and the other is the past-tense prose that fulfilled it — every miss it
+    invents biases the measure the same way, toward calling a predicted scene unpredictable.
+    """
+    out = set()
+    for word in content_tokens(text):
+        for suffix in ("ing", "ed", "es", "s"):
+            if len(word) > len(suffix) + 2 and word.endswith(suffix):
+                word = word[: -len(suffix)]
+                break
+        out.add(word)
+    return out
+
+
+def forecast_overlap(prediction: str, scene_text: str) -> float:
+    """How much of a blind prediction the scene actually delivered, 0 to 1.
+
+    Content words only, and scored as a share of the *prediction* rather than a symmetric
+    similarity: a two-sentence guess against an eight-hundred-word scene can never be
+    symmetrically similar to it, and what matters is whether the guess came true.
+    """
+    guess = _stems(prediction)
+    if not guess:
+        return 0.0
+    return len(guess & _stems(scene_text)) / len(guess)
 
 
 def probe_forecast(scene: Scene, story_so_far: str, models: Models,
-                   threshold: float = 0.8) -> list[Violation]:
+                   threshold: float = 0.75) -> list[Violation]:
     """If a model can call the scene from the story so far, the scene has no tension.
 
-    Narrative tension is downstream of hidden information, and it can be metered by how
-    predictable upcoming events are (docs/RESEARCH.md section 9). The cited work measures the
-    entropy of a forecasting distribution; this is a cruder single-sample proxy — one prediction
-    and a self-reported closeness — because a self-scored number needs no logprobs and works
-    against any backend. Treat it as a smell test, not the metric from the paper.
+    Narrative tension is downstream of hidden information and can be metered by how predictable
+    upcoming events are (docs/RESEARCH.md section 9). The cited work measures the entropy of a
+    forecasting distribution; this is a cruder single-sample proxy.
+
+    **It had two flaws that made it worse than crude, and both are fixed here.** The prompt used
+    to contain the actual scene and then ask the model to "predict it before reading what happens
+    next" — the answer was in the question, so what came back was a rationalisation rather than a
+    forecast. And the model then scored its own prediction, with the prompt pleading "be honest —
+    a high score is useful information, not a failure on your part".
+
+    Now the prediction is blind: the model sees the story so far and nothing else. The comparison
+    is arithmetic — content-word overlap between what it guessed and what the scene contains —
+    which is the same move `judge_conflicts` makes when it refuses a quote that does not locate.
+    Ask the model for the thing only a model can produce, and do the measuring in code.
+
+    The threshold is not yet calibrated against a corpus, so this stays MINOR and stays behind
+    `--forecast`. It reports a smell; it does not gate.
     """
     if not story_so_far.strip():
         return []
-    prompt = FORECAST_PROMPT.format(context=_clip(story_so_far, 1200),
-                                    next_scene=_clip(scene.text, 700),
-                                    json_only=JSON_ONLY)
+    prompt = FORECAST_PROMPT.format(context=_clip(story_so_far, 1200), json_only=JSON_ONLY)
     reply = models.critic.complete(prompt, max_tokens=STRUCTURED_BUDGET,
                                    temperature=0.0, json_mode=True)
     try:
@@ -496,19 +529,18 @@ def probe_forecast(scene: Scene, story_so_far: str, models: Models,
         return []
     if not isinstance(data, dict):
         return []
-    try:
-        closeness = float(data.get("closeness", 0.0))
-    except (TypeError, ValueError):
+    prediction = str(data.get("prediction", "")).strip()
+    if not prediction:
         return []
-    if closeness < threshold:
+
+    overlap = forecast_overlap(prediction, scene.text)
+    if overlap < threshold:
         return []
-    beats = ", ".join(str(b) for b in (data.get("obvious_beats") or [])[:4])
     return [Violation(
         "low_tension", Severity.MINOR,
-        f"a model predicted this scene from the story so far at {closeness:.2f} closeness"
-        + (f" (obvious: {beats})" if beats else "")
-        + ". Consider what this thread is still concealing.",
-        "llm:probe_forecast", str(data.get("prediction", ""))[:240])]
+        f"a model shown only the story so far predicted {overlap:.0%} of this scene's content "
+        f"without seeing it. Consider what this thread is still concealing.",
+        "llm:probe_forecast", prediction[:240])]
 
 
 # ======================================================================================

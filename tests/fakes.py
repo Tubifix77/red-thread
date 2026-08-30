@@ -19,7 +19,7 @@ ROLES = {
     "checking a novel for continuity errors": "conflict",
     "whether a scene fulfilled its brief": "threads",
     "auditing a scene from a novel": "tells",
-    "Before reading what happens next": "forecast",
+    "Write what you think happens in the very next scene": "forecast",
     "Fix ONLY the problems listed": "repair",
     "One sentence in a novel scene must be rewritten": "surgical",
     "It currently reuses wording from the": "reseam",

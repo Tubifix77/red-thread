@@ -1846,3 +1846,54 @@ class TestSelectionSeesTheRepairComing(PipelineCase):
         scene = Scene(spec_id="s", index=1, text=fakes.clean_prose(900, 0))
         v = Violation("thematic_gloss", Severity.MAJOR, "d", "c", "a sentence never written")
         self.assertEqual(_projected_words(scene, [v]), scene.word_count())
+
+
+class TestForecastProbeAsksBlind(unittest.TestCase):
+    """The probe had the answer in the question, and then let the model mark its own work.
+
+    The prompt used to contain the actual scene and ask the model to "predict it before reading
+    what happens next" — so what came back was a rationalisation, not a forecast. It then asked
+    the model to score its own closeness, pleading "be honest — a high score is useful
+    information, not a failure on your part."
+
+    Both are gone. The model sees the story so far and nothing else; the comparison is
+    arithmetic. Same move `judge_conflicts` makes when it refuses a quote that will not locate:
+    ask the model for the thing only a model can produce, and do the measuring in code.
+    """
+
+    def test_the_scene_is_not_in_the_prompt(self):
+        from redthread.verify import FORECAST_PROMPT
+        self.assertNotIn("{next_scene}", FORECAST_PROMPT)
+        self.assertNotIn("WHAT HAPPENS NEXT", FORECAST_PROMPT)
+
+    def test_the_model_is_not_asked_to_score_itself(self):
+        from redthread.verify import FORECAST_PROMPT
+        self.assertNotIn("closeness", FORECAST_PROMPT.lower())
+        self.assertNotIn("be honest", FORECAST_PROMPT.lower())
+
+    def test_overlap_is_a_share_of_the_prediction(self):
+        """A two-sentence guess against an eight-hundred-word scene can never be symmetrically
+        similar to it. What matters is whether the guess came true."""
+        from redthread.verify import forecast_overlap
+        guess = "Vael confronts Sorin at the gate and demands the ledger."
+        delivered = ("Vael walked to the gate. He demanded the ledger from Sorin, who refused. "
+                     + "The rain kept on. " * 60)
+        self.assertGreater(forecast_overlap(guess, delivered), 0.6)
+        self.assertEqual(forecast_overlap(guess, "Rain fell on the harbour all morning."), 0.0)
+        self.assertEqual(forecast_overlap("", delivered), 0.0)
+
+    def test_a_predicted_scene_is_reported_and_an_unpredicted_one_is_not(self):
+        from redthread.verify import probe_forecast
+        models, backend = fakes.scripted_models()
+        backend.queue("forecast", json.dumps({
+            "prediction": "Vael confronts Sorin at the gate and demands the ledger back."}))
+        scene = Scene(spec_id="s", index=2, text=(
+            "Vael walked to the gate. He demanded the ledger back from Sorin, who refused."))
+        found = probe_forecast(scene, "Vael has been tracking Sorin for weeks.", models)
+        self.assertTrue(found)
+        self.assertIs(found[0].severity, Severity.MINOR)
+
+        backend.queue("forecast", json.dumps({
+            "prediction": "Vael confronts Sorin at the gate and demands the ledger back."}))
+        other = Scene(spec_id="s", index=2, text="Rain fell on the harbour and nobody came.")
+        self.assertEqual(probe_forecast(other, "Vael has been tracking Sorin.", models), [])
