@@ -272,14 +272,20 @@ difference.
 |---|---|---|
 | Plan & thread state machines | built | Pre / Post / Forbid per scene, audited before a word is written |
 | Commit gate & ledger | built | nothing enters memory until the scene passes |
-| Scene checks | built | 32 checks; thresholds set from a 91-scene corpus, never from taste |
-| Repair ladder | built | 10 rungs, narrowest first; a test asserts every blocking kind has a repair that can reach it |
-| Resume after failure | built | five books finished; restart picks up at the last committed scene |
-| Candidate selection | partial | ranks on violations, then duplication, then recap, then length — blind to repair cost |
+| Scene checks | built | 32 checks; thresholds calibrated on prose that had the defect, which is now a different corpus from the one the project writes |
+| Repair ladder | built | 12 rungs, narrowest first; a test asserts every blocking kind has a repair that can reach it |
+| Resume after failure | built | eight books finished; a held-back scene gets one whole second attempt before the run stops |
+| Ledger slice reaches back | built | stratified so an ending can see its own beginning; effect on the prose is a wash ([A/B](evidence/ledger-slice-ab.md)) |
+| Recap-grammar repair | built | `unrecap` rewrites a block, `cutrecap` deletes it; now never fires, because the sampler fix removed the cause |
+| Cross-scene feedback | built | the book's refrains and repeated gestures, and the model's own cross-book constructions, go into the next brief |
+| Planner self-repair | built | unwritable bans, catchphrases, topic-steering and story-shaped samples fixed in code; solo-heavy plans re-asked |
+| Candidate selection | built | ranks on violations, duplication, recap, gestures, dialogue, then length *projected after implied deletions* |
 | Redraft on exhaustion | partial | fires, but a fresh draft is not reliably better than the one it replaces |
-| Ledger slice reaches back | built | stratified so an ending can see its own beginning; measured effect on the prose is a wash ([A/B](evidence/ledger-slice-ab.md)) |
-| Recap-grammar repair | built | `unrecap` rewrites a block, `cutrecap` deletes it; verified live |
-| Dramatic planning | **missing** | beats are valid and inert; want, obstacle and cost are not modelled |
+| Manuscript-wide repetition | partial | suppresses the refrains it names; new ones form that no threshold predicts |
+| Solo-scene drift | partial | prompt, running tally and a re-ask pass; the total stayed bimodal across six plans and the re-ask is untested live |
+| Four checks that cannot fire | **known** | subplot independence, midpoint stall, uniform scene length and somatic each test a property the scheduler or the brief already guarantees; they read as coverage and provide none |
+| Error bars on any of this | **missing** | no two runs of one plan with no change between them, so effect and noise are not separable ([detail](MEASUREMENTS.md)) |
+| Dramatic planning | **missing** | want, obstacle and cost are not modelled; the dialogue instruction is the one lever found |
 | Any judgement of quality | **missing** | by design, and the design is now the constraint |
 
 ---
@@ -288,9 +294,9 @@ difference.
 
 | | |
 |---:|---|
-| **7** | books finished end to end |
-| **144,248** | words drafted locally |
-| **145** | scenes committed |
+| **8** | books finished end to end |
+| **204,662** | words drafted locally |
+| **216** | scenes committed |
 | **0** | API calls |
 | **515** | tests passing |
 
@@ -305,6 +311,27 @@ The other half of the prediction is untouched. A middle that sags for eight scen
 possible in a way it was not at nine scenes, and nothing here measures whether this one does.
 
 ---
+
+## What a day of measuring changed about how to read this
+
+Five findings were nearly shipped that turned out to be properties of the measuring apparatus,
+and two more were published and retracted the same evening. The corrective, recorded in
+[MEASUREMENTS.md](MEASUREMENTS.md), is a control: score a measure against something it has no
+business matching and see whether it notices.
+
+Two consequences for every number on this page.
+
+**The corpus is two populations.** Ten books predate the prose work of 29–30 August and seven
+follow it, and the gap is not incremental — duplication .279 against .002, recap .380 against
+.047, scenes with a run of four past-perfect sentences 61% against 0%. Thresholds calibrated on
+"the committed corpus" were calibrated on the first group, which is correct for catching a defect
+and wrong as a description of what this project now writes.
+
+**There are no error bars.** Every comparison here is one run against one run. Across three runs
+of one plan, dialogue share and recap grammar move about 6% of their own value — small enough to
+trust — while the worst-refrain count moves 75% and per-scene duplication 153%. Those three runs
+*are* the conditions being compared, so effect and noise cannot be separated from them. A true
+replicate is running for the first time.
 
 ## The short answer
 
