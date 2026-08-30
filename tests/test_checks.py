@@ -1212,3 +1212,44 @@ class TestManuscriptGestures(unittest.TestCase):
                                      gestures=[("jaw tightened", 13)])
         self.assertIn("jaw tightened", text)
         self.assertIn("same movement", text)
+
+
+class TestModelRefrains(unittest.TestCase):
+    """A habit the writer brings to every book, which no per-book check can see.
+
+    `manuscript_refrains` reads one manuscript. Measured across seven completed books with seven
+    different premises, "the edge of the" is a refrain — three or more scenes — in **all seven**,
+    and "the weight of the" in six. Neither stands out inside any single book, which is exactly
+    why looking inside one cannot find them.
+
+    The control that produced this is the one worth keeping: 77% of what `manuscript_refrains`
+    reports is genuinely book-specific and does not appear in a book with a different premise.
+    The 23% that leaks is this list.
+    """
+
+    def test_the_list_loads(self):
+        phrases = checks.load_model_refrains()
+        self.assertIn("the edge of the", phrases)
+        self.assertTrue(all(p == p.lower().strip() for p in phrases))
+        self.assertTrue(all(len(p.split()) >= 3 for p in phrases),
+                        "short entries are the unavoidable-ban problem; these must be routable")
+
+    def test_a_missing_file_is_not_an_error(self):
+        self.assertEqual(checks.load_model_refrains(Path("does-not-exist.txt")), [])
+
+    def test_comments_and_counts_do_not_leak_into_the_phrases(self):
+        for p in checks.load_model_refrains():
+            self.assertNotIn("#", p)
+            self.assertFalse(any(ch.isdigit() for ch in p))
+
+    def test_it_reaches_the_brief_separately_from_this_book_s_refrains(self):
+        from redthread import brief as briefmod
+        from redthread.ledger import Ledger
+        text = briefmod.render_brief(
+            make_spec(), make_story(), Ledger(),
+            refrains=[("the blade at his side", 8)],
+            model_refrains=["the edge of the"])
+        self.assertIn("the blade at his side", text)
+        self.assertIn("the edge of the", text)
+        self.assertIn("every book you write", text,
+                      "the two are different claims and must not be presented as one")

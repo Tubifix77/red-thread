@@ -259,6 +259,36 @@ def load_slop(path: Path | None = None) -> list[str]:
     return phrases
 
 
+_model_refrain_cache: list[str] | None = None
+
+
+def load_model_refrains(path: Path | None = None) -> list[str]:
+    """Constructions the writer model repeats across books, not within one.
+
+    `manuscript_refrains` reads one manuscript and is blind by construction to a habit the model
+    brings with it. Measured across seven books with seven different premises, "the edge of the"
+    is a refrain in all seven and "the weight of the" in six — invisible to a per-book check
+    because it never stands out inside any single book.
+
+    Deliberately not merged into the antislop list, which means something stronger: measured
+    over-representation against human fiction. This is only "this model returns to these", which
+    needs no human corpus and claims no more than it has.
+    """
+    global _model_refrain_cache
+    if _model_refrain_cache is not None and path is None:
+        return _model_refrain_cache
+    target = path or (DATA_DIR / "model_refrains.txt")
+    phrases: list[str] = []
+    if target.exists():
+        for line in target.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                phrases.append(line.lower())
+    if path is None:
+        _model_refrain_cache = phrases
+    return phrases
+
+
 def slop_sample(n: int = 12) -> list[str]:
     """A sample of the slop list suitable for putting *in* a brief.
 

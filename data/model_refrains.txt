@@ -1,0 +1,21 @@
+# Constructions this project's writer model reaches for in book after book.
+#
+# Measured across seven completed books with seven different premises, all written by
+# qwen3:8b. A phrase is listed only if it recurs in three or more scenes of a book -- the
+# threshold manuscript_refrains uses -- in at least four of the seven books.
+#
+#   the edge of the      refrain in 7 books of 7
+#   the weight of the    refrain in 6 of 7
+#   eyes fixed on the    refrain in 4 of 7
+#
+# These are NOT "slop" in the antislop sense. That word means over-represented relative to
+# human fiction, and establishing it needs a human corpus this project does not have. The
+# claim here is narrower and still useful: the model returns to these across premises, so no
+# per-book check can see them. manuscript_refrains looks inside one manuscript and is blind
+# by construction to a habit the model brings with it.
+#
+# Four-word constructions are specific enough to route around, which is the test
+# check_ban_is_avoidable applies to a ban before trusting it.
+the edge of the
+the weight of the
+eyes fixed on the
