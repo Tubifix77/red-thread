@@ -82,6 +82,23 @@ for the write-up. The floor now holds the observed values, and a test asserts th
 exactly the size of a measure's own floor is never a result. `repetition_concentration` had been
 given a floor of .20 by guesswork; the pair says .28.*
 
+*Two more corrections followed from running the tool rather than reading it, and both were the
+same species of error the step exists to prevent.*
+
+*A **floor of 0.00 because both replicates were zero is not a floor of 0.00.** `recap_block_share`
+reads 0.00 twice because zero of 373 current-era scenes carry a run of four consecutive
+past-perfect sentences — so a later condition reading 0.05 would have been reported as clearing a
+floor nobody measured. `DEGENERATE_FLOOR` names those, and the report now says "differs, but NO
+FLOOR WAS MEASURED" rather than "clears the 0% floor", which reads as a strong result and is the
+weakest one available. A test asserts every zero floor is declared, which is the direction that
+matters.*
+
+*And **two books of different lengths do not compare on a manuscript-wide measure.** Running
+`measures runs/current --against runs/keeper` put 71 scenes against 9 and reported
+`duplication_manuscript` as clearing its floor by 126% — true, and entirely the length.
+`LENGTH_SENSITIVE` names the five, the comparison warns before the table rather than after it,
+and drops them from the verdict. That comparison goes from ten survivors to six.*
+
 **4. Add ablation switches for everything already built.** ✅ `--no-refrain-feedback`,
 `--no-gesture-feedback`, `--no-repeople`, `--no-model-refrains`. This converts "I built it" into
 "it can be evaluated", and should have existed before any of them were built.
