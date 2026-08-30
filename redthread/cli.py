@@ -50,6 +50,15 @@ def cmd_audit(args) -> int:
     violations = checks.audit_plan(project.plan, project.story, project.history)
     problems = _print_violations(violations, f"Plan audit — {project.story.title}")
 
+    # A clean audit is not the same as a covered one. Six of these checks can only confirm the
+    # scheduler on a plan the scheduler built, and saying so beside the result is the difference
+    # between a green audit and a green audit that has been read correctly.
+    quiet = checks.quiet_checks()
+    print(f"\n  {len(quiet)} of these checks cannot fire on a generated plan — they test "
+          f"properties\n  the scheduler or the brief already guarantees. See "
+          f"docs/MEASUREMENTS.md. A clean\n  audit is not coverage of: "
+          + ", ".join(sorted(quiet)))
+
     print("\nThread coverage:")
     scene_map = checks.thread_scene_map(project.plan)
     for thread in project.story.threads:

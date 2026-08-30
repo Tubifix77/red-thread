@@ -1581,6 +1581,101 @@ def describe_difference(measure: str, a: float, b: float) -> str:
             f"{verdict} the {floor:.0%} floor")
 
 
+# --------------------------------------------------------------------------------------
+# The rule this project has been keeping without stating it  (docs/PLAN.md step 23)
+#
+# **The gate may refuse only on evidence code can locate. The plan may be shaped by anything,
+# including a model's reading of a story.**
+#
+# The asymmetry is about cost, not about trust. A bad plan costs one re-ask before a word is
+# written. A bad gate costs a book that never finishes — a scene held back by a model's opinion
+# cannot be repaired, because there is nothing to repair against, and an unattended run stops
+# there at three in the morning.
+#
+# Every quality gain in this project came through the plan and none through a check: the dialogue
+# instruction that took dialogue share from .077 to .223, the catchphrase filter, the re-people
+# pass, the story-shaped sample drop. Not one of them is a check. Meanwhile four plan-level checks
+# have been built and deleted for firing on the hand-authored reference plan, every one of them
+# because it compared two fields by shared vocabulary.
+#
+# The two tables below make the rule enforceable rather than aspirational, and both are asserted
+# by tests/test_rule.py.
+# --------------------------------------------------------------------------------------
+
+BLOCKER_SOURCES: dict[str, str] = {
+    "check_format": "a heading or a scene number, found by pattern",
+    "check_pov": "first- or second-person pronouns outside dialogue, counted",
+    "check_seam": "an empty scene, or wording copied from the previous one, located as a span",
+    "check_subplot_independence": "a plan with no threads at all, counted",
+    "check_stakes_progression": "a thread state not in that thread's own declared list",
+    "pipeline": "a scene written out of order, or every draft attempt failing — neither is "
+                "about the prose",
+
+    # The one model-sourced blocker, and the reason it is allowed. `conflict_candidates` selects
+    # the pairs deterministically and the model answers one binary question about two named
+    # ledger rows, both of which are quoted in the violation. It never reads the scene as a
+    # story, and it cannot refuse a scene for being weak — only for saying that a thing is blue
+    # which an earlier scene said is red.
+    "llm:judge_conflicts": "two ledger rows contradict — pairs chosen in code, both rows quoted",
+    # Not a judgement either, and it took a test to say so precisely: this fires when the call
+    # returned nothing parseable, or returned zero facts for a scene of prose. It is a broken
+    # call, not an opinion about the writing, and the run must stop because the ledger cannot be
+    # updated — continuing would write every later scene against memory missing a scene.
+    "llm:extract_facts": "the extraction call returned no usable JSON, so the ledger cannot be "
+                         "updated",
+}
+"""Every source permitted to emit a BLOCKER, and what makes its evidence locatable.
+
+A test walks the source tree for `Severity.BLOCKER` and asserts the emitting source appears
+here. Adding a blocker therefore means writing down what a person could check by hand, which is
+the whole rule expressed as a thing you have to do.
+"""
+
+SCHEDULER_GUARANTEED: dict[str, str] = {
+    "subplot_independence": "schedule.py assigns which scene moves which thread, so median "
+                            "overlap between a subplot and the main thread is 33% and only 2 of "
+                            "56 subplots ever reach the 0.80 threshold",
+    "state_regression": "the scheduler cannot emit a backwards transition",
+    "state_repeat": "the scheduler cannot emit a repeated state",
+    "unknown_state": "the scheduler only emits states from the thread's own list",
+    "midpoint_stall": "every thread gains ground in every third by construction — zero threads "
+                      "stall in the middle third of any of the 28 plans in this project",
+    "uniform_scene_length": "schedule.word_targets varies them by seed; zero of 28 plans are "
+                            "uniform",
+}
+"""Checks that can only ever confirm the scheduler, on a plan the scheduler built.
+
+They are worth keeping for hand-authored plans, where the property is not guaranteed, and worth
+discounting entirely when reading a generated one. Named here because the alternative is that
+they sit in a green audit reading as coverage they do not provide.
+
+The uncomfortable corollary is the reason this list is in the code rather than only in a document:
+**every property `schedule.py` guarantees is a property nothing verifies in the prose.** Threads
+reach their terminal states because the schedule says so. Whether the book earns them is not
+checked anywhere, and `midpoint_stall` is the check that looks like it is.
+"""
+
+INSTRUCTION_CONFIRMING: dict[str, str] = {
+    "somatic_emotion": "the brief says 'at most one somatic beat in this scene' and the writer "
+                       "complies — across 456 committed scenes no scene has ever contained more "
+                       "than one, so a threshold of 'more than one' has nothing to reach",
+}
+"""Checks quiet for a third reason: the brief already asks for what they enforce.
+
+Distinct from `SCHEDULER_GUARANTEED` because the guarantee is a model's compliance rather than
+code's, so it could stop holding at any time without anything changing here — and distinct from a
+check that is quiet because the gate upstream of it works, which is a check doing its job.
+"""
+
+
+def quiet_checks() -> dict[str, str]:
+    """Every check known to be structurally unable to fire, with the reason.
+
+    One function so that a report cannot list a subset and imply the rest are live.
+    """
+    return {**SCHEDULER_GUARANTEED, **INSTRUCTION_CONFIRMING}
+
+
 def run_all(
     scene: Scene,
     spec: SceneSpec,

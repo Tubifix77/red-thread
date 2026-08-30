@@ -20,7 +20,7 @@ been through `checks.clears_noise`.
 | 3 — dependency graph | 2 of 3 | step 16 needs a plan carrying the new field |
 | 4 — want, obstacle, cost | 0 of 3 | |
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
-| 6 — write the rule down | 0 of 3 | |
+| 6 — write the rule down | 2 of 3 | step 25 is the final panel; needs phase 1 |
 
 ---
 
@@ -252,15 +252,37 @@ like this can never test the measures this project has spent most of its effort 
 
 ## Phase 6 — write the rule down  *(~3 h GPU)*
 
-**23. Codify the distinction the project has been using without stating it.** The gate may only
-refuse what code can check. The *plan* may be shaped by anything, including a model's reading,
-because a bad plan costs a re-ask and a bad gate costs a book that never finishes. Every quality
-gain here came through that door: the dialogue instruction, the catchphrase filter, the re-people
-pass. None is a check.
+**23. Codify the distinction the project has been using without stating it.** ✅ The gate may
+only refuse what code can check. The *plan* may be shaped by anything, including a model's
+reading, because a bad plan costs a re-ask and a bad gate costs a book that never finishes. Every
+quality gain here came through that door: the dialogue instruction, the catchphrase filter, the
+re-people pass. None is a check.
 
-**24. Audit the four checks that cannot fire.** Subplot independence, midpoint stall, uniform
-scene length and somatic each test a property the scheduler or the brief already guarantees.
-Either give them a reason to exist or mark them so they never read as coverage again.
+*Written down as `checks.BLOCKER_SOURCES` and **enforced**: a test walks the source tree for
+`Severity.BLOCKER` and insists the emitting source has recorded what a person could check by
+hand. Adding a blocker now means writing that sentence, which is the only form a principle
+survives in.*
+
+*Writing the test sharpened the rule twice in five minutes. It caught a source mislabelled from
+memory — `no_threads` comes from `check_subplot_independence`, not `audit_plan` — and it refuted
+the claim that there is exactly one model-sourced blocker. There are two: `llm:extract_facts`
+blocks as well. That is not a counterexample but a better statement of the rule — neither refuses
+a scene for **how it reads**. One answers a binary question about two ledger rows code selected
+and quotes both; the other fires because a call returned nothing parseable, which is a broken
+call, not an opinion.*
+
+**24. Audit the four checks that cannot fire.** ✅ *(six, in the end)* Subplot independence,
+midpoint stall, uniform scene length and somatic each test a property the scheduler or the brief
+already guarantees. Either give them a reason to exist or mark them so they never read as
+coverage again.
+
+*Marked, in code rather than only in prose: `SCHEDULER_GUARANTEED` (six kinds — the three state
+legality checks belong with the other three) and `INSTRUCTION_CONFIRMING` (somatic, which is
+quiet for a different reason: a model is complying with the brief, and that could stop being true
+at any time without anything here changing). `redthread audit` now prints the list beside its
+result, so a clean audit can never again read as coverage it does not provide. A test asserts
+every named kind is one the codebase can still emit, so a rename cannot leave the disclaimer
+pointing at nothing.*
 
 **25. Re-run the whole panel on a fresh premise and publish the numbers.** Two runs, every measure
 with its floor. Whatever it says then is the state of the project — and the first time that
