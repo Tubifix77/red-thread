@@ -4,9 +4,28 @@ Every threshold in this project is set from a corpus rather than from taste, whi
 candidate measures get built, tested and thrown away. This file is the record of both halves.
 The refuted list is the more useful one: it is what stops the same afternoon being spent twice.
 
-Corpus as of 30 August 2026: 13 completed books, 325 scenes, 307,060 words, `qwen3:8b` in every
-role. Reference band is three cold single scenes from `gemma3:12b`, `phi4:14b` and `qwen3:8b`
-with no orchestration, in `docs/evidence`.
+Corpus as of 30 August 2026: 17 completed books, 482 scenes, `qwen3:8b` in every role. Reference
+band is three cold single scenes from `gemma3:12b`, `phi4:14b` and `qwen3:8b` with no
+orchestration, in `docs/evidence`.
+
+**The corpus has two eras, and most figures below mix them.** Ten books predate the prose work of
+29–30 August; seven were written after it. The difference is not incremental:
+
+| | scenes | duplication | recap | gestures | a run of 3+ | a run of 4+ | gloss |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| pre-prose-work | 109 | .279 | .380 | 3.4 | 75% | 61% | 47% |
+| current era | 373 | **.002** | **.047** | 2.2 | **4%** | **0%** | **0%** |
+
+Any threshold in this project derived from "the committed corpus" was derived mostly from the top
+row. That is correct for a threshold meant to catch the defect — you calibrate on prose that has
+it — and misleading for any sentence of the form "scenes in this project run to X". Where it
+matters below, the era is named.
+
+One consequence worth stating: `check_recap_block` now never fires. Zero of 373 current-era scenes
+carry a run of four consecutive past-perfect sentences, against 61% before. The check did its job
+and the sampler fix removed the cause; it is kept for the same reason `midpoint_stall` is, and
+lowering it to three was considered and rejected — 16 blocks exist across the whole current
+corpus and several are unquoted reported speech, where past perfect is doing legitimate work.
 
 ---
 
