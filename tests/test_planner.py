@@ -22,12 +22,13 @@ from redthread import checks
 from redthread.llm import LLMError, Models
 from redthread.models import Severity, ThreadKind
 from redthread.planner import (drop_story_shaped_samples, drop_unavoidable_bans,
-                               scripted_topics,
+                               scripted_topics, repeople_solo_scenes,
                                make_plan, parse_story,
                                propose_story, story_problems, expand_beats,
                                flesh_scenes)
 from redthread.schedule import schedule_threads, score_spec, to_scene_specs
 
+from tests import fakes
 from tests.fakes import ScriptedBackend
 
 FIVE = ["dormant", "planted", "complicated", "escalated", "paid_off"]
@@ -910,3 +911,68 @@ class TestAVoiceMustNotSteerAtTheStorysOwnSubject(unittest.TestCase):
         story = self._story("It is always about the Ledger of Time, and he deflects by "
                             "changing the subject to the Ledger of Time.")
         self.assertEqual(len(scripted_topics(story)), 1)
+
+
+class TestSoloScenesAreRepeopled(unittest.TestCase):
+    """Ask first, then act in code when asking did not work — for the third time in this file.
+
+    The planner is told scenes nearly always have two or more people in them, and a running
+    tally tells it how many it has already left empty. Both help and neither controls the total:
+    across six plans of one premise the solo count came out 5, 5, 22, 24, 10 and 28.
+
+    Unlike the unwritable-ban filter and the fact cap, this cannot be deterministic — deciding
+    who is in a room is authorship — so it re-asks, for the wrong scenes only, and only when
+    there are enough of them to matter.
+    """
+
+    def _story(self):
+        return parse_story(json.loads(story_json()))
+
+    def _specs(self, solo_indices, n=10):
+        from redthread.models import SceneSpec, Beat
+        return [SceneSpec(id=f"s{i}", index=i, summary=f"scene {i}", setting="a room",
+                          pov="ves", characters=(["ves"] if i in solo_indices
+                                                 else ["ves", "ard"]),
+                          beats=[Beat(summary="something happens")])
+                for i in range(1, n + 1)]
+
+    def _reply(self, indices):
+        return json.dumps({"scenes": [
+            {"index": i, "summary": f"scene {i}", "characters": ["ves", "ard"],
+             "beats": ["Vesna asks Ardo why the run is short",
+                       "Ardo refuses to say who set the type"]} for i in indices]})
+
+    def test_a_plan_below_the_threshold_is_left_alone(self):
+        """A handful of solo scenes is a novel, not a defect."""
+        models, backend = fakes.scripted_models()
+        specs = self._specs([3])           # 1 of 10
+        self.assertEqual(repeople_solo_scenes(specs, self._story(), models), 0)
+        self.assertEqual(backend.count("repeople"), 0, "no call should be made")
+
+    def test_a_solo_heavy_plan_is_repeopled(self):
+        models, backend = fakes.scripted_models()
+        solo = [1, 2, 3, 4, 5]
+        specs = self._specs(solo)          # 5 of 10
+        backend.queue("repeople", self._reply(solo))
+        fixed = repeople_solo_scenes(specs, self._story(), models)
+        self.assertEqual(fixed, 5)
+        self.assertTrue(all(len(s.characters) >= 2 for s in specs))
+
+    def test_only_the_solo_scenes_are_touched(self):
+        models, backend = fakes.scripted_models()
+        specs = self._specs([1, 2, 3, 4, 5])
+        peopled_before = {s.index: list(s.characters) for s in specs if len(s.characters) > 1}
+        backend.queue("repeople", self._reply([1, 2, 3, 4, 5]))
+        repeople_solo_scenes(specs, self._story(), models)
+        for s in specs:
+            if s.index in peopled_before:
+                self.assertEqual(s.characters, peopled_before[s.index])
+
+    def test_a_rewrite_that_comes_back_solo_is_not_counted(self):
+        """A call that changed nothing must not be reported as a fix."""
+        models, backend = fakes.scripted_models()
+        specs = self._specs([1, 2, 3, 4, 5])
+        backend.queue("repeople", json.dumps({"scenes": [
+            {"index": i, "summary": f"scene {i}", "characters": ["ves"],
+             "beats": ["she thinks about it"]} for i in [1, 2, 3, 4, 5]]}))
+        self.assertEqual(repeople_solo_scenes(specs, self._story(), models), 0)

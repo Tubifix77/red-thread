@@ -24,6 +24,7 @@ ROLES = {
     "One sentence in a novel scene must be rewritten": "surgical",
     "It currently reuses wording from the": "reseam",
     "It has slipped out of the scene and": "unrecap",
+    "These scenes of a novel each have only one character": "repeople",
     "One passage in a novel scene is too thin": "passage",
     "is missing something it was required to make happen": "fulfil",
     "discloses something the reader is not meant to know": "excise",
