@@ -107,9 +107,27 @@ sag would mean measuring the *prose* — and the two prose measures tried for it
 and vocabulary novelty, are recorded above as refuted. Dialogue share is the only one that ever
 showed the shape, and it now sits at .157/.130/.175/.162 by quarter, flat.
 
-**Three more are untested rather than blind**: `uniform_scene_length`, `cohesion_cut`,
-`missed_deadline`. These have unit tests and no live instance in 373 scenes, so nothing is known
-about their false-positive rate on real prose. Not broken, not exercised.
+`uniform_scene_length` is blind the same way and more obviously: it fires only when every scene
+in a plan carries an identical word target, and `schedule.word_targets` varies them by seed — ten
+scenes come back with eight distinct values. Zero of 28 plans are uniform. It can only ever
+confirm the scheduler.
+
+**Two are untested rather than blind**: `cohesion_cut` and `missed_deadline`. These have unit
+tests and no live instance in 373 scenes, so nothing is known about their false-positive rate on
+real prose. Not broken, not exercised.
+
+### The rule this suggests
+
+**A check over a field the scheduler constructs can only ever confirm the scheduler.** Four
+checks in this project are quiet for that reason — subplot independence, state legality, midpoint
+stall, uniform scene length — and all four read as coverage in an audit that lists them. They are
+worth keeping for hand-authored plans, where the property is not guaranteed, and worth discounting
+entirely when reading a generated one.
+
+The corollary is the uncomfortable half: every property `schedule.py` guarantees is a property
+nothing verifies in the prose. Threads reach their terminal states because the schedule says so.
+Whether the *book* earns them is not checked anywhere, and `midpoint_stall` is the check that
+looks like it does.
 
 The distinction matters when reading a green suite. A check that is quiet because the gate
 upstream of it works is doing its job; a check that is quiet because nothing has ever tested it
