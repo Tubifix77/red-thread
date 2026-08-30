@@ -15,7 +15,7 @@ been through `checks.clears_noise`.
 | phase | done | state |
 |---|---|---|
 | 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
-| 1 — confirm what exists | 0 of 4 | unblocked once step 2 lands |
+| 1 — confirm what exists | 0 of 4 | ⏳ queued behind step 2 as `scripts/phase1.sh` |
 | 2 — tension on embeddings | 1 of 5 | steps 10-12 running now |
 | 3 — dependency graph | 2 of 3 | step 16 needs a plan carrying the new field |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.217 vs a 0.4 bar) |
@@ -91,6 +91,10 @@ given a floor of .20 by guesswork; the pair says .28.*
 that quietly defaults to off changes the shipped product instead of measuring it.*
 
 ## Phase 1 — confirm or delete what exists  *(~10 h GPU)*
+
+⏳ **Queued and running unattended** as `scripts/phase1.sh`, which waits for the floor set and
+then writes both ablation pairs in order. Every `replicate` call resumes rather than restarts, so
+an interruption costs the current scene and re-running the script picks up where it stopped.
 
 **5. Ablate the refrain feedback.** Two runs each way. Compare on *concentration* and mean
 recurrence, never the worst refrain (rule III). One piece of evidence already survives the floor
