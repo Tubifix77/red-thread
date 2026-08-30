@@ -999,3 +999,41 @@ class TestSoloScenesAreRepeopled(unittest.TestCase):
         backend = PlannerBackend(scenes_reply=solo)
         make_plan("A premise.", models_with(backend), total_words=13200, repeople=False)
         self.assertEqual(backend.count("repeople"), 0)
+
+    def test_thread_obligations_survive_a_rewrite_that_tries_to_change_them(self):
+        """Step 7 of docs/PLAN.md: the prompt holds the thread work fixed, nothing enforced it.
+
+        `_apply_scene_content` is the general path and cannot know which caller it is serving, so
+        a model returning a "threads" key would have had its obligations applied. Same rule as
+        `to_state`, which is never read from a model anywhere in the planner.
+        """
+        models, backend = fakes.scripted_models()
+        specs = self._specs([1, 2, 3, 4, 5])
+        from redthread.models import Transition
+        for s in specs:
+            s.thread_ops["T-TIDE"] = Transition(post=["She proves the sheet was altered"],
+                                                forbid=["Ardo confesses"])
+            s.setting = "Harbour shed"
+            s.depends_on = [1] if s.index > 1 else []
+        backend.queue("repeople", json.dumps({"scenes": [
+            {"index": i, "summary": f"scene {i}", "characters": ["ves", "ard"],
+             "beats": ["Vesna asks Ardo why the run is short"],
+             "setting": "somewhere else entirely",
+             "depends_on": [],
+             "threads": {"T-TIDE": {"post": ["nothing in particular"], "forbid": []}}}
+            for i in [1, 2, 3, 4, 5]]}))
+        repeople_solo_scenes(specs, self._story(), models)
+        for s in specs:
+            if s.index in (1, 2, 3, 4, 5):
+                self.assertEqual(s.thread_ops["T-TIDE"].post,
+                                 ["She proves the sheet was altered"])
+                self.assertEqual(s.thread_ops["T-TIDE"].forbid, ["Ardo confesses"])
+                self.assertEqual(s.setting, "Harbour shed")
+        self.assertEqual(specs[1].depends_on, [1])
+
+    def test_it_still_changes_who_is_in_the_room(self):
+        models, backend = fakes.scripted_models()
+        specs = self._specs([1, 2, 3, 4, 5])
+        backend.queue("repeople", self._reply([1, 2, 3, 4, 5]))
+        self.assertEqual(repeople_solo_scenes(specs, self._story(), models), 5)
+        self.assertTrue(all(len(s.characters) >= 2 for s in specs))

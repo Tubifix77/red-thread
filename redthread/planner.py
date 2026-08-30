@@ -20,6 +20,8 @@ seam problem before a word of prose exists.
 
 from __future__ import annotations
 
+import copy
+
 import re
 from dataclasses import dataclass, field
 
@@ -807,7 +809,21 @@ def repeople_solo_scenes(specs: list[SceneSpec], story: StorySpec, models: Model
             if spec is None:
                 continue
             before = list(spec.characters)
+            # What this pass is allowed to change is who is in the room and what passes between
+            # them. The prompt says so and asks only for characters and beats — but a model that
+            # returns a "threads" key would have its obligations applied, because
+            # `_apply_scene_content` is the general path and cannot know which caller it is
+            # serving. Snapshot and restore, rather than trust: this is the same rule as
+            # `to_state`, which is never read from a model anywhere in this file.
+            held = {tid: copy.deepcopy(op) for tid, op in spec.thread_ops.items()}
+            held_setting, held_depends = spec.setting, list(spec.depends_on)
+
             _apply_scene_content(spec, row, story)
+
+            spec.thread_ops = held
+            spec.setting = held_setting
+            spec.depends_on = held_depends
+
             # Only counted, and only kept, if it actually put somebody else in the room. A
             # rewrite that comes back solo has cost a call and changed nothing, and must not be
             # reported as a fix.
