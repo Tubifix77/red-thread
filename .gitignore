@@ -1,3 +1,6 @@
+# Run logs. Same reasoning as /runs/ below: outputs, not source.
+/logs/
+
 # Generated manuscripts and project state. Runs are outputs, not source.
 # Remove this line if you want a manuscript's history under version control — per-scene text
 # files are stored precisely so that `git diff` on a repaired scene shows the repair.
