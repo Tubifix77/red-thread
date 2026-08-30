@@ -18,7 +18,7 @@ been through `checks.clears_noise`.
 | 1 — confirm what exists | 0 of 4 | ⏳ queued behind step 2 as `scripts/phase1.sh` |
 | 2 — tension on embeddings | 1 of 5 | steps 10-12 running now |
 | 3 — dependency graph | 2 of 3 | step 16 needs a plan carrying the new field |
-| 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.111 vs a 0.4 bar) |
+| 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
 | 6 — write the rule down | 2 of 3 | step 25 is the final panel; needs phase 1 |
 
@@ -249,7 +249,7 @@ discarded. **Kill criterion:** below about r = 0.4, the plan is not the lever fo
 so and stop.
 
 *So: saying so and stopping.* Across 538 committed scenes from 16 runs, an outline naming a
-refusal, a denial or a blocking correlates with `refusal_rate` at **r = +0.111** and with
+refusal, a denial or a blocking correlates with `refusal_rate` at **r = +0.130** and with
 `refusal_per_ask` at +0.063. An outline naming a price scores +0.032. All are below 0.4, and the
 bar is missed by four times over.
 
@@ -267,16 +267,16 @@ one does.*
 *The effect is real and small: scenes whose plan names a refusal average 0.78 refusals per
 thousand words against 0.58, and 50% contain none against 60%. The plan moves this axis about a
 quarter as hard as it moves dialogue. Recorded in `plan_names_a_refusal`'s docstring so a later
-attempt starts from "this scored 0.111" rather than from the same hypothesis unexamined.*
+attempt starts from "this scored 0.130" rather than from the same hypothesis unexamined.*
 
 *(The r = +0.672 figure was measured on 108 scenes; the same measure on 538 gives +0.446. The
 direction and the ranking hold, the magnitude does not — one more reminder that a correlation
 from a hundred scenes is not a constant.)*
 
 **19. Add `want`, `obstacle` and `cost` to the scene spec.** ⛔ **Not done, by step 18's kill
-criterion** (r = 0.111 against a 0.4 bar).** ~~Mirror the thread-operator shape: named fields with their own audit, not prose.~~
+criterion** (r = 0.130 against a 0.4 bar).** ~~Mirror the thread-operator shape: named fields with their own audit, not prose.~~
 
-*Adding three fields to every scene spec on r = 0.111 would be building the intervention the
+*Adding three fields to every scene spec on r = 0.130 would be building the intervention the
 evidence says will not carry. The fields are cheap; the brief they would swell is not — everything
 in there arrives in every one of seventy scenes, and this project already has a rule about that.
 If this axis is worth another attempt, the next move is a better prose measure or a different

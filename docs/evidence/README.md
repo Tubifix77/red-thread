@@ -21,7 +21,7 @@ difference smaller than the floor is a coin, and several here are.
 | `sixty-thousand-word-run.md` | The scale test: 71 scenes, 61,733 words, and the three failures that only exist at length |
 | `ledger-slice-ab.md` | Three runs of one plan while the ledger changed — including a section retracted by the noise floor |
 | `replicate-noise-floor.md` | **Read this before any other file here.** Two runs, identical code, nothing changed: what every measure does when nothing does |
-| `want-obstacle-cost.md` | A second quality axis, measured and then not built: two prose measures that vary, a plan-side lever that scores r = 0.111 against a 0.4 bar, and the audit that found both measures 56% contaminated |
+| `want-obstacle-cost.md` | A second quality axis, measured and then not built: two prose measures that vary, a plan-side lever that scores r = 0.130 against a 0.4 bar, and the audit that found both measures 56% contaminated |
 | `sentences/sentences.md` | A hundred sentences, half from each era, shuffled and unlabelled — the one thing here that needs a person rather than a measurement |
 | `sentences/sentences-key.md` | Its key, deliberately a separate file. Do not open it before the sheet is filled in |
 

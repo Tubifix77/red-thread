@@ -459,7 +459,7 @@ floor is generating.
 
 **Two phases have concluded, and one of them concluded no.** Phase 4 went looking for a second
 quality axis, found two prose measures that vary properly — `refusal_rate` and `refusal_per_ask`
-— and then failed its own correlation bar at r = 0.111 against 0.4. So `want`/`obstacle`/`cost`
+— and then failed its own correlation bar at r = 0.130 against 0.4. So `want`/`obstacle`/`cost`
 were **not** added to the scene spec. The controls are clean and the method reproduces the one
 intervention that worked at +0.446 on the same corpus, which is what makes that a result rather
 than a broken instrument.

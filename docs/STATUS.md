@@ -364,7 +364,7 @@ The instruments, and two answers.
 **Phase 4 asked whether the plan is a lever for a second quality axis, and the answer is no.**
 Two prose measures of refusal pass the bar the refuted POV-agency proxy failed: they vary 94%
 and 221% between books against floors of 22% and 37%, so they separate books rather than
-samplings. But an outline naming a refusal predicts them at only r = +0.111 against a 0.4 bar,
+samplings. But an outline naming a refusal predicts them at only r = +0.130 against a 0.4 bar,
 while the one lever that worked scores +0.446 on the same corpus with the same crude method. The
 controls are clean, so this is a result and not a broken instrument. `want`, `obstacle` and
 `cost` were **not** added to the scene spec.

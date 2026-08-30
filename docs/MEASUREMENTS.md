@@ -69,7 +69,7 @@ a proxy for "does a character want something" and it discriminates nothing.
 *Its replacement works and its plan-side lever does not.* `refusal_rate` and `refusal_per_ask`
 pass the bar POV agency failed — 94% and 221% between-book spread against 22% and 37% floors — so
 what they separate is books rather than samplings. But an outline naming a refusal predicts them
-at only **r = +0.111**, against a 0.4 bar and against +0.446 for the one lever that worked. So the
+at only **r = +0.130**, against a 0.4 bar and against +0.446 for the one lever that worked. So the
 measures are kept and the intervention is not built. Full result, with its controls, in
 [evidence/want-obstacle-cost.md](evidence/want-obstacle-cost.md).
 
@@ -88,7 +88,7 @@ The docstring said in as many words that the measure excluded "could not" and "d
 to measure English. It was measuring English through a different door, and the assertion was
 convincing enough to have stopped anyone checking.
 
-Narrowing halved the correlation, from +0.217 to +0.111, and **withdrew a headline claim**:
+Narrowing halved the correlation, from +0.217 to +0.130, and **withdrew a headline claim**:
 `refusal_per_ask` was reported as the steadiest measure in the panel at 0.3% between identical
 runs. Both halves of that ratio were dominated by ordinary English, which is very stable.
 Narrowed, it moves 37% — one of the noisiest measures here.

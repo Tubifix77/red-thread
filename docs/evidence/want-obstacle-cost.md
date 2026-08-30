@@ -66,7 +66,7 @@ summary, beats, posts and forbids:
 
 | the outline names | against | r |
 |---|---|---:|
-| a refusal | refusal rate | **+0.111** |
+| a refusal | refusal rate | **+0.130** |
 | a refusal | refusal per ask | +0.063 |
 | a price | refusal rate | +0.032 |
 | a spoken act | dialogue share | **+0.446** |
@@ -76,9 +76,17 @@ summary, beats, posts and forbids:
 The bar was 0.4. It is not met, and it is missed by four times over.
 
 *Published first as +0.217 and +0.200, against the contaminated prose measures above. Narrowing
-them halved the correlation. The conclusion did not change and the margin got wider — the only
-direction in which a correction to one's own negative result is comfortable, and worth saying
-out loud precisely because it is.*
+them took the correlation to +0.111; auditing the plan-side pattern the same way took it back to
++0.130. The conclusion did not change and the margin got wider — the only direction in which a
+correction to one's own negative result is comfortable, and worth saying out loud precisely
+because it is.*
+
+*The plan-side pattern was audited too, and was largely clean: 103 of its 119 matches across 300
+scene specs are `refus*`. It lost the same two alternatives that ruined the prose measure —
+`will not` and `won't`, six matches, about half of them the system rather than a person — and a
+bare `bars`, which matches iron ones. **Recording that this one was audited matters as much as
+the change**, because an unaudited pattern and a clean one look identical from the outside. That
+is how the prose measure shipped.*
 
 **The controls are what make this a result rather than a broken instrument.** The plan features
 score +0.001 and −0.021 against gesture rate, so they are not merely predicting how busy a scene
@@ -92,14 +100,14 @@ a quarter as hard as it moves dialogue.
 
 ## Step 19: not built
 
-Adding `want`, `obstacle` and `cost` to every scene spec on r = 0.111 would be building the
+Adding `want`, `obstacle` and `cost` to every scene spec on r = 0.130 would be building the
 intervention the evidence says will not carry. The fields are cheap and the brief they would
 swell is not — everything in there arrives in every one of seventy scenes, and this project
 already has a rule about that.
 
 If the axis is worth another attempt, the next move is a better prose measure or a different
 lever, not this one on weaker evidence. `plan_names_a_refusal`'s docstring carries the number so
-that attempt starts from "this scored 0.111" rather than from the same hypothesis unexamined.
+that attempt starts from "this scored 0.130" rather than from the same hypothesis unexamined.
 
 ## The lesson that outlasts the result
 

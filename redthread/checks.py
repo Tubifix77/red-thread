@@ -1523,16 +1523,25 @@ def refusal_per_ask(text: str) -> float:
     return len(_REFUSAL.findall(text)) / asks if asks else 0.0
 
 
+# Audited the same way as `_REFUSAL` and, unlike it, largely clean: across 300 scene specs, 103
+# of 119 matches are `refus*`. What was dropped is the same two alternatives that ruined the
+# prose measure — `will not` and `won't`, 6 matches, about half of them the system rather than a
+# person ("the system will not stop") — and a bare `bars`, which matches iron ones. The effect is
+# small and in the right direction: present in 36% of scenes down to 34%, r from +0.111 to +0.130.
+#
+# Recording that this one *was* audited matters as much as the change, because an unaudited
+# pattern and a clean one look identical from the outside. That is how the prose measure shipped.
 _PLAN_REFUSAL = re.compile(
-    r"\b(?:refus\w+|declin\w+|withhold\w*|denies|deny|denied|will not|won.t|refuses to say"
-    r"|keeps? (?:it |them )?back|blocks?|bars?|turns? (?:him|her|them) away)\b", re.I)
+    r"\b(?:refus\w+|declin\w+|withhold\w*|denies|deny|denied|refuses to say"
+    r"|keeps? (?:it |them )?back|blocks?|bars? (?:his|her|their|the) way"
+    r"|turns? (?:him|her|them) away)\b", re.I)
 
 
 def plan_names_a_refusal(spec: SceneSpec) -> bool:
     """Does this scene's own outline say somebody is refused, blocked or denied?
 
     The plan-side half of step 18, and the answer it gave was no. Across 538 committed scenes it
-    correlates with `refusal_rate` at **r = +0.111** and with `refusal_per_ask` at +0.063, against
+    correlates with `refusal_rate` at **r = +0.130** and with `refusal_per_ask` at +0.063, against
     a bar of 0.4 — while the same crude method scores +0.446 for "the outline names a spoken act"
     against dialogue share on the identical corpus, which is the intervention that worked.
 
@@ -1547,7 +1556,7 @@ def plan_names_a_refusal(spec: SceneSpec) -> bool:
     fields were not added on this evidence.
 
     Kept because the measurement is the finding, and because a later attempt should start from
-    "this scored 0.111" rather than from the same hypothesis unexamined.
+    "this scored 0.130" rather than from the same hypothesis unexamined.
     """
     parts = [spec.summary] + [b.summary for b in spec.beats]
     for op in spec.thread_ops.values():
