@@ -233,7 +233,39 @@ class Ledger:
                     or (content_tokens(f.object) & wanted_tokens)):
                 hits.append(f)
         hits.sort(key=lambda f: f.scene, reverse=True)
-        return hits[:limit]
+        if len(hits) <= limit:
+            return hits
+
+        # Recency alone empties the book out from under its own ending.
+        #
+        # Sorting by scene and truncating is fine while the ledger is small and catastrophic
+        # once it is not. Measured on a finished 71-scene novel: at scene 71, 888 facts match
+        # the scene's subjects, 40 survive, and the oldest kept is from scene 68. The final
+        # scene of the book could see scenes 68, 69 and 70 and nothing else — every revelation,
+        # promise and relationship from the first 67 scenes was invisible to it.
+        #
+        # That is a structural reason a middle cannot earn an ending: the ending was never told
+        # what the middle was. So the slice is stratified instead. Most of it is still recent,
+        # because current state is what a scene mostly needs, and the rest is spread evenly
+        # across everything older, which guarantees the brief always carries something from the
+        # beginning and the middle of its own book.
+        #
+        # `knows` is deliberately left uncapped and is unaffected; character knowledge was
+        # already the one thing that reached back.
+        recent_slots = max(1, int(limit * 0.65))
+        recent, older = hits[:recent_slots], hits[recent_slots:]
+        spread_slots = limit - len(recent)
+        if older and spread_slots > 0:
+            step = len(older) / spread_slots
+            spread = [older[min(len(older) - 1, int(i * step))] for i in range(spread_slots)]
+            seen_ids: set[int] = set()
+            picked = []
+            for f in spread:
+                if id(f) not in seen_ids:
+                    seen_ids.add(id(f))
+                    picked.append(f)
+            recent += picked
+        return recent
 
     def latest_state(self, subject: str, predicate: str) -> Fact | None:
         key = (normalise(subject), normalise(predicate))

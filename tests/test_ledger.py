@@ -320,3 +320,54 @@ class TestPossessionChangesAreNotContradictions(unittest.TestCase):
         ledger = Ledger([self._fact("is", "dead", 27)])
         new = self._fact("is", "alive", 37)
         self.assertTrue(ledger.conflict_candidates([new]))
+
+
+class TestTheSliceReachesBackIntoTheBook(unittest.TestCase):
+    """Recency alone empties a book out from under its own ending.
+
+    Sorting by scene and truncating is fine while the ledger is small and catastrophic once it
+    is not. Measured on a finished 71-scene novel: at scene 71, 888 facts matched the scene's
+    subjects, 40 survived the cap, and the oldest kept was from scene 68. The final scene of the
+    book could see scenes 68, 69 and 70 and nothing else — every revelation, promise and
+    relationship from the first 67 scenes was invisible to it.
+
+    That is a structural reason a middle cannot earn an ending, and it was found while trying to
+    measure whether one does: the first two attempts at that measurement both turned out to be
+    measuring this cap instead of the book.
+    """
+
+    def _ledger(self, scenes=70, per_scene=15):
+        return Ledger([
+            Fact("Siv", "did", f"thing {s}-{i}", s, FactKind.STATE)
+            for s in range(1, scenes + 1) for i in range(per_scene)])
+
+    def test_the_slice_spans_the_book_rather_than_its_last_three_scenes(self):
+        got = self._ledger().about(["Siv"], 71)
+        scenes = {f.scene for f in got}
+        self.assertLessEqual(min(scenes), 10,
+                             "the ending must be able to see the beginning of its own book")
+        self.assertGreater(len(scenes), 8,
+                           "the slice must span the book, not cluster at one end")
+
+    def test_it_is_still_mostly_recent(self):
+        """Current state is what a scene mostly needs; the reach-back is the remainder."""
+        got = self._ledger().about(["Siv"], 71)
+        recent = sum(1 for f in got if f.scene >= 66)
+        self.assertGreaterEqual(recent, len(got) // 2)
+
+    def test_the_limit_is_still_the_limit(self):
+        """The cap exists because the brief has a token budget, and that has not changed."""
+        self.assertEqual(len(self._ledger().about(["Siv"], 71)), 40)
+
+    def test_a_small_ledger_is_returned_whole(self):
+        led = self._ledger(scenes=2, per_scene=3)
+        self.assertEqual(len(led.about(["Siv"], 3)), 6)
+
+    def test_no_fact_is_returned_twice(self):
+        got = self._ledger().about(["Siv"], 71)
+        self.assertEqual(len(got), len({id(f) for f in got}))
+
+    def test_character_knowledge_was_never_capped_and_still_is_not(self):
+        led = Ledger([Fact("Siv", "knows", f"secret {s}", s, FactKind.KNOWLEDGE)
+                      for s in range(1, 71)])
+        self.assertEqual(len(led.knows("Siv", 71)), 70)
