@@ -61,8 +61,11 @@ Rules:
 - Do not record what a character feels or believes unless the prose states it as fact.
 - Do not record anything the scene did not actually establish. Inventing facts here is worse \
 than missing them, because an invented fact becomes a constraint on every later scene.
-- AT MOST 15 FACTS. A hard limit, not a guideline. If you can think of more, you are recording \
-description rather than continuity — keep the fifteen most durable and stop.
+- HOW MANY. Most scenes establish between three and eight things a later scene could actually \
+contradict. Record those and stop. If you are past ten you have started recording description; \
+if you are reaching for fifteen you are padding, and a padded fact is worse than a missing one \
+because it takes a place in every later brief that a real fact needed. Fifteen is a ceiling you \
+should rarely come near, not a target to fill.
 - Atmosphere is not a fact. "the screen was flickering", "the room was cold", "her fingers were \
 calloused" are description, and recording them turns every later scene into an argument with the \
 weather. Everything here constrains the rest of the book and is fed into every later brief, so ten \

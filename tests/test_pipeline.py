@@ -1924,3 +1924,27 @@ class TestTheConflictPromptSaysWhatTheCodeGuardsSay(unittest.TestCase):
         self.assertIn("assume time passed", CONFLICT_PROMPT)
         self.assertNotIn("the time available", CONFLICT_PROMPT)
         self.assertIn("ADJACENT", CONFLICT_PROMPT)
+
+
+class TestTheExtractorIsNotGivenAQuota(unittest.TestCase):
+    """"AT MOST 15 FACTS. A hard limit, not a guideline." was read as a target.
+
+    Measured across every book in the project: 301 of 376 scenes produced exactly 15 facts, 70
+    produced 14, and **100% produced 14 or more**. The distribution is a spike on the cap. That
+    is not extraction, it is quota-filling, and the padding is what put "Kai is in a room" and
+    "Mir is inside" into a ledger whose own prompt says atmosphere is not a fact.
+
+    It compounds downstream. `Ledger.about` hands the brief at most 40 facts, so every padded
+    fact takes a slot a durable one needed — the cost is not noise in a log, it is continuity
+    the writing session never sees.
+    """
+
+    def test_the_prompt_gives_a_typical_range_not_just_a_ceiling(self):
+        from redthread.verify import EXTRACT_PROMPT
+        self.assertIn("three and eight", EXTRACT_PROMPT)
+        self.assertNotIn("AT MOST 15 FACTS", EXTRACT_PROMPT)
+
+    def test_the_ceiling_is_framed_as_a_ceiling(self):
+        from redthread.verify import EXTRACT_PROMPT
+        self.assertIn("not a target", EXTRACT_PROMPT)
+        self.assertIn("padding", EXTRACT_PROMPT.lower())
