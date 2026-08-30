@@ -348,5 +348,32 @@ class TestDeclaredVsRandom(unittest.TestCase):
         self.assertEqual(a.on_control, b.on_control)
 
 
+class TestIncrementalSave(unittest.TestCase):
+    """A job that writes nothing until it finishes is one interruption from having produced
+    nothing at all — which is the failure this whole module exists because of."""
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+    def test_a_store_is_written_after_every_scene(self):
+        from redthread.forecast import load as load_predictions
+        store = Path(self._tmp.name) / "forecast.json"
+        seen = []
+        models, _backend = fakes.scripted_models(
+            {"forecast": json.dumps({"prediction": "She returns the ledger."})})
+        texts = [fakes.clean_prose(150, i) for i in range(12)]
+        generate(texts, models, wanted=4, store=store,
+                 on_scene=lambda i, g: seen.append(len(load_predictions(store))))
+        self.assertEqual(seen, [1, 2, 3, 4])
+
+    def test_without_a_store_nothing_is_written(self):
+        store = Path(self._tmp.name) / "forecast.json"
+        models, _backend = fakes.scripted_models(
+            {"forecast": json.dumps({"prediction": "x"})})
+        generate([fakes.clean_prose(150, i) for i in range(12)], models, wanted=3)
+        self.assertFalse(store.exists())
+
+
 if __name__ == "__main__":
     unittest.main()

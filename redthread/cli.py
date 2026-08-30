@@ -749,8 +749,10 @@ def cmd_forecast(args) -> int:
                              "are one prediction repeated")
         predictions = generate(
             texts, models, wanted=args.scenes, k=args.k, temperature=args.temperature,
+            store=store,
             on_scene=lambda i, g: print(f"    scene {i + 1:>3}  "
-                                        f"{(g[0][:64] + '…') if g else 'no prediction'}"))
+                                        f"{(g[0][:64] + '…') if g else 'no prediction'}",
+                                        flush=True))
         save(predictions, store)
         print(f"\n  {len(predictions)} predictions written to {store}")
     else:

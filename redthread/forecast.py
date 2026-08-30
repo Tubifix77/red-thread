@@ -99,14 +99,23 @@ def sample_scenes(count: int, wanted: int, first: int = 4) -> list[int]:
 
 
 def generate(texts: list[str], models: Models, wanted: int = 35, k: int = 1,
-             temperature: float = 0.0, on_scene=None) -> list[Prediction]:
-    """Blind predictions for evenly spaced scenes of a finished book."""
+             temperature: float = 0.0, on_scene=None, store: Path | None = None
+             ) -> list[Prediction]:
+    """Blind predictions for evenly spaced scenes of a finished book.
+
+    Saves after every scene when given a `store`. With k = 5 this is 175 model calls sharing a
+    GPU with a book being written, which is the better part of an hour — and a job that writes
+    nothing until it finishes is one interruption away from having produced nothing at all. That
+    is the failure this module exists because of, and it would have been rebuilt here.
+    """
     out: list[Prediction] = []
     for position in sample_scenes(len(texts), wanted):
         context = story_so_far(texts[:position])
         guesses = predict(context, models, k=k, temperature=temperature)
         if guesses:
             out.append(Prediction(index=position, context=context, predictions=guesses))
+            if store is not None:
+                save(out, store)
         if on_scene is not None:
             on_scene(position, guesses)
     return out
