@@ -16,8 +16,8 @@ been through `checks.clears_noise`.
 |---|---|---|
 | 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
 | 1 — confirm what exists | 0 of 4 | unblocked once step 2 lands |
-| 2 — tension on embeddings | 0 of 5 | |
-| 3 — dependency graph | 0 of 3 | |
+| 2 — tension on embeddings | 1 of 5 | steps 10-12 running now |
+| 3 — dependency graph | 2 of 3 | step 16 needs a plan carrying the new field |
 | 4 — want, obstacle, cost | 0 of 3 | |
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
 | 6 — write the rule down | 0 of 3 | |
@@ -156,19 +156,40 @@ reach.
 
 ## Phase 3 — let the middle earn the ending  *(~1 h GPU)*
 
-**14. Make dependency explicit instead of inferring it.** Add `depends_on: list[int]` to
+**14. Make dependency explicit instead of inferring it.** ✅ Add `depends_on: list[int]` to
 `SceneSpec` and the planner schema. Inference by subject overlap failed because the cast recurs;
 asking is cheap and the answer is checkable.
 
-**15. Check the graph is a graph.** Deterministic, no model: dependencies point backwards, no
+*Forward and self edges are filtered in `_apply_scene_content` before they reach a spec, for the
+same reason `to_state` is never read from the model: an edge is a structural claim and structure
+is not the model's to make.*
+
+**15. Check the graph is a graph.** ✅ Deterministic, no model: dependencies point backwards, no
 cycles, and the final scene's ancestor set is reported as a fraction of the book. An ending that
 depends only on its last five scenes is visible before a word is written. **Before shipping:** run
 it against the reference plan (rule V), which has no such field — decide what absence means rather
 than failing it.
 
-**16. Test whether declared dependency shows up in the prose.** Does scene N sit closer to its
-declared ancestors than to a random earlier scene? If a declared dependency leaves no trace, the
-field is bookkeeping.
+*Absence means unknown. `check_dependency_graph` returns nothing at all until some scene has
+declared something, because "nobody was asked" and "there are none" are different states and it
+cannot tell them apart — the reference plan predates the field, and rule V says a check that
+fires on it is wrong. `redthread depends <run>` prints the shape and says exactly that on an old
+plan.*
+
+*Cycle detection turned out to need no code. Every edge must point strictly backwards, and a
+graph in which every edge points backwards cannot contain a cycle, so the one check subsumes it —
+`ancestors` is still written to terminate on a hand-edited cycle, with a test, because a
+traversal that loops forever is worse than one that reports a violation.*
+
+**16. Test whether declared dependency shows up in the prose.** ⏳ *(built; needs a plan that
+declares some)* Does scene N sit closer to its declared ancestors than to a random earlier scene?
+If a declared dependency leaves no trace, the field is bookkeeping.
+
+*`redthread depends <run> --prose`. Same result-plus-control shape as the forecast scorers,
+because an absolute similarity between two scenes of one novel is a property of the novel's
+vocabulary — two scenes with the same cast in the same town will always look alike, and the
+question is whether the declared ones look more alike than that. No plan on disk declares
+dependencies yet, so this runs when the next book is planned.*
 
 ## Phase 4 — want, obstacle, cost  *(~4 h GPU)*
 

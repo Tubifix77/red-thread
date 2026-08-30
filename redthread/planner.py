@@ -526,6 +526,10 @@ For each scene give:
   a demand refused, an accusation, a lie, an offer taken back. Name the act, not the words:
   "Sera refuses to say who filed the record", never the line itself. A scene where nothing passes
   between anybody comes out as one character walking through a place having thoughts about it.
+- "depends_on": the indices of earlier scenes a reader must have read for this one to land —
+  where something was established that this scene pays off, contradicts or needs. Usually one to
+  three, and only earlier scenes. Leave it empty where the scene genuinely stands alone; a scene
+  that depends on everything has declared nothing.
 - "threads": for each thread id this scene must move, what the scene must BRING ABOUT ("post",
   1-3 concrete statements) and what it must NOT do ("forbid", 1-3 statements). Forbids are where
   premature reveals get prevented — use them.
@@ -549,7 +553,7 @@ Hard rules:
 Schema:
 {{"scenes": [{{"index": 1, "summary": "...", "setting": "...", "time": "...",
   "pov": "character_id", "characters": ["id", "id"],
-  "beats": ["...", "..."],
+  "beats": ["...", "..."], "depends_on": [3, 7],
   "threads": {{"T-ID": {{"post": ["..."], "forbid": ["..."]}}}}}}]}}"""
 
 
@@ -630,6 +634,21 @@ def _apply_scene_content(spec: SceneSpec, row: dict, story: StorySpec) -> None:
     beats = [str(b).strip() for b in (row.get("beats") or []) if str(b).strip()]
     if beats:
         spec.beats = [Beat(summary=b, concreteness=0.0) for b in beats]
+
+    # Dependencies are filtered here rather than audited later, for the same reason `to_state` is
+    # never read from the model: a forward or self edge is a structural claim, and structure is
+    # not the model's to make. What survives is a set of earlier indices; whether that set is a
+    # sensible shape is `check_dependency_graph`'s question.
+    declared = []
+    for value in (row.get("depends_on") or []):
+        try:
+            n = int(value)
+        except (TypeError, ValueError):
+            continue
+        if 0 < n < spec.index:
+            declared.append(n)
+    if declared:
+        spec.depends_on = sorted(dict.fromkeys(declared))
 
     for tid, payload in (row.get("threads") or {}).items():
         op = spec.thread_ops.get(tid)

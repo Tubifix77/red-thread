@@ -232,6 +232,24 @@ class SceneSpec(JsonMixin):
     word_target: int = 1100
     concreteness: float = 0.0
     notes: str = ""
+    depends_on: list[int] = field(default_factory=list)
+    """Earlier scene indices this scene needs the reader to have read.
+
+    Asked for, not inferred. Inference was tried first and failed for a reason worth keeping:
+    dependency was derived from subject overlap between a scene and the ledger facts it used,
+    and because the cast recurs in every scene, *every* scene came back load-bearing — zero of
+    70 contributed facts that were never retrieved again. That measured entity overlap, not
+    dependency.
+
+    Asking is cheap and the answer is checkable, which is the whole difference. A declared edge
+    can be audited deterministically (does it point backwards, is the graph acyclic, how much of
+    the book does the ending actually reach) before a word is written, and separately tested
+    against the prose afterwards. An inferred one can only be believed.
+
+    Empty is not "no dependencies" — it is "nobody said", which is what every plan written
+    before this field existed will report. `check_dependency_graph` treats absence as unknown
+    rather than as a failure.
+    """
 
     def touched_threads(self) -> list[str]:
         return list(self.thread_ops.keys())

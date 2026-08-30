@@ -2298,6 +2298,104 @@ def check_concealment(plan: list[SceneSpec], story: StorySpec) -> list[Violation
     return out
 
 
+# --------------------------------------------------------------------------------------
+# the dependency graph  (docs/PLAN.md phase 3)
+# --------------------------------------------------------------------------------------
+
+def ancestors(plan: list[SceneSpec], index: int) -> set[int]:
+    """Every scene reachable backwards from `index` through declared dependencies.
+
+    Transitive, so a scene that depends on scene 60 which depends on scene 3 reaches scene 3.
+    That is the point of asking: an ending whose ancestor set is the last five scenes is a book
+    whose middle it does not need, and the closure is what makes that visible.
+    """
+    by_index = {s.index: s for s in plan}
+    seen: set[int] = set()
+    stack = list(by_index.get(index).depends_on) if index in by_index else []
+    while stack:
+        n = stack.pop()
+        if n in seen:
+            continue
+        seen.add(n)
+        spec = by_index.get(n)
+        if spec:
+            stack.extend(e for e in spec.depends_on if e not in seen)
+    return seen
+
+
+def ending_reach(plan: list[SceneSpec]) -> float:
+    """What fraction of the book the final scene depends on, transitively.
+
+    Zero where nothing is declared. This is the number the phase exists to produce: it answers
+    "does the middle earn the ending" before a word is written, deterministically, with no model
+    in the loop and nothing to calibrate.
+    """
+    if not plan:
+        return 0.0
+    ordered = sorted(plan, key=lambda s: s.index)
+    if not any(s.depends_on for s in ordered):
+        return 0.0
+    return len(ancestors(ordered, ordered[-1].index)) / max(1, len(ordered) - 1)
+
+
+def check_dependency_graph(plan: list[SceneSpec], story: StorySpec | None = None,
+                           thin: float = 0.25) -> list[Violation]:
+    """Is the declared dependency graph a graph, and does the ending reach back into the book?
+
+    Deterministic, no model, and every finding is about structure rather than about words —
+    which is the property the four reverted plan checks lacked. Each of those compared two
+    fields by shared vocabulary and flagged the hand-authored reference plan, because a good
+    plan deliberately echoes its own language. This one reads integers.
+
+    **Absence means unknown, not failure.** The reference plan predates the field and declares
+    nothing, and rule V says a check that fires on it is wrong. There is a real question hiding
+    behind that — a plan with no declared dependencies might have none, or might simply never
+    have been asked — and the honest answer is that this check cannot tell those apart and so
+    says nothing about either. It reports a MINOR only once *something* has been declared, at
+    which point silence from the rest of the plan is informative.
+
+    Forward and self edges are filtered in `_apply_scene_content` before they ever reach a spec,
+    so they cannot arrive from the planner. They can still arrive from a hand-edited plan.json,
+    which is the case this checks.
+    """
+    out: list[Violation] = []
+    ordered = sorted(plan, key=lambda s: s.index)
+    if not ordered:
+        return out
+
+    declared = [s for s in ordered if s.depends_on]
+    if not declared:
+        return out
+
+    valid = {s.index for s in ordered}
+    for spec in ordered:
+        for edge in spec.depends_on:
+            if edge not in valid:
+                out.append(Violation(
+                    "dependency_unknown_scene", Severity.MAJOR,
+                    f"scene {spec.index} declares a dependency on scene {edge}, which is not in "
+                    f"the plan", "check_dependency_graph"))
+            elif edge >= spec.index:
+                # A cycle is impossible while every edge points strictly backwards, so this one
+                # check subsumes cycle detection entirely — there is no separate traversal here
+                # because there is nothing a traversal could find that this does not.
+                out.append(Violation(
+                    "dependency_not_backwards", Severity.MAJOR,
+                    f"scene {spec.index} declares a dependency on scene {edge}. A scene cannot "
+                    f"depend on itself or on something the reader has not read yet",
+                    "check_dependency_graph"))
+
+    reach = ending_reach(ordered)
+    if len(ordered) > 8 and reach < thin:
+        out.append(Violation(
+            "ending_reaches_shallow", Severity.MINOR,
+            f"the final scene depends, transitively, on {reach:.0%} of the book "
+            f"({len(ancestors(ordered, ordered[-1].index))} of {len(ordered) - 1} scenes). An "
+            f"ending that only needs its last few scenes has a middle the reader could skip.",
+            "check_dependency_graph"))
+    return out
+
+
 def audit_plan(plan: list[SceneSpec], story: StorySpec,
                history: list[ThreadMove] | None = None) -> list[Violation]:
     """Both acceptance markers plus the cheap structural checks, in one pass."""
@@ -2312,6 +2410,7 @@ def audit_plan(plan: list[SceneSpec], story: StorySpec,
     out += check_post_is_an_event(plan, story)
     out += check_beats_are_intent(plan, story)
     out += check_cast_names(plan, story)
+    out += check_dependency_graph(plan, story)
 
     # POV variety: a manuscript entirely in one head is legal but worth surfacing, since
     # StoryScope's homogeneity finding is about the absence of structural variation.

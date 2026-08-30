@@ -219,3 +219,59 @@ def prediction_spread(prediction: Prediction, embedder: Embedder) -> float:
     pairs = [cosine(vectors[i], vectors[j])
              for i in range(len(vectors)) for j in range(i + 1, len(vectors))]
     return 1.0 - (sum(pairs) / len(pairs)) if pairs else 0.0
+
+
+# --------------------------------------------------------------------------------------
+# step 16: does a declared dependency leave a trace in the prose?
+# --------------------------------------------------------------------------------------
+
+def declared_vs_random(plan, texts: list[str], embedder: Embedder,
+                       seed: int = 0) -> ScoreResult:
+    """Is a scene closer to its declared ancestors than to a random earlier scene?
+
+    The check that decides whether `depends_on` is worth its place in the schema. If a declared
+    dependency leaves no trace in the prose, the field is bookkeeping — the planner writing down
+    an intention the writer never acted on — and the graph audit is measuring the planner rather
+    than the book.
+
+    Same shape as `score`, and for the same reason: an absolute similarity between two scenes of
+    one novel is a property of the novel's vocabulary and setting, so only the comparison against
+    a scene that is *not* an ancestor means anything. Two scenes in the same book with the same
+    cast in the same town will always look similar; the question is whether the declared ones
+    look more similar than that.
+
+    Uses direct edges rather than the transitive closure. A closure over a well-connected graph
+    reaches most of the book, and a control drawn from "everything else" would be drawn from
+    almost nothing.
+    """
+    rng = random.Random(seed)
+    by_position = {s.index: i for i, s in enumerate(sorted(plan, key=lambda s: s.index))}
+    on_target: list[float] = []
+    on_control: list[float] = []
+    wins = 0
+
+    for spec in sorted(plan, key=lambda s: s.index):
+        position = by_position[spec.index]
+        if position >= len(texts) or not spec.depends_on:
+            continue
+        declared = [by_position[e] for e in spec.depends_on
+                    if e in by_position and by_position[e] < position]
+        declared = [p for p in declared if p < len(texts)]
+        others = [p for p in range(position) if p not in declared]
+        if not declared or not others:
+            continue
+
+        scene = embedder.one(texts[position])
+        real = max(cosine(scene, embedder.one(texts[p])) for p in declared)
+        decoy = cosine(scene, embedder.one(texts[rng.choice(others)]))
+        on_target.append(real)
+        on_control.append(decoy)
+        wins += real > decoy
+
+    n = len(on_target)
+    return ScoreResult(
+        name="declared dependency",
+        on_target=sum(on_target) / n if n else 0.0,
+        on_control=sum(on_control) / n if n else 0.0,
+        win_rate=wins / n if n else 0.0,
+        n=n)

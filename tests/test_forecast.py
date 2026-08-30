@@ -15,8 +15,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from redthread.embed import Embedder, cosine
-from redthread.forecast import (Prediction, generate, lexical_scorer, load, prediction_spread,
-                                sample_scenes, save, score, semantic_scorer, story_so_far)
+from redthread.forecast import (Prediction, declared_vs_random, generate, lexical_scorer,
+                                load, prediction_spread, sample_scenes, save, score,
+                                semantic_scorer, story_so_far)
 
 from . import fakes
 
@@ -287,6 +288,64 @@ class TestGenerate(unittest.TestCase):
         target = predictions[0].index
         self.assertNotIn(f"SCENE{target}", predictions[0].context,
                          "the prediction must be blind to the scene it is predicting")
+
+
+class TestDeclaredVsRandom(unittest.TestCase):
+    """Step 16: is a declared dependency anything more than bookkeeping?"""
+
+    def _plan(self, deps):
+        from redthread.models import Beat, SceneSpec
+        return [SceneSpec(id=f"s{i}", index=i, summary=f"scene {i}",
+                          beats=[Beat(summary="x")], depends_on=list(deps.get(i, [])))
+                for i in range(1, 9)]
+
+    def _texts(self):
+        # Scene 8 is written out of scene 3's vocabulary. If the measure works, declaring
+        # 8 -> 3 must beat a random earlier scene.
+        #
+        # Distinct variants per position, not `i % 4`: with the cycle, positions 2 and 6 get
+        # identical fixture prose, the control draws a text identical to the declared ancestor,
+        # and the comparison ties. That is the fixture carrying the defect the test is for.
+        base = [fakes.clean_prose(150, i) for i in range(8)]
+        base[7] = base[2]
+        return base
+
+    def test_a_dependency_the_prose_honours_wins(self):
+        result = declared_vs_random(self._plan({8: [3]}), self._texts(), FakeEmbedder())
+        self.assertEqual(result.n, 1)
+        self.assertGreater(result.on_target, result.on_control)
+        self.assertEqual(result.win_rate, 1.0)
+
+    def test_scenes_with_no_declared_dependency_are_skipped(self):
+        self.assertEqual(declared_vs_random(self._plan({}), self._texts(), FakeEmbedder()).n, 0)
+
+    def test_a_forward_declaration_contributes_nothing(self):
+        # It cannot arrive from the planner, but a hand-edited plan can carry one, and it must
+        # not silently become a backwards comparison.
+        result = declared_vs_random(self._plan({3: [7]}), self._texts(), FakeEmbedder())
+        self.assertEqual(result.n, 0)
+
+    def test_the_first_scene_has_no_control_to_draw_from(self):
+        result = declared_vs_random(self._plan({2: [1]}), self._texts(), FakeEmbedder())
+        self.assertEqual(result.n, 0, "scene 2's only earlier scene is its declared ancestor")
+
+    def test_it_uses_the_best_declared_ancestor_not_the_mean(self):
+        # A scene declaring three ancestors has honoured the declaration if it is close to any
+        # one of them; averaging would let two distant edges hide a real one.
+        result = declared_vs_random(self._plan({8: [3, 5, 6]}), self._texts(), FakeEmbedder())
+        self.assertEqual(result.win_rate, 1.0)
+
+    def test_a_plan_longer_than_the_book_stops_at_the_prose(self):
+        plan = self._plan({8: [3]})
+        result = declared_vs_random(plan, self._texts()[:5], FakeEmbedder())
+        self.assertEqual(result.n, 0)
+
+    def test_it_is_deterministic_for_a_seed(self):
+        plan = self._plan({7: [2], 8: [3]})
+        texts = self._texts()
+        a = declared_vs_random(plan, texts, FakeEmbedder(), seed=5)
+        b = declared_vs_random(plan, texts, FakeEmbedder(), seed=5)
+        self.assertEqual(a.on_control, b.on_control)
 
 
 if __name__ == "__main__":

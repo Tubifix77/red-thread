@@ -772,6 +772,73 @@ def cmd_forecast(args) -> int:
     return 0
 
 
+def cmd_depends(args) -> int:
+    """The declared dependency graph: its shape, and whether it shows up in the prose.
+
+    The first half needs no model and no prose — an ending that only reaches its last five
+    scenes is visible before a word is written. The second half asks whether a declared
+    dependency is anything more than bookkeeping.
+    """
+    from .replicate import committed_texts
+
+    project = _load(args.project)
+    plan = sorted(project.plan, key=lambda s: s.index)
+    declared = [s for s in plan if s.depends_on]
+
+    print(f"\n  {project.story.title} — {len(plan)} scenes")
+    if not declared:
+        # Not a failure. The field postdates most of this project's plans, and "nobody was
+        # asked" and "there are none" are different states that this cannot tell apart.
+        print("\n  No scene declares a dependency. This plan predates the field, or the "
+              "\n  planner returned none — nothing here can tell those apart, so nothing "
+              "\n  below is reported.\n")
+        return 0
+
+    edges = sum(len(s.depends_on) for s in declared)
+    print(f"  {len(declared)} scenes declare {edges} dependencies "
+          f"({edges / len(declared):.1f} each)")
+    reach = checks.ending_reach(plan)
+    reached = checks.ancestors(plan, plan[-1].index)
+    print(f"  the final scene depends, transitively, on {len(reached)} of "
+          f"{len(plan) - 1} earlier scenes ({reach:.0%})")
+
+    orphans = [s.index for s in plan[1:] if not s.depends_on]
+    if orphans:
+        print(f"  {len(orphans)} scenes declare nothing: "
+              f"{', '.join(str(i) for i in orphans[:15])}"
+              + (" …" if len(orphans) > 15 else ""))
+    unreached = [s.index for s in plan[:-1] if s.index not in reached]
+    if unreached:
+        print(f"  {len(unreached)} scenes the ending does not reach: "
+              f"{', '.join(str(i) for i in unreached[:15])}"
+              + (" …" if len(unreached) > 15 else ""))
+
+    _print_violations(checks.check_dependency_graph(plan, project.story), "Graph audit")
+
+    texts = committed_texts(args.project)
+    if len(texts) < 10 or not args.prose:
+        print("\n  Pass --prose on a finished book to test whether a declared dependency "
+              "\n  leaves any trace in the writing.\n")
+        return 0
+
+    from .embed import Embedder
+    from .forecast import declared_vs_random
+    embedder = Embedder(args.embed_model, args.base_url,
+                        cache_dir=Path(args.project) / ".embeddings")
+    result = declared_vs_random(plan, texts, embedder, seed=args.seed)
+    print(f"\n  Does a declared dependency show up in the prose?")
+    print(f"    scene against its declared ancestor   {result.on_target:.3f}")
+    print(f"    scene against a random earlier scene  {result.on_control:.3f}")
+    print(f"    the declared one is closer            {result.win_rate:.0%}   n={result.n}")
+    print(f"    {result.verdict(args.floor)}")
+    if result.win_rate < args.floor:
+        print("\n  A declared dependency that leaves no trace makes the field bookkeeping: "
+              "\n  the graph audit would then be measuring the planner, not the book.\n")
+    else:
+        print()
+    return 0
+
+
 # --------------------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -953,6 +1020,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
     p.add_argument("--openai-compat", action="store_true")
     p.set_defaults(func=cmd_forecast)
+
+    p = add_project(sub.add_parser(
+        "depends", help="the declared dependency graph, and whether the prose shows it"))
+    p.add_argument("--prose", action="store_true",
+                   help="also test declared dependencies against the written scenes")
+    p.add_argument("--embed-model", default="nomic-embed-text")
+    p.add_argument("--floor", type=float, default=0.65)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
+    p.set_defaults(func=cmd_depends)
 
     p = sub.add_parser("rate", help="read a filled-in sentence sheet and report what it shows")
     p.add_argument("sheet", help="the filled-in sheet")
