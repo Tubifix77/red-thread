@@ -27,6 +27,28 @@ while true; do
 done
 echo "[$(date +%H:%M)] floor set complete"
 
+# The control and the ablations must differ by the switch and nothing else, and they are written
+# hours apart by two different processes — so the code the floor set ran has to still be the code
+# the ablations will run. A long session that improves the writer between them silently turns a
+# one-variable experiment into a two-variable one, and the arithmetic cannot tell.
+#
+# FLOOR_COMMIT is the revision the floor set was generated at. The paths below are the write path:
+# everything a scene passes through between its brief and its commit. `checks.py` is deliberately
+# not in the list because it changes constantly for reporting reasons; it was verified separately
+# by AST-diffing every function, which found only manuscript_measures, describe_difference and
+# audit_plan changed, none of them a scene-level check.
+FLOOR_COMMIT=9a97493
+WRITE_PATH="redthread/pipeline.py redthread/brief.py redthread/verify.py redthread/llm.py redthread/schedule.py"
+if ! git diff --quiet "$FLOOR_COMMIT..HEAD" -- $WRITE_PATH; then
+    echo "[$(date +%H:%M)] REFUSING TO RUN."
+    echo "  The write path has changed since the floor set was generated at $FLOOR_COMMIT:"
+    git diff --stat "$FLOOR_COMMIT..HEAD" -- $WRITE_PATH | sed 's/^/    /'
+    echo "  The ablations would differ from their control by more than the switch."
+    echo "  Regenerate the floor set at HEAD, or check out $FLOOR_COMMIT to run these."
+    exit 1
+fi
+echo "[$(date +%H:%M)] write path unchanged since $FLOOR_COMMIT — the switch is the only variable"
+
 # Step 5. Kill criterion: repetition concentration inside the floor means the refrain feedback is
 # prompt weight with no return, and it comes out.
 echo "[$(date +%H:%M)] step 5 — refrain feedback ablated"
