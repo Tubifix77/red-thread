@@ -16,7 +16,7 @@ been through `checks.clears_noise`.
 |---|---|---|
 | 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
 | 1 — confirm what exists | 0 of 4 | ⏳ queued behind step 2 as `scripts/phase1.sh` |
-| 2 — tension on embeddings | 1 of 5 | steps 10-12 running now |
+| 2 — tension on embeddings | 3 of 5 | **step 11 fired its kill criterion**; 12 needs its replicate |
 | 3 — dependency graph | 2 of 3 | step 16 needs a plan carrying the new field |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
@@ -161,15 +161,44 @@ re-score cannot silently change what the model was shown. An experiment whose on
 pass/fail verdict cannot be re-analysed, and this project's most expensive negative result was
 stored that way.*
 
-**11. Run the control before believing anything.** Predicted scene against a random other scene
-from the same book. Lexical overlap won 41% of the time, worse than chance. **Kill criterion:**
-below about 65% and embeddings have failed the same way words did — go to step 12, not to a
-threshold.
+**11. Run the control before believing anything.** ⛔ **Kill criterion fired.** Predicted scene
+against a random other scene from the same book. Lexical overlap won 41% of the time, worse than
+chance. **Kill criterion:** below about 65% and embeddings have failed the same way words did —
+go to step 12, not to a threshold.
 
-**12. If one prediction is not enough, measure the spread of several.** The cited work measures
+*Run on 35 scenes of a finished 71-scene novel, k = 5 each, 175 local calls:*
+
+| scorer | on target | on control | win rate |
+|---|---:|---:|---:|
+| lexical overlap | 0.549 | 0.543 | **51%** |
+| embedding cosine | 0.749 | 0.739 | **54%** |
+
+*Neither reaches 65%. **Meaning overlap fails the same way word overlap did.** A prediction and a
+scene from one novel share the novel, and what is left over will not separate a right guess from
+a wrong one.*
+
+*Look at the absolute cosines rather than the win rate: **.749 against .739.** A raw similarity
+between any two scenes of one book is high and says nothing, which is why nothing in this module
+prints one as a result.*
+
+*Two incidental confirmations. Re-scoring with the corrected decoy pool — which excludes the
+three scenes the model was actually shown — moved lexical from 40% to exactly chance and left
+embeddings unmoved. And that re-score cost **six embedding calls against 309 served from cache**,
+with no regeneration at all: the persistence fix earning its place within an hour of being
+written, on the very failure it was built for.*
+
+**12. If one prediction is not enough, measure the spread of several.** ⏳ The cited work measures
 the *entropy of a forecasting distribution*, not the accuracy of one sample. Generate k
 predictions and measure how much they disagree with each other. A scene the model can call has low
 spread. This never needs the actual scene, so the book's shared vocabulary cannot confound it.
+
+*First distribution: mean spread **.130**, range .060 to .266 across 35 scenes. Plausible — and
+so was lexical overlap's, which was noise. A distribution is not evidence.*
+
+*So `spread_stability` applies the replicate rule one level down: do two independent prediction
+sets agree about which scenes are predictable? If they rank the scenes differently, the spread
+measures the sampling rather than the scene, and step 13 has nothing to plot. A second set is
+generating.*
 
 **13. Only now, look at the middle.** Plot tension across a manuscript; a sagging middle should
 appear as a run of low-spread scenes. First honest test of what four earlier attempts could not
