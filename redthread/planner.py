@@ -383,18 +383,18 @@ For each scene give:
 - "summary": one sentence, concrete, what happens. Name things.
 - "setting" and "time": specific places and specific moments, not "later" or "a room".
 - "pov": the id of the character whose head we are in.
-- "characters": ids of everyone present.
+- "characters": ids of everyone present, and there are nearly always two or more. A novel is
+  people doing things to each other; a character by themselves has nobody to be surprised by.
 - "beats": 2 to 4 beats, in order. Each is roughly half a page of story and must be an event or a
   turn, not a feeling. A beat that could be summarised as "she reflects on X" is not a beat.
   A beat NAMES what happens; it is not the prose. Write "Dain refuses to hand over the vial",
   never "Dain steps forward, his boots crunching over dry leaves, his voice steady and low" and
   never a line of dialogue in quotation marks. The scene is written from the beat, so a beat
   written as prose is prose the scene will copy back word for word.
-  IF TWO OR MORE CHARACTERS ARE PRESENT, at least one beat must name something PASSING BETWEEN
-  them — a question asked, a demand refused, an accusation, a lie, an offer taken back. Name the
-  act, not the words: "Sera refuses to say who filed the record", never the line itself. Two
-  people in a room with nothing to say to each other is one person remembering, and the scene
-  comes out as a character walking through a place having thoughts about it.
+  At least one beat per scene must name something PASSING BETWEEN two people — a question asked,
+  a demand refused, an accusation, a lie, an offer taken back. Name the act, not the words:
+  "Sera refuses to say who filed the record", never the line itself. A scene where nothing passes
+  between anybody comes out as one character walking through a place having thoughts about it.
 - "threads": for each thread id this scene must move, what the scene must BRING ABOUT ("post",
   1-3 concrete statements) and what it must NOT do ("forbid", 1-3 statements). Forbids are where
   premature reveals get prevented — use them.
