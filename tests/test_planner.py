@@ -760,3 +760,53 @@ class TestRevealState(unittest.TestCase):
                     if s == boat.states[-1]]
         self.assertEqual(boat.reveal_scene, terminal[0],
                          "no declared reveal state defaults to the terminal — payoffs disclose")
+
+
+class TestACatchphraseIsRefusedInTheRetryLoop(unittest.TestCase):
+    """A line written into a character's voice is repeated by the whole book.
+
+    A 71-scene run gave Vaylen Korr the voice "he speaks in clipped, precise sentences,
+    deflecting with dry humor, often using the phrase 'this is not a matter of morality.'" That
+    description goes into every brief the character appears in, and the phrase landed in 23 of
+    71 scenes — while those same briefs were listing it as a refrain to avoid, because
+    `manuscript_refrains` had correctly spotted it. Characterisation beat prohibition, which it
+    will: one is what the character *is* and the other is a rule about wording.
+
+    The distinction is habitual repetition, not quotation. Another plan gave a character the
+    voice "The light is on. The tide is out. The snow is falling." to illustrate clipped rhythm
+    and none of it reached the prose — 0 of 9 scenes. It is "often using the phrase" that does
+    the damage, so that is what is matched.
+    """
+
+    def _story(self, voice):
+        return parse_story(json.loads(story_json(characters=[
+            {"id": "vaylen", "name": "Vaylen Korr", "description": "a bailiff", "voice": voice},
+            {"id": "sorin", "name": "Sorin Vey", "description": "a fugitive", "voice": "evades"},
+            {"id": "mirra", "name": "Mirra Thal", "description": "an official", "voice": "flat"},
+        ])))
+
+    def test_the_catchphrase_from_the_live_run_is_caught(self):
+        story = self._story("He speaks in clipped, precise sentences, deflecting with dry "
+                            "humor, often using the phrase 'this is not a matter of morality.'")
+        problems = story_problems(story)
+        self.assertTrue(any("phrase they repeat" in p for p in problems), problems)
+        self.assertTrue(any("Vaylen Korr" in p for p in problems), problems)
+
+    def test_other_habitual_wordings_too(self):
+        for lead in ("always says", "has a habit of saying", "is fond of saying",
+                     "repeatedly falls back on", "keeps saying"):
+            with self.subTest(lead=lead):
+                story = self._story(f"Blunt and short. He {lead} 'the ledger does not lie.'")
+                self.assertTrue(any("phrase they repeat" in p for p in story_problems(story)))
+
+    def test_a_quoted_rhythm_example_is_not_a_catchphrase(self):
+        """The one that did no harm, and must keep doing none. Three clipped sentences shown as
+        an illustration of cadence appeared in 0 of 9 scenes of the book that used them."""
+        story = self._story("Clipped and declarative: 'The light is on. The tide is out. "
+                            "The snow is falling.'")
+        self.assertFalse(any("phrase they repeat" in p for p in story_problems(story)))
+
+    def test_an_ordinary_voice_is_left_alone(self):
+        story = self._story("Speaks in short sentences and changes the subject to the weather "
+                            "whenever the sale is mentioned.")
+        self.assertFalse(any("phrase they repeat" in p for p in story_problems(story)))

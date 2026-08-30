@@ -100,7 +100,10 @@ and diction. Do not quote the premise, and DO NOT put any character or place nam
 story in them — a sample that reads like a line from the book gets absorbed into the prose \
 verbatim; write them about something unrelated (weather on a road, a tool being cleaned, a queue \
 at a counter) in the book's voice. Three sentences of varied length. Give the voice of each \
-character as how they speak and evade, not as an adjective.
+character as how they speak and evade, not as an adjective — and never as a line they repeat. \
+"Often uses the phrase X" puts X into every brief that character appears in; one such phrase \
+reached 23 scenes of a 71-scene book, while the same briefs were listing it as a refrain to \
+avoid. Rhythm, what they will not say, what they change the subject to. Not a catchphrase.
 
 {json_only}
 Schema:
@@ -244,6 +247,14 @@ def parse_story(data: dict) -> StorySpec:
     )
 
 
+_CATCHPHRASE = re.compile(
+    r"\b(?:often|always|habitually|repeatedly|frequently|constantly|invariably|routinely|"
+    r"catchphrase|signature phrase|favourite phrase|favorite phrase|tends? to say|"
+    r"has a habit of|is fond of saying|likes to say|keeps saying)\b"
+    r"[^.!?]{0,60}[\'\"“‘]([^\'\"”’]{8,160})[\'\"”’]",
+    re.IGNORECASE)
+
+
 def story_problems(story: StorySpec) -> list[str]:
     """Gaps a retry might actually fix, phrased as instructions rather than complaints."""
     problems: list[str] = []
@@ -270,6 +281,29 @@ def story_problems(story: StorySpec) -> list[str]:
     if len(story.style.samples) < 2:
         problems.append("Give at least three style samples: new sentences you write in the "
                         "target register, of varied length.")
+
+    # A catchphrase written into a character's voice is repeated by the whole book.
+    #
+    # A 71-scene run gave Vaylen Korr the voice "he speaks in clipped, precise sentences,
+    # deflecting with dry humor, often using the phrase 'this is not a matter of morality.'"
+    # That description goes into every brief the character appears in, so the phrase landed in
+    # 23 of 71 scenes — and the same briefs were simultaneously listing it as a refrain to
+    # avoid, because `manuscript_refrains` had correctly identified it. Characterisation beat
+    # prohibition, which it will, because one is what the character *is* and the other is a rule.
+    #
+    # The distinction is habitual repetition, not quotation. Another plan gave a character the
+    # voice "The light is on. The tide is out. The snow is falling." as an illustration of
+    # clipped rhythm, and none of it appeared in the prose at all — 0 of 9 scenes. It is
+    # "often using the phrase" that does the damage.
+    catchphrases = [c.name for c in story.characters
+                    if _CATCHPHRASE.search(f"{c.voice} {c.description}")]
+    if catchphrases:
+        problems.append(
+            f"These characters are given a phrase they repeat: {', '.join(catchphrases)}. "
+            f"A line written into a voice is injected into every brief that character appears "
+            f"in, and one such phrase reached 23 scenes of a 71-scene book. Describe HOW they "
+            f"speak — rhythm, what they evade, what they will not say — and never give them a "
+            f"line to repeat.")
     name_tokens = {t for c in story.characters
                    for t in re.split(r"[^a-z]+", c.name.lower()) if len(t) > 2}
     if any(name_tokens & set(re.split(r"[^a-z]+", sample.lower()))
