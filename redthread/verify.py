@@ -62,10 +62,10 @@ Rules:
 - Do not record anything the scene did not actually establish. Inventing facts here is worse \
 than missing them, because an invented fact becomes a constraint on every later scene.
 - HOW MANY. Most scenes establish between three and eight things a later scene could actually \
-contradict. Record those and stop. If you are past ten you have started recording description; \
-if you are reaching for fifteen you are padding, and a padded fact is worse than a missing one \
-because it takes a place in every later brief that a real fact needed. Fifteen is a ceiling you \
-should rarely come near, not a target to fill.
+contradict. Record those and stop. Past ten you have started recording description, and a padded \
+fact is worse than a missing one because it takes a place in every later brief that a real fact \
+needed. NEVER MORE THAN 15. That is a hard limit and also not a target — a scene that establishes \
+four things should return four.
 - Atmosphere is not a fact. "the screen was flickering", "the room was cold", "her fingers were \
 calloused" are description, and recording them turns every later scene into an argument with the \
 weather. Everything here constrains the rest of the book and is fed into every later brief, so ten \

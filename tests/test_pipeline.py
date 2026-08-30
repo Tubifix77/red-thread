@@ -1944,7 +1944,12 @@ class TestTheExtractorIsNotGivenAQuota(unittest.TestCase):
         self.assertIn("three and eight", EXTRACT_PROMPT)
         self.assertNotIn("AT MOST 15 FACTS", EXTRACT_PROMPT)
 
-    def test_the_ceiling_is_framed_as_a_ceiling(self):
+    def test_the_hard_limit_survives_the_reframing(self):
+        """The first attempt at this removed the hard limit along with the quota framing, and
+        three live scenes came back with 20, 29 and 30 facts — worse than the spike it replaced,
+        and above the old cap. The range and the ceiling have to coexist: the range stops the
+        padding, the ceiling stops the flood."""
         from redthread.verify import EXTRACT_PROMPT
+        self.assertIn("NEVER MORE THAN 15", EXTRACT_PROMPT)
+        self.assertIn("hard limit", EXTRACT_PROMPT)
         self.assertIn("not a target", EXTRACT_PROMPT)
-        self.assertIn("padding", EXTRACT_PROMPT.lower())
