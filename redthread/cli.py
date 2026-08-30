@@ -837,6 +837,27 @@ def cmd_forecast(args) -> int:
         print("    This is a distribution, not a verdict. It needs the same control everything "
               "\n    else here does before any scene is called slack.")
 
+        if args.against_store:
+            # The replicate rule, one level down. Two independent sets of k predictions for the
+            # same scenes: if they rank the scenes differently, the spread is measuring the
+            # sampling rather than the scene, and there is nothing to plot in step 13.
+            from .forecast import spread_stability
+            other = load(Path(args.against_store))
+            r, n = spread_stability(predictions, other, embedder)
+            print(f"\n  Do two independent prediction sets agree about which scenes are "
+                  f"predictable?")
+            print(f"    r = {r:+.3f} across {n} scenes")
+            if n < 10:
+                print("    Too few scenes in common to say anything.")
+            elif r < 0.3:
+                print("    No. The spread is measuring the sampling, not the scene — the same "
+                      "\n    failure as the two scorers above, in a measure that avoided their "
+                      "\n    confound and found another. Step 13 has nothing to plot.")
+            elif r < 0.6:
+                print("    Weakly. Enough to be worth another set, not enough to build on.")
+            else:
+                print("    Yes. The spread is a property of the scene, and step 13 can plot it.")
+
     print(f"\n  {embedder.calls} embedding call(s), {embedder.cached} served from cache\n")
     return 0
 
@@ -1077,6 +1098,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--score-only", action="store_true",
                    help="score predictions already on disk instead of generating them")
     p.add_argument("--out", help="where the predictions live (default <run>/forecast.json)")
+    p.add_argument("--against-store", metavar="PATH",
+                   help="a second prediction set; reports whether the two agree about which "
+                        "scenes are predictable")
     p.add_argument("--embed-model", default="nomic-embed-text")
     p.add_argument("--floor", type=float, default=0.65,
                    help="win rate below which a scorer has failed (default 0.65)")
