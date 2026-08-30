@@ -1125,8 +1125,11 @@ def summary_distance(text: str) -> float:
 
     It discriminates like the duplication ratio does, on the same corpus: the reference drafts in
     `docs/evidence` sit at 0.085 (gemma3:12b), 0.100 (phi4:14b) and 0.129 (qwen3:8b), while the
-    107 scenes this project has committed run to a median of 0.382 and a maximum of 0.979 — one
-    scene in which every sentence but one is narrated at distance. StoryScope's
+    107 scenes this project had committed *at the time* run to a median of 0.382 and a maximum of
+    0.979 — one scene in which every sentence but one is narrated at distance. Those are the
+    scenes this threshold was calibrated on, which is the right corpus for the purpose and no
+    longer describes the project's output: since the sampler fix, 373 scenes average 0.047.
+    StoryScope's
     "narrated at summary distance" tell was firing on every scene of a live book and only the
     LLM probe could see it, which by policy makes it advisory — this is the countable half.
     """
@@ -1159,9 +1162,9 @@ def recap_blocks(text: str, run: int = 4) -> list[tuple[int, int, int]]:
 
     `summary_distance` measures the register and cannot be repaired, because switching one
     sentence to simple past leaves the other forty untouched. But the register is not uniform.
-    Measured across 107 committed scenes, past perfect arrives in *blocks*: the median scene has
-    a run of 4 consecutive past-perfect sentences, 68 of 107 reach 4 or more, and the worst has
-    46 in a row — a page of backstory dictated into the middle of a scene, which in that case
+    Measured across the 107 scenes committed before the sampler fix, past perfect arrives in
+    *blocks*: the median scene has a run of 4 consecutive past-perfect sentences, 68 of 107 reach
+    4 or more, and the worst has 46 in a row — a page of backstory dictated into the middle of a scene, which in that case
     also repeated "she had not asked" 77 times in 1,490 words.
 
     The three reference drafts in `docs/evidence` reach runs of 2, 1 and 2. None of them has

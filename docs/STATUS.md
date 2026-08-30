@@ -83,7 +83,7 @@ The first version of this page reported recap grammar at .28 → .25. That was m
 regex that missed two whole classes of past perfect: an adverb between the auxiliary and the
 participle (*had never seen*, *had already gone*), and irregular participles that were simply
 absent from the list (*had hung*, *had held*, *had stood* — the last of which one live scene
-repeated nine times). Corrected, the committed corpus sits at a median of **.382**, not .245,
+repeated nine times). Corrected, the corpus *as it then stood* sits at a median of **.382**, not .245,
 and the worst scene narrates 97.9% of its sentences at distance.
 
 So the axis did not "barely move". It **has not meaningfully moved at all**, and it is the
