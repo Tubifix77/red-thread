@@ -1153,9 +1153,13 @@ _GESTURE_PART = re.compile(
     r"\b(?:his|her|their|its)\s+(fingers?|hand|hands|palm|palms|thumb|knuckles|jaw|chin|head|"
     r"shoulders?|eyes|gaze|brow|lips|mouth|spine|arms?|wrist|breath|voice)\b", re.I)
 
+# "steady" was the single commonest match — 184 of roughly 1,100 across every book here — and
+# "her voice steady" describes stillness, which is the opposite of a movement. "pressure" is a
+# noun that `press\w*` was catching. Both counted toward every gesture rate measured before
+# 30 August 2026, inflating them by about 17%, which is why the threshold is re-derived below.
 _GESTURE_VERB = re.compile(
-    r"\b(tilt\w*|trac\w*|brush\w*|hover\w*|press\w*|curl\w*|tighten\w*|flex\w*|clench\w*|"
-    r"cross\w*|fold\w*|shift\w*|settl\w*|linger\w*|flicker\w*|narrow\w*|steady\w*)\b", re.I)
+    r"\b(tilt\w*|trac\w*|brush\w*|hover\w*|press(?:e[sd]|ing)?|curl\w*|tighten\w*|flex\w*|"
+    r"clench\w*|cross\w*|fold\w*|shift\w*|settl\w*|linger\w*|flicker\w*|narrow\w*)\b", re.I)
 
 
 def gesture_pairs(text: str) -> list[tuple[str, str, int]]:

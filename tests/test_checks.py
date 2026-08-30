@@ -998,6 +998,18 @@ class TestGesture(unittest.TestCase):
         self.assertEqual(checks.check_gesture_density(self._scene(talky)), [],
                          "the same gestures in a dialogue scene are the beats between its lines")
 
+    def test_stillness_is_not_a_movement(self):
+        """"steady" was the commonest thing this detector matched — 184 of roughly 1,100 across
+        every book in the project — and "her voice steady" describes stillness. "pressure" is a
+        noun the verb pattern was catching. Both inflated every gesture rate measured before
+        they were removed."""
+        self.assertEqual(checks.gesture_pairs("Her voice steady, she read the number out."), [])
+        self.assertEqual(checks.gesture_pairs("His hand steady on the rail, he waited."), [])
+        self.assertEqual(checks.gesture_pairs("She felt the pressure of his hand pressure."), [])
+        # the real movements still register
+        self.assertTrue(checks.gesture_pairs("His hand pressed flat against the desk."))
+        self.assertTrue(checks.gesture_pairs("Her fingers traced the rail."))
+
     def test_within_scene_variety_is_not_the_signal(self):
         """Recorded because it was measured and refuted. Distinct gesture pairs over total
         gestures sits at ~1.0 across four books — the repetition is between scenes, not inside
