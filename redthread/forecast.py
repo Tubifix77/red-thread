@@ -276,7 +276,12 @@ def declared_vs_random(plan, texts: list[str], embedder: Embedder,
         declared = [by_position[e] for e in spec.depends_on
                     if e in by_position and by_position[e] < position]
         declared = [p for p in declared if p < len(texts)]
-        others = [p for p in range(position) if p not in declared]
+        # The immediately preceding scene is excluded from the decoy pool unless it was itself
+        # declared. Scene N always follows N-1 and is written against its last twenty-five words
+        # — `check_seam` enforces continuity across exactly that join — so N-1 is similar to N
+        # for reasons that have nothing to do with a declared dependency. Leaving it in would
+        # inflate the control whenever it happened to be drawn.
+        others = [p for p in range(position - 1) if p not in declared]
         if not declared or not others:
             continue
 

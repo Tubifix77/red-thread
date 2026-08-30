@@ -422,5 +422,44 @@ class TestTheDecoyPoolExcludesThePrompt(unittest.TestCase):
         self.assertEqual(len(seen), 2)
 
 
+class TestDeclaredDependencyControl(unittest.TestCase):
+    """The decoy pool for step 16, and why the immediate predecessor is not in it."""
+
+    def _plan(self, deps):
+        from redthread.models import Beat, SceneSpec
+        return [SceneSpec(id=f"s{i}", index=i, summary=f"scene {i}",
+                          beats=[Beat(summary="x")], depends_on=list(deps.get(i, [])))
+                for i in range(1, 9)]
+
+    def test_the_immediate_predecessor_is_never_a_decoy(self):
+        # Scene N is written against the last twenty-five words of N-1 — check_seam enforces
+        # continuity across exactly that join — so it is similar for reasons that have nothing
+        # to do with a declared dependency.
+        seen = []
+
+        class Spy(FakeEmbedder):
+            def one(self, text):
+                seen.append(text)
+                return super().one(text)
+
+        texts = [f"scene {i} " + fakes.clean_prose(150, i) for i in range(8)]
+        declared_vs_random(self._plan({8: [3]}), texts, Spy(), seed=2)
+        self.assertNotIn(texts[6], seen,
+                         "scene 7 immediately precedes scene 8 and must not be a decoy")
+
+    def test_a_declared_predecessor_is_still_used_as_the_target(self):
+        # Excluding it from the decoys must not exclude it from the declared set.
+        texts = [f"scene {i} " + fakes.clean_prose(150, i) for i in range(8)]
+        texts[7] = texts[6]
+        result = declared_vs_random(self._plan({8: [7]}), texts, FakeEmbedder(), seed=2)
+        self.assertEqual(result.n, 1)
+        self.assertEqual(result.win_rate, 1.0)
+
+    def test_a_scene_with_no_decoy_left_is_skipped(self):
+        texts = [f"scene {i} " + fakes.clean_prose(150, i) for i in range(8)]
+        # Scene 3: position 2. Predecessor at 1 is excluded, 0 is the declared ancestor.
+        self.assertEqual(declared_vs_random(self._plan({3: [1]}), texts, FakeEmbedder()).n, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
