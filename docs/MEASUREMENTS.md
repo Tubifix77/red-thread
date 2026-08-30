@@ -92,10 +92,24 @@ so independence is structural. The same holds for `state_regression`, `state_rep
 `unknown_state` — the scheduler cannot emit an illegal transition, so the checks that would catch
 one are permanently quiet.
 
-**A handful are genuinely untested by any run so far**: `midpoint_stall`, `uniform_scene_length`,
-`cohesion_cut`, `missed_deadline`. These have unit tests but no live instance in 373 scenes, so
-nothing is known about their false-positive rate on real prose. That is the honest status: not
-broken, not exercised.
+**`midpoint_stall` is the sharpest case, and it deserves its own paragraph.** It exists to catch
+a manuscript whose middle restates its opening rather than raising the stakes — the sagging
+middle, named in `STATUS.md` as one of the things nothing measures. It fires when more than half
+the active threads gain no ground in the middle third.
+
+Across all 28 plans in the project, **zero threads stall in the middle third of any of them.**
+Not one, ever. Because `schedule.py` assigns which scene moves which thread to which state, every
+thread gains ground in every third by construction. The check cannot fire.
+
+So the project has a check named for the sagging middle that is structurally incapable of
+detecting one, and its presence in the audit implies a watch that is not being kept. Detecting a
+sag would mean measuring the *prose* — and the two prose measures tried for it, fact accumulation
+and vocabulary novelty, are recorded above as refuted. Dialogue share is the only one that ever
+showed the shape, and it now sits at .157/.130/.175/.162 by quarter, flat.
+
+**Three more are untested rather than blind**: `uniform_scene_length`, `cohesion_cut`,
+`missed_deadline`. These have unit tests and no live instance in 373 scenes, so nothing is known
+about their false-positive rate on real prose. Not broken, not exercised.
 
 The distinction matters when reading a green suite. A check that is quiet because the gate
 upstream of it works is doing its job; a check that is quiet because nothing has ever tested it

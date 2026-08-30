@@ -1546,6 +1546,18 @@ def check_stakes_progression(
         if leaving <= entering:
             stalled.append(thread.id)
 
+    # This cannot fire, and that is worth knowing rather than discovering twice.
+    #
+    # It exists to catch a manuscript whose middle restates its opening. But `schedule.py`
+    # assigns which scene moves which thread to which state, so every thread gains ground in
+    # every third by construction: across all 28 plans in this project, zero threads stall in
+    # the middle third of any of them. The check measures the schedule, and the schedule is
+    # guaranteed.
+    #
+    # It is kept because a hand-authored plan can stall, and this is the only thing that would
+    # say so. But it must not be read as a watch on the sagging middle of a *generated* book.
+    # Detecting that would mean measuring the prose, and the two prose measures tried for it —
+    # fact accumulation and vocabulary novelty — are refuted in docs/MEASUREMENTS.md.
     if active and len(stalled) > len(active) / 2:
         out.append(Violation(
             "midpoint_stall", Severity.MAJOR,
