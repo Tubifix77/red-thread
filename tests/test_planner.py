@@ -22,6 +22,7 @@ from redthread import checks
 from redthread.llm import LLMError, Models
 from redthread.models import Severity, ThreadKind
 from redthread.planner import (drop_story_shaped_samples, drop_unavoidable_bans,
+                               scripted_topics,
                                make_plan, parse_story,
                                propose_story, story_problems, expand_beats,
                                flesh_scenes)
@@ -860,3 +861,52 @@ class TestStoryShapedSamplesAreDroppedWhenAskingFails(unittest.TestCase):
         story = self._story("Kai waited.", "Vay said nothing.", "Mir counted the crates.")
         cleaned = drop_story_shaped_samples(story)
         self.assertEqual(len(cleaned.style.samples), 3, "all three name the cast; keep them")
+
+
+class TestAVoiceMustNotSteerAtTheStorysOwnSubject(unittest.TestCase):
+    """The catchphrase problem with no quotation marks, so `_CATCHPHRASE` cannot see it.
+
+    A live bible said of one character: "Mir rarely speaks, but when he does, it is always about
+    the Ledger of Time", and "deflects by changing the subject to the Ledger of Time". That
+    description reaches every brief he appears in, and "ledger of time" landed in 17 of 71
+    scenes. Another book steered a character at "the register" and the phrase appears in 15
+    scenes of 15.
+
+    The discriminator is whether the topic comes from the story's own vocabulary, and measured
+    across every book in the project it is sharp: neutral deflections — the weather, legal
+    clauses — never reached four scenes in any of them.
+    """
+
+    def _story(self, voice, premise="A bailiff recovers years stolen from an official."):
+        data = json.loads(story_json(
+            characters=[{"id": "mir", "name": "Mir Veld", "description": "an official",
+                         "voice": voice},
+                        {"id": "kai", "name": "Kai Maren", "description": "a bailiff",
+                         "voice": "clipped"},
+                        {"id": "vay", "name": "Vay Sorel", "description": "a clerk",
+                         "voice": "evades"}]))
+        data["premise"] = premise
+        data["world_rules"] = ["Years are recorded in a public Ledger of Time."]
+        return parse_story(data)
+
+    def test_steering_at_the_storys_own_object_is_reported(self):
+        story = self._story("Speaks slowly, and deflects by changing the subject to the "
+                            "Ledger of Time.")
+        self.assertEqual([n for n, _ in scripted_topics(story)], ["Mir Veld"])
+        self.assertTrue(any("central subject" in p for p in story_problems(story)))
+
+    def test_deflecting_to_the_weather_is_good_characterisation(self):
+        """The same grammatical form, and it does no harm: measured across every book here,
+        a neutral deflection topic never reached four scenes."""
+        story = self._story("Speaks slowly, and deflects by changing the subject to the weather.")
+        self.assertEqual(scripted_topics(story), [])
+        self.assertFalse(any("central subject" in p for p in story_problems(story)))
+
+    def test_a_voice_with_no_topic_at_all_is_left_alone(self):
+        story = self._story("Speaks in slow, deliberate sentences and avoids eye contact.")
+        self.assertEqual(scripted_topics(story), [])
+
+    def test_each_character_is_named_once(self):
+        story = self._story("It is always about the Ledger of Time, and he deflects by "
+                            "changing the subject to the Ledger of Time.")
+        self.assertEqual(len(scripted_topics(story)), 1)

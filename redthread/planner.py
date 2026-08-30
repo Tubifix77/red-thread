@@ -103,7 +103,7 @@ at a counter) in the book's voice. Three sentences of varied length. Give the vo
 character as how they speak and evade, not as an adjective — and never as a line they repeat. \
 "Often uses the phrase X" puts X into every brief that character appears in; one such phrase \
 reached 23 scenes of a 71-scene book, while the same briefs were listing it as a refrain to \
-avoid. Rhythm, what they will not say, what they change the subject to. Not a catchphrase.
+avoid. Rhythm, what they will not say, what they change the subject to. Not a catchphrase. \nAnd what they deflect TO must sit outside the plot — the weather, a tool, a queue. A character written as always steering back to the story's own central object makes the book name its own subject in every scene they are in: one such line put a phrase in 17 scenes of 71, and another in 15 of 15.
 
 {json_only}
 Schema:
@@ -290,6 +290,54 @@ _CATCHPHRASE = re.compile(
     re.IGNORECASE)
 
 
+_HABITUAL_TOPIC = re.compile(
+    r"(?:about|subject to|onto|back to|to talk(?:ing)? about|returns? to)\s+"
+    r"(?:the\s+)?([a-z][a-z ']{3,26}?)(?=[.,;]|$)", re.IGNORECASE)
+
+_TOPIC_STOP = {"a", "an", "the", "of", "to", "in", "on", "at", "for", "with", "and", "or", "is",
+               "was", "be", "been", "her", "his", "their", "its", "that", "this", "it", "as",
+               "by", "from", "not", "no", "but", "they", "he", "she", "him", "them", "who",
+               "what", "when", "where", "which", "about"}
+
+
+def _significant(text: str) -> set[str]:
+    return {w for w in re.split(r"[^a-z']+", str(text).lower())
+            if len(w) > 3 and w not in _TOPIC_STOP}
+
+
+def scripted_topics(story: StorySpec) -> list[tuple[str, str]]:
+    """Characters told to keep steering the conversation to the story's own central object.
+
+    The catchphrase problem without the quotation marks, and `_CATCHPHRASE` cannot see it
+    because there is nothing quoted to see. A live bible said of one character: "Mir rarely
+    speaks, but when he does, it is always about the Ledger of Time", and "deflects by changing
+    the subject to the Ledger of Time". That description reaches every brief he appears in, and
+    "ledger of time" landed in 17 of 71 scenes. Another book scripted a character toward "the
+    register" and the phrase appears in 15 scenes of 15.
+
+    The discriminator is whether the topic comes from the story's own vocabulary, and it is
+    sharp. Neutral deflections — "deflects by changing the subject to the weather", "deflects by
+    listing legal clauses" — never reached four scenes in any book measured. Steering a character
+    at the premise's central noun is what turns a habit into a refrain.
+
+    Deflection itself is good characterisation and is not what this objects to. It objects to
+    deflecting *toward the thing the book is about*, which guarantees the book says its own
+    subject aloud in every scene that character is in.
+    """
+    world = _significant(story.premise) | _significant(" ".join(story.world_rules))
+    world |= _significant(" ".join(t.name or "" for t in story.threads))
+    if not world:
+        return []
+    out: list[tuple[str, str]] = []
+    for c in story.characters:
+        for m in _HABITUAL_TOPIC.finditer(f"{c.description} {c.voice}"):
+            topic = m.group(1).strip()
+            if _significant(topic) & world:
+                out.append((c.name, topic))
+                break
+    return out
+
+
 def story_problems(story: StorySpec) -> list[str]:
     """Gaps a retry might actually fix, phrased as instructions rather than complaints."""
     problems: list[str] = []
@@ -330,6 +378,17 @@ def story_problems(story: StorySpec) -> list[str]:
     # voice "The light is on. The tide is out. The snow is falling." as an illustration of
     # clipped rhythm, and none of it appeared in the prose at all — 0 of 9 scenes. It is
     # "often using the phrase" that does the damage.
+    scripted = scripted_topics(story)
+    if scripted:
+        problems.append(
+            "These characters are steered at the story's own central subject: "
+            + "; ".join(f'{name} ("{topic}")' for name, topic in scripted)
+            + ". A voice reaches every brief that character appears in, so a habit of raising "
+            "the thing the book is about makes the book say its own subject aloud in every "
+            "scene they are in — one such line put a phrase in 17 scenes of 71 and another in "
+            "15 of 15. Deflection is good; deflect toward something outside the plot, the way "
+            "somebody changes the subject to the weather.")
+
     catchphrases = [c.name for c in story.characters
                     if _CATCHPHRASE.search(f"{c.voice} {c.description}")]
     if catchphrases:
