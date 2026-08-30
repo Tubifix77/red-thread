@@ -228,6 +228,18 @@ forecasting **distribution**, not the accuracy of one sample. Measuring how much
 disagree with each other never touches the scene, so shared vocabulary cannot confound it. That is
 step 12 of [PLAN.md](PLAN.md) and is the version that should have been built first.
 
+**The third attempt is running, and the more useful lesson came from setting it up.** The plan
+assumed the 35 calibration predictions were on disk and a re-score with embeddings would be free.
+They were not. `probe_forecast` records a Violation only when the overlap clears its threshold,
+none ever did across the whole corpus, so the calibration lived in a throwaway script and left
+nothing behind — the generation had to be paid for twice.
+
+**An experiment whose only output is a pass/fail verdict cannot be re-analysed.** This project's
+most expensive negative result was stored that way, and the fix generalises past this section:
+`redthread/forecast.py` persists each prediction with the context that produced it, so a re-score
+cannot silently change what the model was shown, and `score` computes its control in the same
+pass as its result rather than as a later step somebody might skip.
+
 ---
 
 ## 10. Orchestration shape
