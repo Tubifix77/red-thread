@@ -273,6 +273,26 @@ the book written before the feedback existed, the list would have been non-empty
 so repetition now builds less than half as fast. One named gesture is thin evidence for
 suppression; the delay from scene 15 to scene 37 is not.
 
+**`dialogue_share` — passes, and raised a better question than the control did.** It counts words
+inside quotation marks, so the risk is quoted documents or scare quotes. Sampling 1,403 spans:
+every one is speech. The longest are 47-51 words and are speeches, not records; the shortest are
+exchange fragments ("Gift?", "Recorded elsewhere?"), not emphasis. A speech-verb-proximity control
+scored only 56% and is simply a bad control — good dialogue drops its tags.
+
+What reading those long spans raised instead: the brief forbids *"dialogue as philosophical
+debate"*, and a 48-word speech about whose voices the law depends on is exactly that. So did the
+dialogue fix buy quantity at the cost of kind?
+
+| | dialogue | spans | mean span | median | over 30 words |
+|---|---:|---:|---:|---:|---:|
+| before the fix | .077 | 579 | 7.6 | 5 | 1% |
+| after | .211 | 1297 | 9.7 | 7 | 4% |
+
+Mostly not. The increase is **more turns** — spans more than doubled — with modestly longer ones,
+and a median of 7 words is an exchange rather than a speech. But monologues over 30 words went
+from 1% to 4%, which is 52 of them where there were 6. Small, real, and worth watching if
+dialogue share is pushed higher.
+
 **`probe_forecast` — fails.** Scored against the scene it predicted versus a random other scene
 from the same book, the real scene wins 41% of the time. Detail above.
 
