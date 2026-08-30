@@ -572,6 +572,25 @@ def flesh_scenes(specs: list[SceneSpec], story: StorySpec, models: Models,
                    + "\n".join(f"Scene {s.index}: {s.summary}" for s in earlier if s.summary)
                    ) if earlier else "This is the opening of the book."
 
+        # Solo scenes arrive in runs, not at random, and the chunk context is why: it carries the
+        # last three summaries and nothing about who was in them, so a planner that has just
+        # written six one-character scenes has no way to know. Measured across four 71-scene
+        # plans, the solo count is bimodal — 5, 5, 22, 24 — and the difference is drift: the good
+        # plan's longest unbroken run of solo scenes is 1, the bad ones' are 6 and 7, with
+        # scenes 13–18 and 58–64 solo end to end.
+        #
+        # A running tally is the smallest thing that supplies the missing global view. It is
+        # added only when the share is already high, and says nothing about when a solo scene is
+        # justified: three sentences explaining that exception, in an earlier version of the
+        # instruction below, quadrupled the number of them.
+        settled = [s for s in ordered[:start] if s.characters]
+        solo = [s for s in settled if len(s.characters) < 2]
+        if settled and len(solo) / len(settled) > 0.15 and len(solo) >= 2:
+            context += (
+                f"\n\nSO FAR: {len(solo)} of the {len(settled)} scenes you have settled have "
+                f"only one character in them. That is too many. Put people in the same room in "
+                f"the scenes below.")
+
         prompt = SCENES_PROMPT.format(
             title=story.title, premise=story.premise,
             world_rules="\n".join(f"- {r}" for r in story.world_rules) or "(none)",
