@@ -545,6 +545,152 @@ def cmd_measures(args) -> int:
     return 0
 
 
+def cmd_sample(args) -> int:
+    """Print random sentences with no context and no scores, or build a blind rating sheet.
+
+    The one command here that asks a person a question. Everything else in this project measures
+    whether the prose scores better; a hundred sentences read blind is the only thing that can
+    say whether it reads better, and it is deliberately incapable of scoring anything itself.
+    """
+    from .replicate import committed_texts
+    from .sample import blind_sheet, draw, render_key, render_sheet
+
+    groups = [(Path(p).name, committed_texts(p)) for p in args.runs]
+    groups = [(name, texts) for name, texts in groups if texts]
+    if not groups:
+        raise SystemExit("no committed scenes in any of the given runs")
+
+    if not args.against:
+        pool = [t for _name, texts in groups for t in texts]
+        for sentence in draw(pool, args.n, seed=args.seed, min_words=args.min_words):
+            print(sentence)
+        return 0
+
+    other = [(Path(p).name, committed_texts(p)) for p in args.against]
+    other = [(name, texts) for name, texts in other if texts]
+    if not other:
+        raise SystemExit("no committed scenes in any --against run")
+
+    pair = [(args.label or "A", [t for _n, ts in groups for t in ts]),
+            (args.against_label or "B", [t for _n, ts in other for t in ts])]
+    sheet, key = blind_sheet(pair, args.n, seed=args.seed, min_words=args.min_words)
+
+    out = Path(args.out or ".")
+    out.mkdir(parents=True, exist_ok=True)
+    sheet_path, key_path = out / "sentences.md", out / "sentences-key.md"
+    # Two files, never one. A key beside the sheet is not a blind, and the person who has to
+    # resist reading it is the same person who wrote the thing being rated.
+    sheet_path.write_text(render_sheet(sheet), encoding="utf-8")
+    key_path.write_text(render_key(key), encoding="utf-8")
+    print(f"\n  {len(sheet)} sentences, {args.n} from each side, shuffled")
+    print(f"  sheet:  {sheet_path}")
+    print(f"  key:    {key_path}   (do not open it until the sheet is filled in)")
+
+    # A control on the sheet itself, printed rather than filtered. The sentence splitter breaks
+    # after a closing quote, so a drawn "sentence" is sometimes a speech tag joined to the line
+    # after it — and the two eras of this project differ in dialogue share by nearly threefold.
+    # Dropping quoted sentences would therefore bias the sheet differentially against the axis
+    # that has moved most, so nothing is dropped and the imbalance is reported instead. If one
+    # side arrives markedly more spoken than the other, a rating difference may be a preference
+    # about dialogue rather than about prose.
+    print("\n  Control — share of drawn sentences containing speech:")
+    for label, rows in ((pair[0][0], [s for n, lbl, s in key if lbl == pair[0][0]]),
+                        (pair[1][0], [s for n, lbl, s in key if lbl == pair[1][0]])):
+        spoken = sum(1 for s in rows if '"' in s or "“" in s or "”" in s)
+        print(f"    {label:<18} {spoken}/{len(rows)}  ({spoken / len(rows):.0%})"
+              if rows else f"    {label:<18} none drawn")
+    print()
+    return 0
+
+
+def cmd_rate(args) -> int:
+    """Read a filled-in sheet and say what a hundred hand ratings establish, if anything.
+
+    Written to be able to return "nothing". If no signal in the panel correlates with the
+    ratings, that is the finding — it says the instrument panel is orthogonal to what a reader
+    notices, and most of it needs rethinking rather than extending.
+    """
+    from .sample import (bootstrap_ci, correlate, is_spoken, parse_key, parse_ratings,
+                         sentence_signals)
+
+    ratings = parse_ratings(Path(args.sheet).read_text(encoding="utf-8"))
+    key = parse_key(Path(args.key).read_text(encoding="utf-8"))
+    if not ratings:
+        raise SystemExit(f"no ratings filled in on {args.sheet} — write a digit in each [ ]")
+
+    # The sentence text lives in the key, so the sheet stays a sheet.
+    sentences: dict[int, str] = {}
+    for line in Path(args.key).read_text(encoding="utf-8").splitlines():
+        parts = line.split(None, 3)
+        if len(parts) == 4 and parts[0].isdigit():
+            sentences[int(parts[0])] = parts[3]
+
+    rated = [(n, r) for n, r in sorted(ratings.items()) if n in key]
+    missing = len(key) - len(rated)
+    print(f"\n  {len(rated)} of {len(key)} sentences rated"
+          + (f", {missing} left blank" if missing else ""))
+
+    groups: dict[str, list[float]] = {}
+    for n, r in rated:
+        groups.setdefault(key[n][0], []).append(float(r))
+
+    print("\n  Mean rating, with a 95% bootstrap interval")
+    intervals = {}
+    for label, values in sorted(groups.items()):
+        lo, hi = bootstrap_ci(values, seed=args.seed)
+        intervals[label] = (lo, hi)
+        print(f"    {label:<18} {sum(values) / len(values):.2f}  "
+              f"[{lo:.2f}, {hi:.2f}]   n={len(values)}")
+
+    if len(intervals) == 2:
+        (a, (alo, ahi)), (b, (blo, bhi)) = sorted(intervals.items())
+        overlap = alo <= bhi and blo <= ahi
+        print(f"\n  The intervals {'overlap' if overlap else 'do not overlap'}: "
+              f"{'this cannot separate the two sides' if overlap else f'{a} and {b} differ'}.")
+
+    # Split on the control. The two sides of a sheet from this project came back 12% and 42%
+    # spoken, and dialogue share is the axis that has moved most here — so a difference that
+    # disappears inside one of these halves was a preference about dialogue.
+    print("\n  Split on the speech control")
+    for kind in ("narrated", "spoken"):
+        print(f"    {kind}")
+        for label in sorted(groups):
+            values = [float(r) for n, r in rated
+                      if key[n][0] == label and key[n][1] == kind]
+            if not values:
+                print(f"      {label:<16} none drawn")
+                continue
+            lo, hi = bootstrap_ci(values, seed=args.seed)
+            # A cell this small has an interval wider than any effect worth finding. Saying so
+            # beside the number beats leaving a reader to notice the n themselves, which is how
+            # a 6-sentence cell gets quoted as a result.
+            thin = "  — too few to read" if len(values) < 15 else ""
+            print(f"      {label:<16} {sum(values) / len(values):.2f}  "
+                  f"[{lo:.2f}, {hi:.2f}]   n={len(values)}{thin}")
+
+    print("\n  Every per-sentence signal in the panel, against the ratings")
+    scored = [(sentence_signals(sentences.get(n, "")), float(r)) for n, r in rated
+              if sentences.get(n)]
+    if scored:
+        ys = [r for _s, r in scored]
+        rows = []
+        for name in scored[0][0]:
+            xs = [s[name] for s, _r in scored]
+            rows.append((abs(correlate(xs, ys)), name, correlate(xs, ys)))
+        for _absr, name, r in sorted(rows, reverse=True):
+            verdict = "" if abs(r) >= 0.3 else "   (nothing)"
+            print(f"    {name:<14} r = {r:+.3f}{verdict}")
+        best = max(rows)[0]
+        if best < 0.3:
+            print("\n  Nothing in the panel reaches r = 0.3 against a human reading. That is "
+                  "\n  the finding: these measures are orthogonal to what a reader notices, and "
+                  "\n  extending them will not change that.")
+    print("\n  Note: duplication, refrains and cross-scene gesture repeats are properties of a "
+          "\n  manuscript and cannot be asked of one sentence. A sheet like this can never test "
+          "\n  the measures this project has spent most of its effort on.\n")
+    return 0
+
+
 # --------------------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -687,6 +833,28 @@ def build_parser() -> argparse.ArgumentParser:
                    help="use the OpenAI-compatible endpoint instead of Ollama's native API")
     p.add_argument("--quiet", action="store_true")
     p.set_defaults(func=cmd_replicate)
+
+    p = sub.add_parser("sample",
+                       help="random sentences with no context and no scores")
+    p.add_argument("runs", nargs="+", help="one or more run directories")
+    p.add_argument("--n", type=int, default=30,
+                   help="sentences to draw (per side, when --against is given)")
+    p.add_argument("--against", nargs="+", metavar="RUN",
+                   help="a second group; produces a shuffled blind sheet and a separate key")
+    p.add_argument("--label", help="name for the first group, used only in the key")
+    p.add_argument("--against-label", help="name for the second group, used only in the key")
+    p.add_argument("--min-words", type=int, default=8,
+                   help="skip sentences shorter than this; below eight they are mostly "
+                        "dialogue fragments, which are exchange rather than craft")
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--out", help="directory for the sheet and key (default: here)")
+    p.set_defaults(func=cmd_sample)
+
+    p = sub.add_parser("rate", help="read a filled-in sentence sheet and report what it shows")
+    p.add_argument("sheet", help="the filled-in sheet")
+    p.add_argument("--key", required=True, help="the key written alongside it")
+    p.add_argument("--seed", type=int, default=0, help="seed for the bootstrap")
+    p.set_defaults(func=cmd_rate)
 
     p = sub.add_parser("measures",
                        help="manuscript measures for a group of runs, with error bars")

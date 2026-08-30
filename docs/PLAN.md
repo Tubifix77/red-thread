@@ -19,7 +19,7 @@ been through `checks.clears_noise`.
 | 2 — tension on embeddings | 0 of 5 | |
 | 3 — dependency graph | 0 of 3 | |
 | 4 — want, obstacle, cost | 0 of 3 | |
-| 5 — the sentence | 0 of 3 | needs no GPU; can start any time |
+| 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
 | 6 — write the rule down | 0 of 3 | |
 
 ---
@@ -174,16 +174,43 @@ quadrupled it.
 
 ## Phase 5 — the sentence  *(no GPU, one human evening)*
 
-**20. Build a sampler, not a metric.** `redthread sample <run> --n 30` prints random sentences
+**20. Build a sampler, not a metric.** ✅ `redthread sample <run> --n 30` prints random sentences
 with no context and no scores.
 
-**21. Rate a hundred sentences by hand, once.** Fifty from before the prose work, fifty from
-after, shuffled and unlabelled. Would you read it again. This is the only ground truth this
-project will ever have on the question.
+*`redthread/sample.py`, and it is deliberately incapable of scoring anything. `--against` builds
+a shuffled sheet from two conditions and writes the key to a **separate file**, because a key
+beside the sheet is not a blind and the person who has to resist reading it is the one who wrote
+the prose.*
 
-**22. Only then look for a correlate.** Test every existing measure against the ratings. If none
-correlates, that is the finding — and a valuable one, because it says the instrument panel is
-orthogonal to what a reader notices.
+**21. Rate a hundred sentences by hand, once.** ⏳ **The sheet is built and waiting for a
+person.** Fifty from before the prose work, fifty from after, shuffled and unlabelled. Would you
+read it again. This is the only ground truth this project will ever have on the question.
+
+*[docs/evidence/sentences/sentences.md](evidence/sentences/sentences.md) — 100 sentences, one
+digit per line, about twenty minutes. Both sides are* The Debt of Years*, so the premise is held
+constant and only the era varies: `runs/debt` (duplication .319, a run of 4+ past-perfect in 67%
+of scenes) against `runs/current` (.001 and 0%).*
+
+*Building it surfaced a confound before anyone rated anything. The two sides came back **12% and
+42% spoken** — dialogue share is the axis that has moved most here, from .077 to .223 — so a
+rating difference could as easily be a preference about dialogue as a judgement about prose.
+Balancing the draw would make the sheet unrepresentative of the books, so nothing is dropped:
+the flag is recorded in the key and `rate` splits on it. This is the one item on the whole list
+that cannot be done by the machine that wrote the sentences.*
+
+**22. Only then look for a correlate.** ✅ *(the analysis; its input is step 21)* Test every
+existing measure against the ratings. If none correlates, that is the finding — and a valuable
+one, because it says the instrument panel is orthogonal to what a reader notices.
+
+*`redthread rate <sheet> --key <key>` reports the mean per side with a 95% bootstrap interval
+(hand-rolled — no runtime dependencies, and a three-point scale is not normal), splits on the
+speech control, flags any cell under n=15 as too few to read, and correlates every per-sentence
+signal against the ratings. Verified end to end on random ratings, where it correctly reports
+that nothing reaches r = 0.3.*
+
+*One limit is worth stating rather than discovering later: duplication, refrains and cross-scene
+gesture repeats are properties of a manuscript and cannot be asked of a single sentence. A sheet
+like this can never test the measures this project has spent most of its effort on.*
 
 ## Phase 6 — write the rule down  *(~3 h GPU)*
 
