@@ -772,34 +772,26 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         result.scene.violations = result.violations
         return result
 
-    # Violation tuples tie often (two drafts, one major each). Distance to the word target
-    # breaks the tie — a real run kept a 2.4x runaway over an on-length draft because the sort
-    # was stable and the runaway arrived first.
-    # Then by how much of the draft is repeated phrasing, bucketed so a trivial difference does
-    # not outrank a real length problem. This is the one quality axis the checks measure well and
-    # the gate cannot use: 29% of the median committed scene is duplicated material, and gating
-    # on that would halt books over something no sentence-local repair can mend. Selection can
-    # use it for free — the checks have already run on every candidate — and picking the cleaner
-    # of two drafts costs nothing and risks nothing.
-    # Then the two prose measures the gate cannot use, bucketed so a trivial difference does not
-    # outrank a real length problem: how much of the draft is repeated phrasing, and how much of
-    # it is narrated in past perfect rather than happening. Both separate the reference drafts in
-    # docs/evidence from what this project commits by a wide margin, and both are free here —
-    # the checks have already run on every candidate.
-    # Gesture density joins them for the same reason and with the same standing: it is a
-    # register, no repair reaches it, and this is the one place a register can still be acted
-    # on. Bucketed coarsely — a whole gesture per thousand words — so it breaks ties between
-    # drafts rather than overriding the two measures with more evidence behind them.
+    # Violation tuples tie often — two drafts, one major each — so the rest of the key decides.
+    # Every measure below is free: the checks have already run on every candidate.
+    #
+    # First the prose measures the gate cannot use, bucketed so a trivial difference does not
+    # outrank a real length problem. Duplication and past-perfect density both separate the
+    # reference drafts in docs/evidence from what this project commits by a wide margin, and
+    # neither can gate: they are registers, no sentence-local repair reaches them, and halting a
+    # book over one would be halting it over something nothing can mend. Gesture density and
+    # dialogue share join them on the same footing and for the same reason.
+    #
+    # Length comes last and is *projected*, not measured. A draft is scored on the words it will
+    # have after the repairs its own violations already imply — a real run kept a 995-word draft
+    # over a 1,519-word one and then watched `deseam` cut the winner below its target, buying a
+    # length violation and a whole extra repair round for a scene that had neither.
     scored.sort(key=lambda row: (row[0],
                                  round(checks.duplication_ratio(row[1].text) * 20),
                                  round(checks.summary_distance(row[1].text) * 10),
                                  round(checks.gesture_rate(row[1].text)),
-                                 # Prefer the draft in which the people the spec put in the room
-                                 # actually speak. A 71-scene book had 20 scenes the plan
-                                 # populated and the prose left silent, clustered in its second
-                                 # half, and this is the one place that costs nothing to act on.
                                  -round(min(checks.dialogue_share(row[1].text), 0.2) * 20),
-                                 abs(row[1].word_count() - spec.word_target)))
+                                 abs(_projected_words(row[1], row[2]) - spec.word_target)))
     _, scene, det_violations = scored[0]
     result.scene = scene
     if len(scored) > 1:
@@ -1469,6 +1461,35 @@ def _cut_recap(scene: Scene, violations: list[Violation], notes: list[str]) -> s
         return None
     notes.append(f"cutrecap: deleted a {hi - lo}-character block of recap")
     return candidate
+
+
+def _projected_words(scene: Scene, violations: list[Violation]) -> int:
+    """How long this draft will be once the deletions its violations imply have happened.
+
+    Selection used to compare raw word counts, which quietly prefers the draft that is about to
+    lose the most. A live run picked a 995-word draft over a 1,519-word one on a tie, then
+    `deseam` cut the copied ending out of the winner and left it under its target — a length
+    violation and an `expand` round bought for a scene that started with neither.
+
+    Only deletions are projected, because only deletions are predictable. A rewrite returns
+    roughly what it replaced; a deletion removes a span the check has already located.
+    """
+    lost = 0
+    counted: set[tuple[int, int]] = set()
+    for v in violations:
+        if v.kind not in DELETE_KINDS and v.kind not in ("seam_echo", "seam_tail_copy"):
+            continue
+        if not v.quote:
+            continue
+        located = checks.locate_quote(scene.text, v.quote)
+        if located is None:
+            continue
+        span = checks.sentence_covering(scene.text, located)
+        if span in counted:
+            continue
+        counted.add(span)
+        lost += len(scene.text[span[0]:span[1]].split())
+    return max(0, scene.word_count() - lost)
 
 
 def _clip_scene(text: str, words: int = 2000) -> str:

@@ -1792,3 +1792,57 @@ class TestASceneGetsASecondWholeAttempt(PipelineCase):
                         f"held back by: {[str(v) for v in results[0].violations]}")
         self.assertFalse(any("sampling rather than" in n for n in results[0].notes),
                          "the second attempt must only run for a scene that was held back")
+
+
+class TestSelectionSeesTheRepairComing(PipelineCase):
+    """A draft is worth what it will weigh after the repairs it has already earned.
+
+    Selection compared raw word counts, which quietly prefers the draft about to lose the most.
+    A live run picked a 995-word draft over a 1,519-word one on a violation tie, then `deseam`
+    cut the copied ending out of the winner and left it under target — a length violation and an
+    `expand` round bought for a scene that started with neither.
+
+    Only deletions are projected, because only deletions are predictable: a rewrite returns
+    roughly what it replaced, while a deletion removes a span the check has already located.
+    """
+
+    def test_a_deletion_is_subtracted_from_the_draft_it_will_shrink(self):
+        from redthread.pipeline import _projected_words
+        from redthread.models import Violation, Severity
+        gloss = "It was never really about the ledger at all, and she knew it."
+        text = fakes.clean_prose(900, 0) + " " + gloss
+        scene = Scene(spec_id="s", index=1, text=text)
+        v = Violation("thematic_gloss", Severity.MAJOR, "gloss", "check", gloss)
+
+        self.assertEqual(_projected_words(scene, []), scene.word_count())
+        projected = _projected_words(scene, [v])
+        self.assertLess(projected, scene.word_count())
+        self.assertAlmostEqual(scene.word_count() - projected, len(gloss.split()), delta=3)
+
+    def test_a_rewrite_is_not_projected(self):
+        """Only deletions shrink a draft predictably. Guessing at rewrites would be worse than
+        the raw count this replaced."""
+        from redthread.pipeline import _projected_words
+        from redthread.models import Violation, Severity
+        text = fakes.clean_prose(900, 0)
+        scene = Scene(spec_id="s", index=1, text=text)
+        sentence = checks.sentences(text)[3]
+        v = Violation("slop", Severity.MINOR, "over-represented", "check", sentence)
+        self.assertEqual(_projected_words(scene, [v]), scene.word_count())
+
+    def test_the_same_span_is_not_counted_twice(self):
+        from redthread.pipeline import _projected_words
+        from redthread.models import Violation, Severity
+        gloss = "It was never really about the ledger at all, and she knew it."
+        scene = Scene(spec_id="s", index=1, text=fakes.clean_prose(900, 0) + " " + gloss)
+        vs = [Violation("thematic_gloss", Severity.MAJOR, "d", "c", gloss),
+              Violation("tell_thematic_gloss", Severity.MAJOR, "d", "c", gloss)]
+        once = _projected_words(scene, [vs[0]])
+        self.assertEqual(_projected_words(scene, vs), once)
+
+    def test_an_unlocatable_quote_costs_nothing(self):
+        from redthread.pipeline import _projected_words
+        from redthread.models import Violation, Severity
+        scene = Scene(spec_id="s", index=1, text=fakes.clean_prose(900, 0))
+        v = Violation("thematic_gloss", Severity.MAJOR, "d", "c", "a sentence never written")
+        self.assertEqual(_projected_words(scene, [v]), scene.word_count())
