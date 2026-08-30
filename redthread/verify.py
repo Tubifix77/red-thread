@@ -81,14 +81,29 @@ Schema:
 {{"facts": [{{"subject": "...", "predicate": "...", "object": "...", "kind": "state|knowledge|detail|event"}}]}}"""
 
 
+# Knowledge first when the cap has to cut, because the prompt calls it "the most important kind"
+# and a character acting on what they do not know is the failure the ledger exists to prevent.
+# Details are fixed particulars and cannot be re-established later; states change but are what a
+# later scene contradicts; an event is the kind the prompt says to use only when nothing else fits.
+_FACT_PRIORITY = {FactKind.KNOWLEDGE: 0, FactKind.DETAIL: 1, FactKind.STATE: 2, FactKind.EVENT: 3}
+
+
 def extract_facts(scene: Scene, story: StorySpec, models: Models,
-                  max_facts: int = 30) -> list[Fact]:
+                  max_facts: int = 15) -> list[Fact]:
     """Prose into quadruples.
 
     The cap is a backstop against over-recording, not a target. A real run on a local model
     returned 59 facts for a 689-word scene, mostly atmosphere, and that compounds badly: the
     ledger fills with transient description, every later brief is padded with it, and
     `conflict_candidates` starts manufacturing contradictions out of how the light was falling.
+
+    **It is 15 because the prompt says 15**, and it said 30 while the prompt said 15 for as long
+    as both have existed. The prompt's limit is the one that was being ignored: on a live run,
+    11 of 46 scenes came back with 23 to 30 facts. Asking a model for a count and then not
+    enforcing it is the one thing this project says never to do, in the one place it was doing it.
+
+    When the cap has to cut, it cuts by durability rather than by whatever order the model
+    happened to emit — see `_FACT_PRIORITY`.
     """
     prompt = EXTRACT_PROMPT.format(index=scene.index, title=story.title,
                                    text=_clip(scene.text, 2500), json_only=JSON_ONLY)
@@ -102,7 +117,7 @@ def extract_facts(scene: Scene, story: StorySpec, models: Models,
     rows = data.get("facts", []) if isinstance(data, dict) else data
 
     facts: list[Fact] = []
-    for row in rows[:max_facts]:
+    for row in rows:
         if not isinstance(row, dict):
             continue
         subject = str(row.get("subject", "")).strip()
@@ -115,7 +130,13 @@ def extract_facts(scene: Scene, story: StorySpec, models: Models,
         except ValueError:
             kind = FactKind.EVENT
         facts.append(Fact(subject, predicate, obj, scene.index, kind))
-    return facts
+
+    if len(facts) <= max_facts:
+        return facts
+    # Stable within a priority band, so the model's own ordering still decides between two
+    # facts of the same kind.
+    keep = sorted(range(len(facts)), key=lambda i: (_FACT_PRIORITY[facts[i].kind], i))[:max_facts]
+    return [facts[i] for i in sorted(keep)]
 
 
 # ======================================================================================

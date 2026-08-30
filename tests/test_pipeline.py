@@ -1953,3 +1953,52 @@ class TestTheExtractorIsNotGivenAQuota(unittest.TestCase):
         self.assertIn("NEVER MORE THAN 15", EXTRACT_PROMPT)
         self.assertIn("hard limit", EXTRACT_PROMPT)
         self.assertIn("not a target", EXTRACT_PROMPT)
+
+
+class TestTheFactCapIsEnforcedInCode(PipelineCase):
+    """The prompt said 15 and the code allowed 30, for as long as both have existed.
+
+    On a live run 11 of 46 scenes came back with 23 to 30 facts. Asking a model for a count and
+    then not enforcing it is the one thing this project says never to do, in the one place it
+    was doing it — and the first attempt to fix it in the prompt alone made it worse, producing
+    scenes of 20, 29 and 30.
+
+    When the cap cuts, it cuts by durability. Knowledge first, because the extraction prompt
+    calls it "the most important kind" and a character acting on what they do not know is the
+    failure the ledger exists to prevent.
+    """
+
+    def _models(self, n, kinds=None):
+        models, backend = fakes.scripted_models()
+        rows = [("Siv", "did", f"thing {i}", (kinds or ["event"] * n)[i]) for i in range(n)]
+        backend.queue("extract", fakes.facts_json(rows))
+        return models
+
+    def test_an_over_long_extraction_is_cut_to_the_cap(self):
+        from redthread.verify import extract_facts
+        facts = extract_facts(Scene(spec_id="s", index=1, text="prose"),
+                              self.project.story, self._models(30))
+        self.assertEqual(len(facts), 15)
+
+    def test_a_short_extraction_is_returned_whole(self):
+        from redthread.verify import extract_facts
+        facts = extract_facts(Scene(spec_id="s", index=1, text="prose"),
+                              self.project.story, self._models(4))
+        self.assertEqual(len(facts), 4)
+
+    def test_knowledge_survives_the_cut_before_events(self):
+        from redthread.verify import extract_facts
+        from redthread.models import FactKind
+        kinds = ["event"] * 20 + ["knowledge"] * 2
+        facts = extract_facts(Scene(spec_id="s", index=1, text="prose"),
+                              self.project.story, self._models(22, kinds))
+        self.assertEqual(len(facts), 15)
+        self.assertEqual(sum(1 for f in facts if f.kind is FactKind.KNOWLEDGE), 2,
+                         "knowledge is the kind a later scene cannot re-establish")
+
+    def test_scene_order_is_preserved_among_survivors(self):
+        from redthread.verify import extract_facts
+        facts = extract_facts(Scene(spec_id="s", index=1, text="prose"),
+                              self.project.story, self._models(30))
+        objects = [f.object for f in facts]
+        self.assertEqual(objects, sorted(objects, key=lambda o: int(o.split()[-1])))
