@@ -289,9 +289,15 @@ dialogue fix buy quantity at the cost of kind?
 | after | .211 | 1297 | 9.7 | 7 | 4% |
 
 Mostly not. The increase is **more turns** — spans more than doubled — with modestly longer ones,
-and a median of 7 words is an exchange rather than a speech. But monologues over 30 words went
-from 1% to 4%, which is 52 of them where there were 6. Small, real, and worth watching if
-dialogue share is pushed higher.
+and a median of 7 words is an exchange rather than a speech. Monologues over 30 words did go from
+1% to 4%, which is 52 of them where there were 6.
+
+*And then the control refuted the worry outright.* The book written from the hand-authored
+reference plan runs at **10.8%** over thirty words and 3.6% over fifty, against 3.8% and 0.1% in
+the latest book. The closest thing this project has to a human-guided manuscript has nearly three
+times the long-speech rate of the one that prompted the concern. Four per cent is not a defect;
+it is well under the reference, and the alarm came from reading six passages rather than counting
+them.
 
 **`probe_forecast` — fails.** Scored against the scene it predicted versus a random other scene
 from the same book, the real scene wins 41% of the time. Detail above.
