@@ -96,6 +96,25 @@ Narrowed, it moves 37% — one of the noisiest measures here.
 **Count what a pattern actually matched before publishing anything computed from it, and read a
 sample in context.** Both audits took minutes.
 
+### Which patterns have been audited this way
+
+Recorded because an unaudited pattern and a clean one look identical from the outside — which is
+exactly how a measure shipped with a docstring asserting it was narrow.
+
+| pattern | audited | verdict |
+|---|---|---|
+| `_GESTURE_VERB` | 30 Aug | **contaminated.** "steady" was 184 of ~1,100 matches and describes stillness; "pressure" was a noun caught by `press\w*`. Both removed; every gesture rate measured before that date is ~17% high |
+| `_REFUSAL` | 31 Aug | **contaminated, 56%.** `won't`/`wouldn't`/`would not`/`will not`, mostly negated futures. Removed |
+| `_ASKED` | 31 Aug | **contaminated, 56%.** `wanted`/`needed`/`meant to`, which are internal desire. Removed |
+| `_PLAN_REFUSAL` | 31 Aug | largely clean — 103 of 119 matches are `refus*`. Lost `will not`, `won't` and a bare `bars` |
+| `_SOMATIC_PATTERNS` | 31 Aug | clean. 182 beats across 444 scenes, and every sampled match is a bodily-sensation beat — jaw tightened, throat tightened, chest twisted |
+| `_GLOSS_PATTERNS` | 31 Aug | **unmeasurable from the corpus.** One match in 444 committed scenes, because the repair loop deletes them — see above |
+| `_PAST_PERFECT` | — | not audited |
+| `slop` list | 30 Aug | clean, and externally sourced. Zero entries appear in 30% or more of scenes; 70 of 75 appear in under 5% |
+
+Two of the six audited were badly contaminated and one was mildly so. That is a hit rate high
+enough that "the docstring says it is narrow" should count for nothing.
+
 **Within-scene gesture variety.** Distinct gesture pairs over total gestures sits at ~1.0 across
 four books. Gestures are already varied *inside* a scene; the repetition is between scenes, which
 is why `manuscript_gestures` exists and `check_gesture_density` cannot see it.
