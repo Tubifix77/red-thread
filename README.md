@@ -198,7 +198,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`models.py`](redthread/models.py) | Threads, transitions, specs, quadruple facts, violations | ConWriter, DOME |
 | [`ledger.py`](redthread/ledger.py) | Fact store, scoped retrieval, character knowledge, conflict candidates | DOME |
 | [`brief.py`](redthread/brief.py) | The scene brief — the most important file here | Liu et al., STORYTELLER, StoryScope |
-| [`checks.py`](redthread/checks.py) | 15 scene checks + a 10-part plan audit. No model calls | StoryScope, Antislop |
+| [`checks.py`](redthread/checks.py) | 32 checks — scene-level, manuscript-level and a plan audit. No model calls | StoryScope, Antislop |
 | [`verify.py`](redthread/verify.py) | 5 single-purpose LLM probes: extraction, contradiction, thread satisfaction, anti-tells, tension | DOME, ConWriter, Re3 |
 | [`pipeline.py`](redthread/pipeline.py) | The state machine and the commit gate | ConWriter, Re3 |
 | [`schedule.py`](redthread/schedule.py) | Deterministic thread scheduling — both markers by construction | CONCOCT |
@@ -209,9 +209,16 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`progress.py`](redthread/progress.py) | Orchestrator view — stages, timings, thread state | — |
 | [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` | — |
 
-**421 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**578 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
+
+That principle has since found its own limit. Run every check over all 467 committed scenes and
+**20 of 48 violation kinds have never fired once**, and the reasons divide: blocking kinds are
+absent from committed prose by construction, four checks test properties the scheduler already
+guarantees, and two are simply untested by any run. A check quiet because the gate upstream works
+is doing its job; a check quiet because nothing has ever tested it is an unknown wearing the same
+colour. Both are catalogued in [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md).
 
 They still cannot be the last word, and it is worth saying why. The fixtures in `tests/fakes.py`
 are prose *I* wrote, and I wrote it to pass the checks — one comment in there says outright that
@@ -220,6 +227,10 @@ Test data built around a failure mode cannot detect it. The suite proves the mac
 only running a book on a real model proves the repairs converge, and the second book found twelve
 defects with 292 green tests behind it. `tests/test_repair_coverage.py` exists because a
 *structural* assertion about the checks is the part that generalises.
+
+A red suite also reached the remote twice on 30 August, both times from `pytest | tail && git
+commit` — a pipeline takes its last element's status and `tail` always succeeds. `.githooks/pre-push`
+now refuses the push instead; enable it with `git config core.hooksPath .githooks`.
 
 Three commands need no API key, and they are the ones that tell you whether the architecture is
 sound: `brief` (read what a session will actually be told), `check` (run the deterministic checks
@@ -346,16 +357,25 @@ accumulates and survives reload, threads reach their final states, the seam is f
 verbatim, a mid-run rejection halts cleanly with nothing from the failed scene in dynamic memory,
 and a re-run resumes from the gap. Every check catches its defect.
 
-**Proven by running it to completion, all local, zero API calls:** seven manuscripts exist —
-145 scenes and 144,248 words drafted on `qwen3:8b`, the longest of them **71 scenes and 61,733
-words** ([record](docs/evidence/sixty-thousand-word-run.md)). The sixth, *The Keeper's Fourth Book*, is the
-first written from a premise the system had never seen with **no intervention after the plan
-gate**: nine scenes, 8,359 words, 8m35s, every scene committed, every thread terminal, and every
-countable prose measure at or below the reference band
-([record](docs/evidence/keepers-fourth-book-run.md)). Two are written up in full below; the other
-three (*The Book of Safe Days*, *The List*, *The Night Baker's Schedule*) were regression runs
-against fresh premises, and each one cost between one and three code fixes. That number is the
-real measure of how unattended this is, and it is not yet zero.
+**Proven by running it to completion, all local, zero API calls:** **eight distinct books across
+15 completed runs** — 467 scenes and 426,614 words drafted on `qwen3:8b`. The gap between those
+two numbers is the method: five runs are one premise rewritten to test code changes, which is the
+only way anything here gets attributed to a change rather than to luck.
+
+**Four consecutive 71-scene runs have gone start to finish with no halt and no intervention**, the
+longest at **71 scenes and 62,229 words**
+([record](docs/evidence/sixty-thousand-word-run.md)). *The Keeper's Fourth Book* was the first
+written from a premise the system had never seen with **no intervention after the plan gate**:
+nine scenes, 8,359 words, 8m35s, every scene committed, every thread terminal
+([record](docs/evidence/keepers-fourth-book-run.md)). The two earliest are written up in full below;
+*The Book of Safe Days*, *The List* and *The Night Baker's Schedule* were regression runs against
+fresh premises, and each cost between one and three code fixes.
+
+That last figure was the real measure of how unattended this is, and the honest update is that it
+reached zero for one book and has not been retested since. Nor should it be trusted much: the
+project had no error bars until 31 August, and the first replicate — two runs of one plan with no
+change between them — retracted three claims made the day before it
+([record](docs/evidence/replicate-noise-floor.md)).
 
 *The Inherited Glitch* — 10 scenes, 12,169 words, from the hand-authored reference plan, generated
 end to end on `qwen3:8b` in every role on a 10GB card. Every thread walked its state machine to its
@@ -388,12 +408,15 @@ rather than as a habit.
 
 **Not proven, and the honest list:**
 
-1. **Whether the prose is *good*.** The structure held; the sentences are an 8B's, and the longer
-   book made that plainer rather than less so — most of its scenes committed carrying six or
-   seven minors, and one draft repeated "he had no right" four times inside a single scene. The
-   system's own cross-corpus audit is where this shows up, by design: committed-with-minors is
-   the intended behaviour and the per-scene reports carry the full list for a human pass. A
-   better local writer slots in with one flag.
+1. **Whether the prose is *good*.** Every countable per-scene tell now sits at or below the
+   reference band — duplication .002, recap .047, none of the three prose tells in any of the 373
+   scenes written since the sampler fix. None of that says the prose is worth reading. The
+   project has no human rating of a single sentence, and until it has one, "good" is a word with
+   no measurement behind it here.
+1b. **Whether a book of clean scenes is a clean book.** It is not: duplication across a whole
+   manuscript is .066 against .002 within any scene of it, and the gap widens with length. The
+   aggregate is also the wrong statistic — a book with a phrase in 15 scenes can score *better*
+   than one whose worst is 7, which is why `repetition_concentration` exists beside it.
 2. **Whether scheduling structure costs anything creatively.** Making both markers hold by
    construction removes a class of failure and also removes the model's freedom to put a turn
    where it wants one. No source compares scheduled against proposed structure for
@@ -410,34 +433,24 @@ rather than as a habit.
 
 ## Next
 
-The two items measurement actually points at, in order:
+The full plan — 25 steps, six phases, ordered by what blocks what — is in
+**[docs/PLAN.md](docs/PLAN.md)**. The short version:
 
-- **A repair for recap grammar.** `summary_distance` is measured, the brief names it with the
-  numbers attached, and it moved .28 → .25 across the whole prose pass — the only measured axis
-  with no route to fix what it finds. Every other check that fires has a repair sized to its
-  scope; this one has an opinion and nothing else.
-- **Dramatic planning.** The planner emits beats that are structurally valid and dramatically
-  inert. Want, obstacle and cost are not modelled anywhere, so a beat that says *she checks the
-  register* and a beat that says *she checks the register knowing what she will find* are
-  indistinguishable to every test in the suite. This is where the unmeasured half of
-  [docs/STATUS.md](docs/STATUS.md) has to be attacked, because it cannot be attacked with a
-  checker without breaking the rule that keeps the orchestrator honest.
+**Nothing can be judged until the instruments are.** Four mechanisms shipped in the last two days
+have no off switch, so none can be ablated, and the noise floor rests on a single replicate pair.
+A replicate harness, a four-run floor, and ablation flags come before any new work.
 
-Then:
+**Then confirm or delete what exists.** Refrain feedback, gesture feedback and the re-people pass
+each have machinery and none has evidence that clears the floor. At least one of them should
+probably come out.
 
-- **A 60,000-word manuscript.** Thirty thousand words across 27 scenes is where the cross-corpus
-  checks started earning their keep; at twice that, `check_repetition` and the cast-wide rhythm
-  check are doing the work they were built for rather than sampling it.
-- **Candidate selection that can see a repair coming.** Selection currently ranks drafts by
-  violation score alone, so it picked a 995-word draft over a 1,519-word one and then watched
-  `deseam` cut it under its target. The cost of the repair a violation implies belongs in the
-  score.
-- **A better local writer.** The structure held on an 8B; the sentence ceiling is the writer
-  model. Re-run `bench` as stronger models land that fit in 10GB — the swap is one flag.
-- **Sampler-level slop suppression** via `antislop-vllm` against a local endpoint, replacing the
-  post-hoc phrase check — suppressing at sample time costs nothing, checking afterwards costs a
-  repair round trip.
-- **The forecastability probe on midpoint scenes** (`--forecast`), which is where under-tensioned
-  writing hides.
-- **Bottom-up amendment** — prose amending its own spec, the difference between an outline-filler
-  and a writing tool.
+**Then the instruments that do not exist.** `nomic-embed-text` has been installed on the target
+machine the whole time and never used, and it is the obvious answer to two failures — the tension
+probe and the causality measure both died on *lexical* overlap. The stronger form is the one the
+source paper actually describes: measure how much several predictions disagree with each other,
+which never needs the scene at all.
+
+**And one step that needs a person.** A hundred sentences, half from each era, shuffled and
+unlabelled, rated by hand once. It is the only thing on the list that can say whether two days of
+measurable improvement produced prose anyone prefers, and if the answer is no, most of the
+instrument panel needs rethinking rather than extending.

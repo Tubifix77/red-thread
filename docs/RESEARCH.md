@@ -214,6 +214,20 @@ recommends monitoring forecasting entropy during generation.
 next. If it nails the next scene confidently, the scene is under-tensioned. Also implies threads
 need an explicit *concealment* field — what the reader must not yet know.
 
+**Implementation status, 31 August 2026: the concealment field ships and works. The probe does
+not.** Two versions have failed. The first put the actual scene in its own prompt and asked the
+model to "predict it before reading what happens next", then had the model score its own
+closeness — a rationalisation with the answer supplied. The second predicts blind and compares
+lexically, and calibration killed it: a prediction matches the scene it predicted 41% of the time
+against a random other scene from the same book, which is worse than chance. Rarity weighting
+reaches 51%. A two-sentence prediction and an 800-word scene share too little distinctive
+vocabulary, and what they do share is the book's furniture.
+
+Note what the paper actually specifies, which neither version implemented: the entropy of a
+forecasting **distribution**, not the accuracy of one sample. Measuring how much *k* predictions
+disagree with each other never touches the scene, so shared vocabulary cannot confound it. That is
+step 12 of [PLAN.md](PLAN.md) and is the version that should have been built first.
+
 ---
 
 ## 10. Orchestration shape
@@ -334,3 +348,46 @@ a beat must stay an instruction. Beats are now de-prosed at plan time.
    it wants one. No source found compares *scheduled* against *proposed* structure for
    reader-perceived quality, and a plan that never surprises its own scheduler may be worse in
    ways the audit cannot see. This is the largest unexamined assumption in the project.
+
+---
+
+## What two days of measuring settled (2026-08-30 / 31)
+
+Four architectural findings, each of which changed code.
+
+**A cap the prompt states and the code does not enforce is a quota.** The extraction prompt said
+"AT MOST 15 FACTS" while `extract_facts` allowed 30; 301 of 376 scenes returned exactly 15 and
+100% returned 14 or more. A model asked for a count will hit it. The limit is now enforced in
+code and cuts by durability — knowledge first, then fixed details, then states, then events.
+
+**A retrieval cap silently decides what a book can remember.** `Ledger.about` sorted
+most-recent-first and truncated at 40, so at scene 71 of a 71-scene novel 888 facts matched the
+scene's subjects, 40 survived, and the oldest came from scene 68. The final scene of the book
+could see three scenes of its own history. The slice is now stratified — most of it recent, the
+rest spread across everything older — and superseded placements are retired, because a `STATE` is
+"true until changed" and nothing ever changed it.
+
+**Everything in the brief arrives in every scene.** Three separate refrains traced back to the
+brief *asking* for them: a catchphrase written into a character's voice reached 27 scenes of 71, a
+figure of speech in a style sample reached 15, and a character steered at the story's own central
+object put that object in 17. The general rule: before adding anything to the brief, ask what it
+looks like repeated seventy times.
+
+**Quality is addressed at the plan, never at the gate.** The rule that gating must only use what
+code can check is what keeps this orchestrator honest, and it was read for two days as "quality
+cannot be addressed at all". It cannot be *gated* on. Every quality gain here came through the
+plan instead: one line in `SCENES_PROMPT` took dialogue from .077 to .223 of words and scenes
+where the plan put people in a room and the prose left them silent from 23 of 71 to zero. A bad
+plan costs a re-ask; a bad gate costs a book that never finishes.
+
+### And one finding about the method itself
+
+The project compared runs for two days before measuring what a comparison is worth. Two runs of
+one plan with no change between them differ by 4% on dialogue share and word count, 12% on
+manuscript duplication, 31–33% on gesture rate and recap, and **44% on the worst refrain**. Three
+claims published on 30 August were retracted the next day for sitting inside that floor.
+
+The rule that follows — *two runs of one plan, or no claim* — costs an hour of GPU per condition
+and would have prevented every one of them. The corollary is narrower and more useful: **maxima
+are the least trustworthy statistic here and were the ones quoted most often.** Full floor in
+[evidence/replicate-noise-floor.md](evidence/replicate-noise-floor.md).

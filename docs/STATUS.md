@@ -8,6 +8,8 @@ different places. This document is the honest read on each.
 
 Illustrated version: <https://claude.ai/code/artifact/9ef610d1-1ca6-4a0f-a937-1529ad68978c>
 
+What to do next, in order, with kill criteria: **[PLAN.md](PLAN.md)**.
+
 ---
 
 ## Three questions, not ten steps
@@ -179,7 +181,7 @@ pins it there with `PARAMETER repeat_penalty 1`. The companion `repeat_last_n` d
 tokens — about forty-five words. So every scene this project has ever generated was sampled with
 no repetition penalty and a window far too short to see a phrase recurring every twenty words.
 
-Nothing in the brief and nothing in 29 checks could reach that, because the cause sat underneath
+Nothing in the brief and nothing in 32 checks could reach that, because the cause sat underneath
 both of them.
 
 Swept on the two scenes that failed worst, two seeds each: penalty 1.20 is the lowest value that

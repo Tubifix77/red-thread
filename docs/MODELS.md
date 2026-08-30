@@ -9,7 +9,7 @@ otherwise would be dishonest.
 ## First, what the test suite actually uses
 
 **No model.** `tests/fakes.py` provides a scripted backend returning canned JSON and fixture
-prose. That is why the full suite (421 tests at the time of writing) runs in seconds with no API
+prose. That is why the full suite (578 tests at the time of writing) runs in seconds with no API
 key and no network.
 
 This is deliberate, not a shortcut. The tests verify that the machinery composes — briefs carry
@@ -501,7 +501,7 @@ Modelfile pins it there explicitly — `PARAMETER repeat_penalty 1`. The compani
 
 So every scene this project has ever generated was sampled with no repetition penalty and a
 window too short to see a phrase recurring every twenty words. The worst scene measured repeated
-one four-word phrase 77 times in 1,490 words. Nothing in the brief and nothing in the 29 checks
+one four-word phrase 77 times in 1,490 words. Nothing in the brief and nothing in the 32 checks
 could reach that, because the cause was underneath both of them.
 
 ### The sweep

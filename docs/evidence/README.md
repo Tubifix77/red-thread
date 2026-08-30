@@ -3,6 +3,10 @@
 The raw material behind the claims in [../MODELS.md](../MODELS.md), kept so they can be checked
 rather than taken on trust.
 
+**Start with `replicate-noise-floor.md`.** It measures what each figure in these files does
+between two runs that differ in nothing, and it retracts three claims made in the others. A
+difference smaller than the floor is a coin, and several here are.
+
 | File | What it is |
 |---|---|
 | `scene01-brief.md` | The exact brief handed to each model — assembled by `redthread brief`, not written by hand |
@@ -13,6 +17,10 @@ rather than taken on trust.
 | `manuscript-status.txt` | `redthread status` after the run — every thread at its terminal state |
 | `manuscript-scene04-reveal.txt` | The committed reveal scene, exactly as the gate accepted it |
 | `debt-of-years-run.md` | The second manuscript: planner-driven, 27 scenes, and the twelve defects it found with 292 tests green |
+| `keepers-fourth-book-run.md` | First book from an unseen premise with no intervention after the plan gate |
+| `sixty-thousand-word-run.md` | The scale test: 71 scenes, 61,733 words, and the three failures that only exist at length |
+| `ledger-slice-ab.md` | Three runs of one plan while the ledger changed — including a section retracted by the noise floor |
+| `replicate-noise-floor.md` | **Read this before any other file here.** Two runs, identical code, nothing changed: what every measure does when nothing does |
 
 Generated 2026-08-27 on an RTX 3080 10GB via Ollama, one draft per model, temperature 1.0, from
 `examples/build_inherited_glitch.py` scene 1 (900-word target).

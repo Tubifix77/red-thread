@@ -188,3 +188,29 @@ Neither time was the mistake noticing a failure and pushing anyway; both times t
 invisible to the command that was supposed to catch it.
 
 `--no-verify` bypasses the hook, for when a red push is deliberate.
+
+## A check that never fires, and a check that always does
+
+`tests/test_checks.py` opens by saying a check that never fires is indistinguishable from a check
+that does not work. Running every check over all 467 committed scenes turns that principle on the
+suite itself: **20 of 48 violation kinds have never fired once**, and the reasons divide three
+ways.
+
+- **Blocking kinds are absent from committed prose by construction.** `pov_person`,
+  `somatic_emotion`, `forbidden_phrase`, `style_leak`, `format`, `truncated_scene`,
+  `length_runaway`, `seam` — every one either blocks a commit or is repaired before it. Measuring
+  them on committed scenes measures the survivors, and their silence is the gate working.
+- **Four test a property something upstream already guarantees.** Subplot independence, midpoint
+  stall, uniform scene length and somatic. `schedule.py` assigns which scene moves which thread,
+  so no thread stalls in a middle third and no plan has uniform word targets; the brief tells the
+  writer "at most one somatic beat" and it complies. These read as coverage in an audit that lists
+  them and provide none.
+- **Two are simply untested by any run.** `cohesion_cut` and `missed_deadline` have unit tests and
+  no live instance in 467 scenes, so nothing is known about their false-positive rate on real
+  prose.
+
+The mirror matters too. Five kinds fire on more than half of all scenes and are carried into the
+commit almost every time — `repetition` at 94%, `tell_thematic_gloss` at 84%, `tell_summarised` at
+76%. A constant is as uninformative as a silence, and two of those cost a model call per scene.
+
+Full tables in [MEASUREMENTS.md](MEASUREMENTS.md).
