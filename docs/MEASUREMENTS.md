@@ -169,6 +169,17 @@ are worth separating.
 `length_runaway`, `seam` — every one of these either blocks a commit or is repaired before it.
 Measuring them on committed prose measures the survivors. Their absence is the gate working.
 
+*A number for how completely.* The thirteen deterministic `_GLOSS_PATTERNS` fire **once** across
+444 current-era committed scenes. They are MAJOR and they are in `DELETE_KINDS`, so the repair
+loop cuts them, and one survivor in 444 scenes is what that looks like from the outside.
+
+*And a blind spot that follows from it, which no amount of corpus reading can fix.* **Rejected
+drafts are not kept.** The scene record stores the violations a scene carried at commit, after
+repair, so no check's true firing rate — the rate on what the model actually wrote — is
+recoverable from anything on disk. Whether a given gloss pattern is pulling its weight or has
+never fired in its life cannot be answered from the corpus, only from a run instrumented for the
+question. This is the same shape as the forecast probe leaving nothing behind, one layer down.
+
 **Some plan checks are guaranteed by construction rather than checked.** `check_subplot_independence`
 has never reported a decorative subplot, and measuring the actual overlap says why: median
 overlap between a subplot's scenes and the main thread's is **33%**, and only 2 of 56 subplots
