@@ -299,3 +299,29 @@ def declared_vs_random(plan, texts: list[str], embedder: Embedder,
         on_control=sum(on_control) / n if n else 0.0,
         win_rate=wins / n if n else 0.0,
         n=n)
+
+
+def spread_stability(a: list[Prediction], b: list[Prediction], embedder: Embedder
+                     ) -> tuple[float, int]:
+    """Do two independent prediction sets agree about which scenes are predictable?
+
+    The control step 12 needs, and it is the replicate rule applied one level down. Prediction
+    spread produces a plausible distribution on its own — mean .130, range .060 to .266 over 35
+    scenes — and so did lexical overlap, which was noise. A distribution is not evidence.
+
+    If the two sets rank the scenes differently, the spread measures the sampling and not the
+    scene, and step 13 has nothing to plot. Returns (Pearson r between the two sets' spreads,
+    scenes compared).
+    """
+    from .sample import correlate
+
+    by_index = {p.index: p for p in b}
+    xs: list[float] = []
+    ys: list[float] = []
+    for prediction in a:
+        other = by_index.get(prediction.index)
+        if other is None or len(prediction.predictions) < 2 or len(other.predictions) < 2:
+            continue
+        xs.append(prediction_spread(prediction, embedder))
+        ys.append(prediction_spread(other, embedder))
+    return correlate(xs, ys), len(xs)

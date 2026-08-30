@@ -17,7 +17,7 @@ from tempfile import TemporaryDirectory
 from redthread.embed import Embedder, cosine
 from redthread.forecast import (Prediction, declared_vs_random, generate, lexical_scorer,
                                 load, prediction_spread, sample_scenes, save, score,
-                                semantic_scorer, story_so_far)
+                                semantic_scorer, spread_stability, story_so_far)
 
 from . import fakes
 
@@ -459,6 +459,45 @@ class TestDeclaredDependencyControl(unittest.TestCase):
         texts = [f"scene {i} " + fakes.clean_prose(150, i) for i in range(8)]
         # Scene 3: position 2. Predecessor at 1 is excluded, 0 is the declared ancestor.
         self.assertEqual(declared_vs_random(self._plan({3: [1]}), texts, FakeEmbedder()).n, 0)
+
+
+class TestSpreadStability(unittest.TestCase):
+    """Step 12's control: the replicate rule applied to the measure itself."""
+
+    def _set(self, texts_by_index):
+        return [Prediction(index=i, context="c", predictions=v)
+                for i, v in texts_by_index.items()]
+
+    def test_two_identical_sets_agree_perfectly(self):
+        a = self._set({1: ["aaa bbb", "ccc ddd"], 2: ["eee", "eee"],
+                       3: ["fff ggg hhh", "iii"]})
+        r, n = spread_stability(a, list(a), FakeEmbedder())
+        self.assertEqual(n, 3)
+        self.assertAlmostEqual(r, 1.0)
+
+    def test_sets_that_rank_scenes_oppositely_anticorrelate(self):
+        # Three scenes, not two: `correlate` returns 0.0 below three points, because a
+        # correlation from two is a line through two dots.
+        low, high = ["aaa", "aaa"], ["aaa", "zzz yyy xxx"]
+        mid = ["aaa", "aaa zzz"]
+        a = self._set({1: low, 2: mid, 3: high})
+        b = self._set({1: high, 2: mid, 3: low})
+        r, _n = spread_stability(a, b, FakeEmbedder())
+        self.assertLess(r, 0.0)
+
+    def test_scenes_missing_from_one_set_are_skipped(self):
+        a = self._set({1: ["aaa", "bbb"], 2: ["ccc", "ddd"]})
+        b = self._set({1: ["aaa", "bbb"]})
+        _r, n = spread_stability(a, b, FakeEmbedder())
+        self.assertEqual(n, 1)
+
+    def test_single_prediction_scenes_are_skipped(self):
+        # A scene with one guess has no spread, and a column of zeroes would drag any
+        # correlation toward whatever the rest of the column does.
+        a = self._set({1: ["only one"], 2: ["ccc", "ddd"]})
+        b = self._set({1: ["only one"], 2: ["ccc", "eee"]})
+        _r, n = spread_stability(a, b, FakeEmbedder())
+        self.assertEqual(n, 1)
 
 
 if __name__ == "__main__":
