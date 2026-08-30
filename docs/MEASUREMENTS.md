@@ -72,6 +72,37 @@ improved.
 
 ---
 
+## Which checks actually fire
+
+`tests/test_checks.py` opens by saying a check that never fires is indistinguishable from a
+check that does not work. Run every check over all 373 committed scenes and all 13 plans, and
+**20 of the 48 violation kinds have never fired once**. None of them is broken, and the reasons
+are worth separating.
+
+**Blocking kinds are absent from committed scenes by construction.** `pov_person`,
+`somatic_emotion`, `forbidden_phrase`, `style_leak`, `format`, `truncated_scene`,
+`length_runaway`, `seam` — every one of these either blocks a commit or is repaired before it.
+Measuring them on committed prose measures the survivors. Their absence is the gate working.
+
+**Some plan checks are guaranteed by construction rather than checked.** `check_subplot_independence`
+has never reported a decorative subplot, and measuring the actual overlap says why: median
+overlap between a subplot's scenes and the main thread's is **33%**, and only 2 of 56 subplots
+across every plan reach the 0.80 threshold. `schedule.py` assigns which scene moves which thread,
+so independence is structural. The same holds for `state_regression`, `state_repeat` and
+`unknown_state` — the scheduler cannot emit an illegal transition, so the checks that would catch
+one are permanently quiet.
+
+**A handful are genuinely untested by any run so far**: `midpoint_stall`, `uniform_scene_length`,
+`cohesion_cut`, `missed_deadline`. These have unit tests but no live instance in 373 scenes, so
+nothing is known about their false-positive rate on real prose. That is the honest status: not
+broken, not exercised.
+
+The distinction matters when reading a green suite. A check that is quiet because the gate
+upstream of it works is doing its job; a check that is quiet because nothing has ever tested it
+is an unknown wearing the same colour.
+
+---
+
 ## Four checks reverted for firing on the reference plan
 
 The hand-authored reference plan in the test suite is the calibration standard: it is the one
