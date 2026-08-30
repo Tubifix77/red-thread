@@ -337,3 +337,48 @@ class TestEmitFloor(unittest.TestCase):
                                 ("b", [fakes.clean_prose(310, 1)])])
         for name, value in floor.items():
             self.assertGreaterEqual(math.ceil(value * 100) / 100, value, name)
+
+
+class TestDegenerateFloors(unittest.TestCase):
+    """A floor of 0.00 because both replicates were zero is not a floor of 0.00.
+
+    The same distinction `clears_noise` exists to make, one level down. `recap_block_share` is
+    the live case: zero of 373 current-era scenes carry a run of four consecutive past-perfect
+    sentences, so the replicate pair reads 0.00 and 0.00 — and a future condition reading 0.05
+    would otherwise be reported as clearing a floor nobody measured.
+    """
+
+    def test_a_degenerate_measure_is_named(self):
+        self.assertIn("recap_block_share", checks.DEGENERATE_FLOOR)
+        self.assertFalse(checks.floor_is_established("recap_block_share"))
+
+    def test_an_ordinary_measure_is_established(self):
+        self.assertTrue(checks.floor_is_established("dialogue_share"))
+        self.assertTrue(checks.floor_is_established("worst_refrain"))
+
+    def test_every_degenerate_measure_actually_has_a_zero_floor(self):
+        # Guards the table against drift in the other direction: a measure listed here whose
+        # floor is not zero would be understating a floor that exists.
+        for name in checks.DEGENERATE_FLOOR:
+            self.assertEqual(checks.NOISE_FLOOR[name], 0.0, name)
+
+    def test_every_zero_floor_is_declared_degenerate(self):
+        # And the converse, which is the one that matters: a zero floor that nobody marked would
+        # let any difference at all read as a result.
+        for name, floor in checks.NOISE_FLOOR.items():
+            if floor == 0.0:
+                self.assertIn(name, checks.DEGENERATE_FLOOR,
+                              f"{name} has a zero floor and is not marked degenerate, so any "
+                              f"difference in it would be reported as clearing one")
+
+    def test_an_unknown_measure_still_raises(self):
+        with self.assertRaises(KeyError):
+            checks.floor_is_established("vibes")
+
+    def test_the_description_says_no_floor_was_measured(self):
+        line = checks.describe_difference("recap_block_share", 0.0, 0.05)
+        self.assertIn("NO FLOOR", line)
+        self.assertNotIn("clears", line)
+
+    def test_a_real_difference_in_a_real_measure_still_reads_as_clearing(self):
+        self.assertIn("clears", checks.describe_difference("gesture_rate", 1.0, 4.0))

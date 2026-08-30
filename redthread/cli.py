@@ -564,11 +564,17 @@ def cmd_measures(args) -> int:
         print("  " + checks.describe_difference(name, means[name], other_means[name]))
         if checks.clears_noise(name, means[name], other_means[name]):
             survived.append(name)
+    unestablished = [n for n in survived if not checks.floor_is_established(n)]
+    survived = [n for n in survived if checks.floor_is_established(n)]
     if survived:
         print(f"\n  Clears the floor: {', '.join(survived)}")
         print("  A floor measured from two runs understates the true spread, so read these as "
               "\n  the most generous reading of the evidence rather than as settled.")
-    else:
+    if unestablished:
+        print(f"\n  Differs, with no floor to clear: {', '.join(unestablished)}")
+        print("  Both replicates were identically zero on these, so nothing is known about how "
+              "\n  much they move on their own. The difference may be real; this cannot say so.")
+    if not survived and not unestablished:
         print("\n  Nothing clears the floor. This instrument cannot tell these two apart, "
               "\n  which is not the same as their being the same.")
     return 0

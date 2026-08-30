@@ -1616,6 +1616,17 @@ NOISE_FLOOR: dict[str, float] = {
     "refusal_per_ask": 0.01,
 }
 
+# Measures whose floor is 0.00 because **both replicates were identically zero**, not because a
+# floor of zero was measured. The distinction is the same one `clears_noise` exists to make, one
+# level down: nothing was established about how much these move, because in the two runs
+# available they did not move at all and had no room to.
+#
+# `recap_block_share` is the live case and it matters. Zero of 373 current-era scenes carry a run
+# of four consecutive past-perfect sentences, so a replicate pair says 0.00 and 0.00 — and a
+# future condition reading 0.05 against 0.00 would be reported as clearing a floor nobody
+# measured. It may well be a real difference. Nothing here can say so.
+DEGENERATE_FLOOR: frozenset[str] = frozenset({"scenes", "recap_block_share"})
+
 NOISE_FLOOR_SOURCE = "docs/evidence/replicate-noise-floor.md"
 NOISE_FLOOR_N = 2
 """Replicates the floor above was measured from. Two runs give a range, not a distribution, and
@@ -1634,6 +1645,17 @@ def noise_floor(measure: str) -> float:
             f"{', '.join(sorted(NOISE_FLOOR))}. Run `redthread replicate` on one plan and add "
             f"the result to NOISE_FLOOR before making a claim about this measure."
         ) from None
+
+
+def floor_is_established(measure: str) -> bool:
+    """Was this measure's floor measured, or is it zero because nothing moved?
+
+    `clears_noise` still answers for a degenerate measure — a difference in it is genuinely
+    larger than anything seen between replicates — but the answer means less, and a report that
+    does not say so is making the stronger claim silently.
+    """
+    noise_floor(measure)
+    return measure not in DEGENERATE_FLOOR
 
 
 def clears_noise(measure: str, a: float, b: float) -> bool:
@@ -1659,6 +1681,11 @@ def describe_difference(measure: str, a: float, b: float) -> str:
     mean = (abs(a) + abs(b)) / 2
     rel = abs(a - b) / mean if mean else 0.0
     verdict = "clears" if clears_noise(measure, a, b) else "INSIDE"
+    if not floor_is_established(measure) and verdict == "clears":
+        # Not "clears the 0% floor", which reads as a strong result and is the weakest one
+        # available: both replicates were identically zero, so there is no floor to clear.
+        return (f"{measure:<26} {a:>10.3f} {b:>10.3f}  {rel:>6.0%} of mean  "
+                f"differs, but NO FLOOR WAS MEASURED (both replicates were zero)")
     return (f"{measure:<26} {a:>10.3f} {b:>10.3f}  {rel:>6.0%} of mean  "
             f"{verdict} the {floor:.0%} floor")
 
