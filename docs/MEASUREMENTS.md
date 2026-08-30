@@ -72,6 +72,40 @@ improved.
 
 ---
 
+## Four checks reverted for firing on the reference plan
+
+The hand-authored reference plan in the test suite is the calibration standard: it is the one
+plan in the project written by a person, and `TestReferencePlan.test_audit_is_clean` asserts that
+every plan-level check passes it. Four checks have now been built, measured, and deleted because
+they did not.
+
+The reason has been the same every time — **matching vocabulary rather than the property**.
+
+| the check | what it flagged on the reference plan |
+|---|---|
+| `check_scene_is_not_the_concealment` | two scenes, on an earlier corpus |
+| the cross-scene refrain MAJOR | fired unavoidably on fixtures |
+| `check_scene_has_an_exchange` | "She leaves with a form and no remedy, and takes it out on the wrong person" — interaction described without a verb from the list |
+| `check_post_reveals_the_concealment` | "the reader sees that Otto has noticed something and chose not to look" |
+
+The last is the sharpest illustration. The check flagged posts sharing words with a still-active
+concealment, and there *are* real instances: a generated plan asked a scene to bring about "Kai
+is torn between his duty and the enclave's survival" while concealing "the reader must not know
+that Kai is torn between his duty and the truth about the enclave". Near-verbatim, and
+unsatisfiable.
+
+But no threshold separates it from good craft. The reference plan's worst case reuses **0.67** of
+its concealment's words; the real contradiction reuses **0.60**. A well-written plan deliberately
+echoes the concealment's language while withholding the disclosure — that *is* the technique. A
+word-overlap check cannot tell "hints at the secret" from "states the secret", and never will.
+
+**The rule this suggests:** a plan-level check that compares two fields by shared words is
+measuring a habit of the generator, not a property of the plan. The three plan checks that
+survive — unwritable bans, catchphrases, story-shaped style samples — all test a *field against
+itself or against a fixed list*, never one field against another.
+
+---
+
 ## The pattern behind every surviving refrain
 
 Chasing the worst repeated phrase in each of three novels found the same shape three times: not
