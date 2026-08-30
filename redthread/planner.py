@@ -138,6 +138,41 @@ def _character_id(value: str, name: str, taken: set[str]) -> str:
     return candidate
 
 
+def drop_story_shaped_samples(story: StorySpec) -> StorySpec:
+    """Remove style samples that name the cast, when the retry loop could not get rid of them.
+
+    `story_problems` already reports this and the planner is asked three times to fix it. Three
+    times is not always enough: a 71-scene book shipped with the sample "The sun hung low,
+    casting long shadows over the road, and **Kai** felt **the weight of the years** he had lost
+    pressing against his ribs." The check fired on every attempt and the plan was accepted
+    anyway, because a loop that gives up returns its last try.
+
+    That sample then sat in every brief of the book, and "the weight of thirty years" ended up in
+    15 of 71 scenes — the manuscript's worst refrain, seeded by the thing that was supposed to be
+    demonstrating rhythm. `check_style_leak` did not catch it either: it looks for a shared run
+    of six words and the prose paraphrased rather than copied, sharing five.
+
+    So this is the same shape as `drop_unavoidable_bans` and exists for the same reason. Asking
+    is the first move and code is the fallback, because an unattended run has nobody to notice
+    that the model refused three times.
+
+    A sample is only dropped when others survive: two thin samples demonstrate the voice better
+    than none, and a story left with nothing here is a worse failure than the one being fixed.
+    """
+    if not story.style.samples:
+        return story
+    tokens = {t for c in story.characters
+              for t in re.split(r"[^a-z]+", c.name.lower()) if len(t) > 2}
+    if not tokens:
+        return story
+    keep = [s for s in story.style.samples
+            if not (tokens & set(re.split(r"[^a-z]+", s.lower())))]
+    if not keep or len(keep) == len(story.style.samples):
+        return story
+    story.style.samples = keep
+    return story
+
+
 def drop_unavoidable_bans(story: StorySpec) -> StorySpec:
     """Remove forbidden phrases the prose cannot avoid — from a *proposal*, never from a plan.
 
@@ -358,7 +393,10 @@ def propose_story(premise: str, models: Models, attempts: int = 3) -> StorySpec:
                  + "\n".join(f"- {p}" for p in problems))
     if last is None:
         raise LLMError("the planner could not obtain a usable story proposal")
-    return last
+    # The loop is out of attempts and `last` still has problems. Repair deterministically what
+    # can be repaired deterministically rather than shipping a bible nobody will read before a
+    # book is written from it.
+    return drop_story_shaped_samples(last)
 
 
 # ======================================================================================

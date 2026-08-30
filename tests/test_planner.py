@@ -21,7 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from redthread import checks
 from redthread.llm import LLMError, Models
 from redthread.models import Severity, ThreadKind
-from redthread.planner import (drop_unavoidable_bans, make_plan, parse_story,
+from redthread.planner import (drop_story_shaped_samples, drop_unavoidable_bans,
+                               make_plan, parse_story,
                                propose_story, story_problems, expand_beats,
                                flesh_scenes)
 from redthread.schedule import schedule_threads, score_spec, to_scene_specs
@@ -810,3 +811,52 @@ class TestACatchphraseIsRefusedInTheRetryLoop(unittest.TestCase):
         story = self._story("Speaks in short sentences and changes the subject to the weather "
                             "whenever the sale is mentioned.")
         self.assertFalse(any("phrase they repeat" in p for p in story_problems(story)))
+
+
+class TestStoryShapedSamplesAreDroppedWhenAskingFails(unittest.TestCase):
+    """Asking is the first move; code is the fallback, because nobody is watching.
+
+    `story_problems` already reports a style sample that names the cast, and the planner is asked
+    three times to fix it. Three times is not always enough. A 71-scene book shipped with the
+    sample "The sun hung low, casting long shadows over the road, and Kai felt the weight of the
+    years he had lost pressing against his ribs." The check fired on every attempt and the plan
+    was accepted anyway, because a loop that gives up returns its last try.
+
+    That sample sat in every brief of the book, and "the weight of thirty years" ended up in 15
+    of 71 scenes — the manuscript's worst refrain, seeded by the thing meant to demonstrate
+    rhythm. `check_style_leak` missed it too: it wants a shared run of six words and the prose
+    paraphrased, sharing five.
+    """
+
+    def _story(self, *samples):
+        return parse_story(json.loads(story_json(
+            characters=[{"id": "kai", "name": "Kai Maren", "description": "a courier",
+                         "voice": "clipped"},
+                        {"id": "vay", "name": "Vay Sorel", "description": "a clerk",
+                         "voice": "evades"},
+                        {"id": "mir", "name": "Mir Veld", "description": "a bailiff",
+                         "voice": "slow"}],
+            style={"pov": "third limited", "tense": "past", "samples": list(samples),
+                   "forbidden_phrases": [], "notes": ""})))
+
+    NEUTRAL = ("He wiped the dust from the counter the way he had every morning.",
+               "The queue stretched like a line of ghosts, each waiting for something.")
+
+    def test_the_sample_naming_a_character_is_dropped(self):
+        story = self._story("The sun hung low, and Kai felt the weight of the years he had lost.",
+                            *self.NEUTRAL)
+        cleaned = drop_story_shaped_samples(story)
+        self.assertEqual(len(cleaned.style.samples), 2)
+        self.assertTrue(all("Kai" not in s for s in cleaned.style.samples))
+        self.assertEqual(story_problems(cleaned), [])
+
+    def test_clean_samples_are_untouched(self):
+        story = self._story(*self.NEUTRAL, "Rain came sideways across the yard all afternoon.")
+        self.assertIs(drop_story_shaped_samples(story), story)
+
+    def test_it_will_not_strip_a_story_of_every_sample(self):
+        """Two thin samples demonstrate the voice better than none, and a bible left with
+        nothing here is a worse failure than the one being fixed."""
+        story = self._story("Kai waited.", "Vay said nothing.", "Mir counted the crates.")
+        cleaned = drop_story_shaped_samples(story)
+        self.assertEqual(len(cleaned.style.samples), 3, "all three name the cast; keep them")
