@@ -568,3 +568,63 @@ that variety reads as *rich* or as *restless* is not something any check here me
 the obvious thing to watch when reading the output. The penalty should also be re-swept for any
 new writer model: `gemma3:12b`'s Modelfile sets no `repeat_penalty` at all, so it inherits the
 same disabled default and may well have headroom of its own.
+
+---
+
+## Three wordings of one instruction (30 August 2026)
+
+A finding about prompt design, measured rather than argued, and recorded because the failure mode
+is not obvious and cost several plans to find.
+
+**The problem.** Reading the middle of the 71-scene book found scene 38: one character alone in a
+ruin, touching statues and remembering. Measuring outward, 20 of the 71 scenes the plan had
+populated with two or three characters came back with no dialogue at all, and dialogue across the
+book declined by quarter — 21% of words, 15%, 10%, 9%.
+
+The cause was upstream. Across those 70 two-character scenes, correlation between beats naming a
+spoken act and dialogue in the prose is **r = +0.672**; 20 of the 33 scenes whose beats named
+nothing spoken came back silent, against 0 of the 10 whose beats named two. The planner's own
+spoken-beat rate declines through the book on the same curve (77% of peopled scenes in the first
+quarter, 50%, 38%, 44%) while the cast size does not. It keeps putting people in rooms and
+progressively stops giving them anything to say.
+
+**Wording 1 — conditional.** *"IF two or more characters are present, at least one beat must name
+something said between them."*
+
+The planner satisfied it by removing the characters. Solo scenes went from 10 of 71 to **34**.
+A conditional instruction invites the model to falsify the antecedent, and the result was worse
+than the defect: a book half made of one person alone is *more* of what the rule was written to
+prevent.
+
+**Wording 2 — unconditional, with the exception explained.** The rule was made unconditional, and
+a note added to the `characters` field saying most scenes have two or more, that a solo scene
+needs a reason, and never more than a handful in a book.
+
+Solo scenes fell to a mean of **19.7** across three plans — better than 34, still double the
+original 10. **Discussing the exception is what made it salient.** Three sentences on when a solo
+scene is justified produced four times as many of them.
+
+**Wording 3 — say the expectation, stop.** *"ids of everyone present, and there are nearly always
+two or more. A novel is people doing things to each other; a character by themselves has nobody
+to be surprised by."*
+
+| wording | n | solo scenes | peopled naming a spoken act |
+|---|---:|---:|---:|
+| original (no instruction) | 1 | 10 | 51% |
+| 1 — conditional | 1 | 34 | 78% |
+| 2 — exception explained | 3 | 19.7 | 83% |
+| 3 — expectation only | 3 | **11.3** | **89%** |
+
+### What is and is not established
+
+**Established:** the spoken-beat rate rises from 51% to 89% and holds across three plans. The
+conditional wording is actively harmful. Explaining the exception roughly doubles it.
+
+**Not established:** the solo-scene count. Wording 3 produced 5, 5 and **24** — mean 11.3 against
+the original 10, unchanged on average with far larger variance, and the outlier is unexplained.
+
+**The method note matters as much as the result.** An hour was spent drawing conclusions from
+single plans before the plan-to-plan variance was measured, and it turns out to be large enough
+that one plan settles nothing. Any future comparison of planner prompts needs at least three
+plans per condition, and this document's earlier single-plan comparisons should be read with that
+in mind.
