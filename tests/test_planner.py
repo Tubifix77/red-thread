@@ -976,3 +976,26 @@ class TestSoloScenesAreRepeopled(unittest.TestCase):
             {"index": i, "summary": f"scene {i}", "characters": ["ves"],
              "beats": ["she thinks about it"]} for i in [1, 2, 3, 4, 5]]}))
         self.assertEqual(repeople_solo_scenes(specs, self._story(), models), 0)
+
+    def test_make_plan_runs_the_pass_by_default(self):
+        """The switch must not change the shipped product, only make it measurable."""
+        def solo(indices):
+            return json.dumps({"scenes": [
+                {"index": i, "summary": f"scene {i}", "characters": ["ves"],
+                 "beats": ["she thinks about the run"]} for i in indices]})
+        backend = PlannerBackend(scenes_reply=solo)
+        make_plan("A premise.", models_with(backend), total_words=13200)
+        self.assertGreater(backend.count("repeople"), 0,
+                           "a plan of nothing but solo scenes should be re-asked")
+
+    def test_make_plan_with_repeople_off_makes_no_call(self):
+        """The ablation. Four mechanisms shipped with no off switch, which made every one of
+        them unfalsifiable — the only available comparison was against a run from before the
+        code existed, with other changes in it."""
+        def solo(indices):
+            return json.dumps({"scenes": [
+                {"index": i, "summary": f"scene {i}", "characters": ["ves"],
+                 "beats": ["she thinks about the run"]} for i in indices]})
+        backend = PlannerBackend(scenes_reply=solo)
+        make_plan("A premise.", models_with(backend), total_words=13200, repeople=False)
+        self.assertEqual(backend.count("repeople"), 0)

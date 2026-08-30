@@ -1113,7 +1113,7 @@ class PlanResult:
 
 def make_plan(premise: str, models: Models, total_words: int = 60000,
               avg_scene_words: int = DEFAULT_SCENE_WORDS, scenes: int | None = None,
-              sharpen_rounds: int = 2, seed: int = 0,
+              sharpen_rounds: int = 2, seed: int = 0, repeople: bool = True,
               progress=None) -> PlanResult:
     """Premise in, auditable plan out.
 
@@ -1154,12 +1154,17 @@ def make_plan(premise: str, models: Models, total_words: int = 60000,
                      f"scenes {window[0].index}-{window[-1].index}",
                      "filled" if ok else "PROPOSAL UNPARSEABLE — left blank"))
 
+    # `repeople` is an ablation switch, not a feature toggle: the pass has only ever been run
+    # against a scripted backend, so its effect on a live plan is unmeasured, and a mechanism
+    # with no off switch cannot be measured at all. Defaults to on — the shipped behaviour.
     repeopled = repeople_solo_scenes(
         specs, story, models,
         on_batch=lambda w: stage("repeople",
-                                 f"scenes {', '.join(str(s.index) for s in w)}"))
+                                 f"scenes {', '.join(str(s.index) for s in w)}")) if repeople else 0
     if repeopled:
         stage("repeople", f"{repeopled} solo scene(s) given somebody to talk to")
+    elif not repeople:
+        stage("repeople", "skipped (--no-repeople)")
 
     result = PlanResult(story=story, plan=specs)
     result.beats_sharpened = expand_beats(

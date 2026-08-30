@@ -207,7 +207,10 @@ def cmd_write(args) -> int:
 
     config = Config(candidates=args.candidates, max_repairs=args.repairs,
                     with_forecast=args.forecast,
-                    allow_commit_with_majors=args.force)
+                    allow_commit_with_majors=args.force,
+                    refrain_feedback=not args.no_refrain_feedback,
+                    gesture_feedback=not args.no_gesture_feedback,
+                    model_refrains=not args.no_model_refrains)
 
     progress = Progress.for_project(project, quiet=args.quiet)
     progress.run_header(project.story, writer_name, critic_name)
@@ -362,7 +365,8 @@ def cmd_plan(args) -> int:
 
     result = make_plan(premise, models, total_words=args.words,
                        avg_scene_words=args.scene_words, scenes=args.scenes,
-                       sharpen_rounds=args.sharpen, seed=args.seed, progress=progress)
+                       sharpen_rounds=args.sharpen, seed=args.seed,
+                       repeople=not args.no_repeople, progress=progress)
 
     Project(root, result.story, result.plan).save()
 
@@ -427,6 +431,120 @@ def cmd_manuscript(args) -> int:
     return 0
 
 
+def cmd_replicate(args) -> int:
+    """Write N books from one plan, changing nothing, and report the spread.
+
+    This is the control the whole measurement panel rests on, and it is also — with one ablation
+    flag — how a mechanism is tested against its own absence. Same plan, same code, one switch.
+    Nothing else in this project was worth building before it existed.
+    """
+    from .pipeline import Config, write_all
+    from .progress import Progress
+    from .replicate import committed_texts, fresh_copy, print_group
+
+    source = _load(args.project)
+    if not source.plan:
+        raise SystemExit(f"{args.project} has no plan.json to replicate")
+
+    root = Path(args.project)
+    suffix = f"-{args.label}" if args.label else "-r"
+    targets = [root.parent / f"{root.name}{suffix}{i + 1}" for i in range(args.runs)]
+
+    ablated = [name for name, off in (("refrain-feedback", args.no_refrain_feedback),
+                                      ("gesture-feedback", args.no_gesture_feedback),
+                                      ("model-refrains", args.no_model_refrains)) if off]
+    print(f"\n  Replicating {source.story.title} — {len(source.plan)} scenes "
+          f"x {args.runs} run(s)")
+    print(f"  ablated: {', '.join(ablated) if ablated else 'nothing (a true replicate)'}")
+    for target in targets:
+        print(f"    {target}")
+
+    if args.measure_only:
+        missing = [str(t) for t in targets if not t.exists()]
+        if missing:
+            raise SystemExit(f"--measure-only, but these do not exist: {', '.join(missing)}")
+    else:
+        models, writer_name, critic_name = _build_models(args)
+        config = Config(candidates=args.candidates, max_repairs=args.repairs,
+                        refrain_feedback=not args.no_refrain_feedback,
+                        gesture_feedback=not args.no_gesture_feedback,
+                        model_refrains=not args.no_model_refrains)
+        for i, target in enumerate(targets, start=1):
+            # Resume rather than restart. A replicate set is several GPU-hours; one that had to
+            # begin again after an interruption would simply never be finished.
+            project = (Project.load(target) if (target / "story.json").exists()
+                       else fresh_copy(source, target))
+            done = len(project.committed_scenes())
+            if done >= len(project.plan):
+                print(f"\n  [{i}/{len(targets)}] {target.name}: complete already, skipping")
+                continue
+            print(f"\n  [{i}/{len(targets)}] {target.name}: {done} of {len(project.plan)} "
+                  f"scenes already written")
+            progress = Progress.for_project(project, quiet=args.quiet)
+            progress.run_header(project.story, writer_name, critic_name)
+            write_all(project, models, config, progress=progress)
+            project.write_manuscript()
+
+    runs = [(t.name, committed_texts(t)) for t in targets if t.exists()]
+    runs = [(name, texts) for name, texts in runs if texts]
+    if not runs:
+        print("\n  No committed scenes in any replicate. Nothing to measure.")
+        return 1
+    print_group("Replicate set", runs)
+    if ablated:
+        print("\n  A switch was flipped, so this spread is effect and noise together. Compare "
+              "\n  it against a true replicate set with `measures --against`.\n")
+    else:
+        print("\n  These are error bars, not a result. Any claim about a difference between "
+              "\n  two conditions has to be larger than the spread above.\n")
+    return 0
+
+
+def cmd_measures(args) -> int:
+    """The manuscript panel for a group of runs, or a comparison of two groups.
+
+    With `--against`, every difference goes through `checks.clears_noise` before it is reported,
+    and a measure with no published floor raises rather than returning a verdict. That is the
+    whole point: "I have not measured this" and "this is not different" are different sentences,
+    and confusing them is what three retracted claims were made of.
+    """
+    from .replicate import committed_texts, print_group
+
+    runs = [(Path(p).name, committed_texts(p)) for p in args.runs]
+    for name, texts in runs:
+        if not texts:
+            print(f"  no committed scenes in {name}")
+    runs = [(name, texts) for name, texts in runs if texts]
+    if not runs:
+        raise SystemExit("no committed scenes in any of the given runs")
+
+    means = print_group(args.label or "Group A", runs)
+    if not args.against:
+        return 0
+
+    other = [(Path(p).name, committed_texts(p)) for p in args.against]
+    other = [(name, texts) for name, texts in other if texts]
+    if not other:
+        raise SystemExit("no committed scenes in any --against run")
+    other_means = print_group(args.against_label or "Group B", other)
+
+    print(f"\nDifference, against a floor from {checks.NOISE_FLOOR_N} identical runs "
+          f"({checks.NOISE_FLOOR_SOURCE})")
+    survived = []
+    for name in checks.NOISE_FLOOR:
+        print("  " + checks.describe_difference(name, means[name], other_means[name]))
+        if checks.clears_noise(name, means[name], other_means[name]):
+            survived.append(name)
+    if survived:
+        print(f"\n  Clears the floor: {', '.join(survived)}")
+        print("  A floor measured from two runs understates the true spread, so read these as "
+              "\n  the most generous reading of the evidence rather than as settled.")
+    else:
+        print("\n  Nothing clears the floor. This instrument cannot tell these two apart, "
+              "\n  which is not the same as their being the same.")
+    return 0
+
+
 # --------------------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -450,6 +568,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--sharpen", type=int, default=2,
                    help="rounds of vaguest-first beat expansion")
     p.add_argument("--seed", type=int, default=0, help="seed for word-target variation")
+    p.add_argument("--no-repeople", action="store_true",
+                   help="ablation: skip the pass that re-asks for scenes left with one person "
+                        "in them")
     p.add_argument("--force", action="store_true", help="overwrite an existing project")
     p.add_argument("--writer", default="claude-opus-5")
     p.add_argument("--critic", default="claude-sonnet-5")
@@ -500,6 +621,14 @@ def build_parser() -> argparse.ArgumentParser:
                         "(for vLLM, LM Studio, llama.cpp)")
     p.add_argument("--forecast", action="store_true",
                    help="run the tension probe (one extra call per scene)")
+    # Ablation switches. Each turns off one prompt-side mechanism so it can be run against its
+    # own absence on the same plan; see Config in pipeline.py for why they exist.
+    p.add_argument("--no-refrain-feedback", action="store_true",
+                   help="ablation: do not name this book's repeated phrases in the brief")
+    p.add_argument("--no-gesture-feedback", action="store_true",
+                   help="ablation: do not name this book's repeated movements in the brief")
+    p.add_argument("--no-model-refrains", action="store_true",
+                   help="ablation: do not name the model's cross-book constructions")
     p.add_argument("--force", action="store_true",
                    help="commit even with MAJOR violations outstanding")
     p.add_argument("--quiet", action="store_true", help="suppress the progress display")
@@ -531,6 +660,42 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--timeout", type=int, default=300, metavar="SECONDS",
                    help="give up on a model after this long (default 300, no retries)")
     p.set_defaults(func=cmd_bench)
+
+    p = add_project(sub.add_parser(
+        "replicate", help="write N books from one plan and report the spread"))
+    p.add_argument("--runs", type=int, default=2,
+                   help="how many replicates (two give a range, not a distribution)")
+    p.add_argument("--label", help="suffix for the sibling directories; names the condition")
+    p.add_argument("--measure-only", action="store_true",
+                   help="do not generate; measure replicates that already exist")
+    p.add_argument("--candidates", type=int, default=3)
+    p.add_argument("--repairs", type=int, default=2)
+    p.add_argument("--no-refrain-feedback", action="store_true",
+                   help="ablation: do not name this book's repeated phrases in the brief")
+    p.add_argument("--no-gesture-feedback", action="store_true",
+                   help="ablation: do not name this book's repeated movements in the brief")
+    p.add_argument("--no-model-refrains", action="store_true",
+                   help="ablation: do not name the model's cross-book constructions")
+    p.add_argument("--writer", default="claude-opus-5")
+    p.add_argument("--critic", default="claude-sonnet-5")
+    p.add_argument("--local", metavar="MODEL", help="local model for prose")
+    p.add_argument("--all-local", metavar="MODEL", help="alias for --local")
+    p.add_argument("--local-critic", metavar="MODEL",
+                   help="a second local model for the critic and extractor roles")
+    p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
+    p.add_argument("--openai-compat", action="store_true",
+                   help="use the OpenAI-compatible endpoint instead of Ollama's native API")
+    p.add_argument("--quiet", action="store_true")
+    p.set_defaults(func=cmd_replicate)
+
+    p = sub.add_parser("measures",
+                       help="manuscript measures for a group of runs, with error bars")
+    p.add_argument("runs", nargs="+", help="one or more run directories")
+    p.add_argument("--against", nargs="+", metavar="RUN",
+                   help="a second group; differences are reported against the noise floor")
+    p.add_argument("--label", help="name for the first group")
+    p.add_argument("--against-label", help="name for the second group")
+    p.set_defaults(func=cmd_measures)
 
     add_project(sub.add_parser("status", help="progress and thread state")) \
         .set_defaults(func=cmd_status)

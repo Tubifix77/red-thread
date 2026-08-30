@@ -658,6 +658,23 @@ class Config:
     allow_out_of_order: bool = False
     """Write a scene whose predecessor is not committed. Off by default — see `write_scene`."""
 
+    # ------------------------------------------------------------------ ablation switches
+    #
+    # Four mechanisms shipped between 29 and 31 August with no way to turn them off, which made
+    # every one of them unfalsifiable: "I built it and the number moved" is not a result when
+    # the only available comparison is against a run from before the code existed, with other
+    # changes in it. These four flags exist so each can be run against its own absence on the
+    # same plan and the same code. They should have existed before any of the mechanisms did.
+    #
+    # All default to True, so the shipped behaviour is unchanged by their presence.
+    refrain_feedback: bool = True
+    """Feed this book's own repeated phrases into the next scene's brief."""
+    gesture_feedback: bool = True
+    """Feed this book's own repeated small movements into the next scene's brief."""
+    model_refrains: bool = True
+    """Name the constructions this *model* reaches for in every book (data/model_refrains.txt).
+    Unlike the two above this is not derived from the manuscript, so it is live from scene 1."""
+
 
 def _prose_budget(words: int, backend=None) -> int:
     """Output budget for a call that must return a whole scene.
@@ -730,12 +747,13 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     committed_texts = project.committed_texts(before=spec.index)
 
     slop_sample = checks.slop_sample(config.slop_sample)
-    refrains = checks.manuscript_refrains(committed_texts)
-    gestures = checks.manuscript_gestures(committed_texts)
+    refrains = checks.manuscript_refrains(committed_texts) if config.refrain_feedback else []
+    gestures = checks.manuscript_gestures(committed_texts) if config.gesture_feedback else []
+    model_refrains = checks.load_model_refrains() if config.model_refrains else []
 
     brief = render_brief(spec, project.story, project.ledger, previous_tail,
                          previous_characters, slop_sample, refrains, gestures,
-                         checks.load_model_refrains())
+                         model_refrains)
     progress.stage("brief", f"{len(brief.split()):,} words in, "
                             f"{len(project.ledger.as_of(spec.index - 1))} facts available")
 

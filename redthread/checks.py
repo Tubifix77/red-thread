@@ -647,14 +647,7 @@ def check_somatic(scene: Scene, max_allowed: int = 1) -> list[Violation]:
     The structural point stands regardless: a per-scene cap cannot detect a distributional shift,
     and this check would not report one if it happened.
     """
-    found: list[str] = []
-    for pattern in _SOMATIC_PATTERNS:
-        found.extend(m.group(0).strip() for m in pattern.finditer(scene.text))
-    # de-duplicate overlapping matches of the same span
-    unique: list[str] = []
-    for f in found:
-        if not any(f in u or u in f for u in unique):
-            unique.append(f)
+    unique = somatic_beats(scene.text)
     if len(unique) <= max_allowed:
         return []
     # One violation PER excess instance, each carrying its own quote. As a single violation
@@ -1450,6 +1443,143 @@ def check_rhythm(scene: Scene, min_stdev: float = 6.0) -> list[Violation]:
 # --------------------------------------------------------------------------------------
 # runner
 # --------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------
+# The measure panel, and what a difference in it is worth
+#
+# Everything above measures one scene. These read a whole manuscript, and they exist as one
+# function because of a specific failure: for two days this project compared runs without ever
+# measuring how much two identical runs differ. Three claims were retracted in one afternoon,
+# all of them differences smaller than the noise.
+#
+# `manuscript_measures` is the panel. `clears_noise` is the gate you have to pass a difference
+# through before calling it one. The point of the second is not the arithmetic — it is that
+# stating a result should require naming the measure, and naming the measure should require
+# somebody to have measured what it does when nothing changes.
+# --------------------------------------------------------------------------------------
+
+def somatic_beats(text: str) -> list[str]:
+    """Distinct bodily-sensation emotion beats in a passage.
+
+    Factored out of `check_somatic` so the corpus-level share can be measured without
+    constructing a Scene. The de-duplication matters: the patterns overlap, and counting raw
+    matches double-counts every beat that both of them reach.
+    """
+    found: list[str] = []
+    for pattern in _SOMATIC_PATTERNS:
+        found.extend(m.group(0).strip() for m in pattern.finditer(text))
+    unique: list[str] = []
+    for f in found:
+        if not any(f in u or u in f for u in unique):
+            unique.append(f)
+    return unique
+
+
+def manuscript_measures(committed_texts: list[str]) -> dict[str, float]:
+    """Every manuscript-level measure this project reports, in one dict.
+
+    Keyed by the names in `NOISE_FLOOR`, so a panel and its error bars cannot drift apart —
+    adding a measure here without a measured floor makes `clears_noise` raise rather than
+    quietly return a verdict nothing supports.
+
+    Per-scene measures are reported as the mean over scenes. `duplication_scene` and
+    `duplication_manuscript` are both here on purpose: the first is what a reader meets inside
+    one scene, the second is what they meet across a book, and across five runs of one plan
+    they moved in opposite directions.
+    """
+    n = len(committed_texts)
+    if not n:
+        return {name: 0.0 for name in NOISE_FLOOR}
+    joined = chr(10).join(committed_texts)
+    concentration, worst = repetition_concentration(committed_texts)
+    return {
+        "words": float(sum(len(t.split()) for t in committed_texts)),
+        "scenes": float(n),
+        "dialogue_share": sum(dialogue_share(t) for t in committed_texts) / n,
+        "duplication_scene": sum(duplication_ratio(t) for t in committed_texts) / n,
+        "duplication_manuscript": duplication_ratio(joined),
+        "recap_grammar": sum(summary_distance(t) for t in committed_texts) / n,
+        "recap_block_share": sum(1 for t in committed_texts if recap_blocks(t)) / n,
+        "gesture_rate": sum(gesture_rate(t) for t in committed_texts) / n,
+        "somatic_share": sum(1 for t in committed_texts if somatic_beats(t)) / n,
+        "repetition_concentration": concentration,
+        "worst_refrain": float(worst),
+    }
+
+
+# How much each measure moves between runs that differ in nothing at all, as a fraction of the
+# mean of the two. Source and method: docs/evidence/replicate-noise-floor.md.
+#
+# Read the three groups, not the eleven numbers:
+#
+#   under .10   words, dialogue share.  A difference here means something.
+#   .10 - .40   duplication, recap, gesture rate.  A difference here needs to be large.
+#   over .40    anything counting a maximum — worst refrain — and somatic share.  These are
+#               coins.  They were also, before this table existed, the statistics quoted most.
+#
+# A measure absent from this table has no floor, and `clears_noise` refuses to judge it. That
+# refusal is the feature: it is the difference between "I have not measured this" and "this is
+# not different", which is exactly the confusion that cost three retracted claims.
+NOISE_FLOOR: dict[str, float] = {
+    "words": 0.02,
+    "scenes": 0.00,
+    "dialogue_share": 0.05,
+    "duplication_scene": 0.28,
+    "duplication_manuscript": 0.12,
+    "recap_grammar": 0.34,
+    "recap_block_share": 0.00,
+    "gesture_rate": 0.31,
+    "somatic_share": 0.67,
+    "repetition_concentration": 0.28,
+    "worst_refrain": 0.45,
+}
+
+NOISE_FLOOR_SOURCE = "docs/evidence/replicate-noise-floor.md"
+NOISE_FLOOR_N = 2
+"""Replicates the floor above was measured from. Two runs give a range, not a distribution, and
+a range from two samples systematically understates the spread — so every number in
+`NOISE_FLOOR` is a lower bound on the true noise, and a difference that only just clears it has
+cleared the most generous possible reading of the evidence."""
+
+
+def noise_floor(measure: str) -> float:
+    """The published floor for a measure, or a refusal naming what is available."""
+    try:
+        return NOISE_FLOOR[measure]
+    except KeyError:
+        raise KeyError(
+            f"no measured noise floor for {measure!r}. Known measures: "
+            f"{', '.join(sorted(NOISE_FLOOR))}. Run `redthread replicate` on one plan and add "
+            f"the result to NOISE_FLOOR before making a claim about this measure."
+        ) from None
+
+
+def clears_noise(measure: str, a: float, b: float) -> bool:
+    """Is the difference between `a` and `b` larger than this measure moves on its own?
+
+    False does not mean the two are the same. It means this instrument cannot tell them apart,
+    which is a different and more honest statement — and the one that three retracted claims
+    on 30 August needed and did not have.
+
+    Raises KeyError for a measure with no measured floor. That is deliberate: a function that
+    returned True for anything unmeasured would be worse than no function at all.
+    """
+    floor = noise_floor(measure)
+    mean = (abs(a) + abs(b)) / 2
+    if mean == 0:
+        return False
+    return abs(a - b) / mean > floor
+
+
+def describe_difference(measure: str, a: float, b: float) -> str:
+    """One line stating a difference and whether it survives the floor. For reports."""
+    floor = noise_floor(measure)
+    mean = (abs(a) + abs(b)) / 2
+    rel = abs(a - b) / mean if mean else 0.0
+    verdict = "clears" if clears_noise(measure, a, b) else "INSIDE"
+    return (f"{measure:<26} {a:>10.3f} {b:>10.3f}  {rel:>6.0%} of mean  "
+            f"{verdict} the {floor:.0%} floor")
+
 
 def run_all(
     scene: Scene,

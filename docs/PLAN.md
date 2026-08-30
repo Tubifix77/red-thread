@@ -8,6 +8,20 @@ One is a design decision. **Nothing here can be evaluated at all until phase 0 i
 four mechanisms are currently shipped with no way to turn them off and the noise floor rests on a
 single replicate pair.
 
+**Progress.** Each step below is marked ✅ done, ⏳ running, or left unmarked. A step is only
+done when its code is committed, its tests pass, and — where it makes a claim — the claim has
+been through `checks.clears_noise`.
+
+| phase | done | state |
+|---|---|---|
+| 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
+| 1 — confirm what exists | 0 of 4 | unblocked once step 2 lands |
+| 2 — tension on embeddings | 0 of 5 | |
+| 3 — dependency graph | 0 of 3 | |
+| 4 — want, obstacle, cost | 0 of 3 | |
+| 5 — the sentence | 0 of 3 | needs no GPU; can start any time |
+| 6 — write the rule down | 0 of 3 | |
+
 ---
 
 ## Six rules this plan obeys
@@ -27,21 +41,54 @@ Each was learned by breaking it. Most of the steps below exist because of one of
 
 ## Phase 0 — make the instruments trustworthy  *(~3 h GPU)*
 
-**1. Build a replicate harness.** `redthread replicate <run> --runs N` writes N books from one
+**1. Build a replicate harness.** ✅ `redthread replicate <run> --runs N` writes N books from one
 plan into sibling directories and prints every measure as mean and range. Nothing else is worth
 starting first.
 
-**2. Take the noise floor from n=2 to n=4.** Two runs give a range, not a distribution, and a
+*Shipped as `redthread/replicate.py` plus two commands. `replicate` copies story and plan into
+siblings and writes them; it rewinds thread state on the way, because a finished run's story.json
+holds every thread at its terminal state and a verbatim copy would open on a book that believes
+it has already happened — same plan, different briefs, which is the one thing a replicate exists
+to rule out. It resumes rather than restarts, since a set is several GPU-hours.*
+
+*`redthread measures <runs…> --against <runs…>` is the half that gets used most: it reports the
+panel for a group as mean and range, and puts every between-group difference through
+`clears_noise`. Ablation flags are on `replicate` too, because with one switch flipped a
+replicate set and an experiment are the same object.*
+
+**2. Take the noise floor from n=2 to n=4.** ⏳ Two runs give a range, not a distribution, and a
 range from two samples systematically understates the spread.
 
-**3. Make the floor impossible to ignore.** `checks.clears_noise(measure, a, b)` returns false
+*Running: four fresh replicates of the 71-scene* Debt of Years *plan at current HEAD. The
+existing pair (`runs/current`, `runs/replicate`) cannot simply be extended — `ledgerfix` and
+`tally6` share its plan and story hashes exactly, but had different code, so they are three
+conditions and not four replicates.*
+
+**3. Make the floor impossible to ignore.** ✅ `checks.clears_noise(measure, a, b)` returns false
 when a difference sits inside the published floor. The point is not the arithmetic — it is that
 stating a difference should require passing through a function that knows what a difference is
 worth.
 
-**4. Add ablation switches for everything already built.** `--no-refrain-feedback`,
+*Shipped with `checks.manuscript_measures`, one function returning the whole panel, and
+`NOISE_FLOOR` keyed identically — a test asserts the two sets match in both directions, so a
+measure cannot be reported without an error bar or keep one after it is deleted.*
+
+*Two things fell out of building it. `clears_noise` **raises** on a measure with no measured
+floor rather than returning a verdict: "I have not measured this" and "this is not different"
+are different sentences, and confusing them is what three retracted claims were made of. And the
+first draft of the table failed its own self-test — four measures of the very pair it was
+derived from were reported as clearing it, because the published figures had been rounded down
+for the write-up. The floor now holds the observed values, and a test asserts that a difference
+exactly the size of a measure's own floor is never a result. `repetition_concentration` had been
+given a floor of .20 by guesswork; the pair says .28.*
+
+**4. Add ablation switches for everything already built.** ✅ `--no-refrain-feedback`,
 `--no-gesture-feedback`, `--no-repeople`, `--no-model-refrains`. This converts "I built it" into
 "it can be evaluated", and should have existed before any of them were built.
+
+*The three prose-side switches are `Config` fields read in `write_scene`; `repeople` is a
+`make_plan` parameter. All four default to on, and tests pin the defaults — an ablation switch
+that quietly defaults to off changes the shipped product instead of measuring it.*
 
 ## Phase 1 — confirm or delete what exists  *(~10 h GPU)*
 
