@@ -362,12 +362,17 @@ question, and it is now askable.
 The instruments, and two answers.
 
 **Phase 4 asked whether the plan is a lever for a second quality axis, and the answer is no.**
-Two prose measures of refusal pass every bar the refuted POV-agency proxy failed — 25% of 538
-scenes contain none at all, and `refusal_per_ask` moves **0.3%** between identical runs, the
-steadiest measure in the panel. But an outline naming a refusal predicts them at r = +0.217
-against a 0.4 bar, while the one lever that worked scores +0.446 on the same corpus with the same
-crude method. The controls are clean, so this is a result and not a broken instrument. `want`,
-`obstacle` and `cost` were **not** added to the scene spec.
+Two prose measures of refusal pass the bar the refuted POV-agency proxy failed: they vary 94%
+and 221% between books against floors of 22% and 37%, so they separate books rather than
+samplings. But an outline naming a refusal predicts them at only r = +0.111 against a 0.4 bar,
+while the one lever that worked scores +0.446 on the same corpus with the same crude method. The
+controls are clean, so this is a result and not a broken instrument. `want`, `obstacle` and
+`cost` were **not** added to the scene spec.
+
+Both measures were **56% contaminated** when first published, and were audited hours later by
+counting what they matched rather than trusting the intent behind them. Every figure first
+reported for them was wrong, a headline claim was withdrawn, and the correlation halved — which
+widened the margin on the conclusion rather than narrowing it.
 [evidence/want-obstacle-cost.md](evidence/want-obstacle-cost.md).
 
 **The rule this project has been keeping is now written down and enforced by a test.** The gate

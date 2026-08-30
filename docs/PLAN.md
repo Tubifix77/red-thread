@@ -18,7 +18,7 @@ been through `checks.clears_noise`.
 | 1 — confirm what exists | 0 of 4 | ⏳ queued behind step 2 as `scripts/phase1.sh` |
 | 2 — tension on embeddings | 1 of 5 | steps 10-12 running now |
 | 3 — dependency graph | 2 of 3 | step 16 needs a plan carrying the new field |
-| 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.217 vs a 0.4 bar) |
+| 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.111 vs a 0.4 bar) |
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
 | 6 — write the rule down | 2 of 3 | step 25 is the final panel; needs phase 1 |
 
@@ -223,16 +223,25 @@ they sought. One proxy is already refuted: POV-as-sentence-subject is flat at .1
 **Kill criterion:** a measure that does not vary cannot be improved.
 
 *Two measures pass, both now in the panel with floors. `refusal_rate` counts a refusal being
-**performed** — a head shaken, a request declined, a "won't" — deliberately excluding "could
-not" and "did not", which catch every negated verb in the language; a measure firing on "she did
-not sit down" is measuring English. `refusal_per_ask` divides by the asking, because a scene with
-ten requests and ten grants is a scene of errands however busy it is.*
+**performed at somebody** — a head shaken, a request declined, a no said aloud. `refusal_per_ask`
+divides by the asking, because a scene with ten requests and ten grants is a scene of errands
+however busy it is.*
 
-*Both clear the bar comfortably. 25% of 538 committed scenes contain no refusal at all, median
-1.41 per thousand words, maximum 12.55 — so it is not saturated. Between two identical runs of
-one plan `refusal_rate` moves 14% and `refusal_per_ask` moves **0.3%**, the steadiest measure in
-the whole panel; across eight books they range 0.83–2.29 and .343–.973. What they separate is
-books, not samplings.*
+*⚠ **Both were audited hours after shipping and both were 56% contaminated.** `_REFUSAL` also
+matched `won't`/`wouldn't`/`would not`/`will not` — 409 of 714 matches, mostly ordinary negated
+futures like "whatever lay beyond this door would not be easy". `_ASKED` also matched
+`wanted`/`needed`/`meant to` — 493 of 873, internal desire rather than a request anyone could
+refuse. The docstring asserted in as many words that the measure did not do this. **Every figure
+first published here was the contaminated version's.***
+
+*Corrected: 50% of 444 scenes contain no refusal at all (not 25%), median 0.00 and maximum 3.74
+(not 1.41 and 12.55), floors of 22% and **37%** (not 14% and 0.3%). The claim that
+`refusal_per_ask` was the steadiest measure in the panel is **withdrawn** — both halves of that
+ratio were dominated by ordinary English, which is very stable. It is one of the noisiest.*
+
+*What survives step 17's bar: 94% between-book spread against a 22% floor, and 221% against 37%.
+They separate books rather than samplings. They are coarser than first reported, and being zero
+in half of all scenes is a real limit on what can be built from them.*
 
 **18. Correlate it against plan fields.** ⛔ **Kill criterion fired.** Beats naming a spoken act
 correlated with dialogue at **r = +0.672**, against r = 0.141 for the hypothesis that was
@@ -240,8 +249,13 @@ discarded. **Kill criterion:** below about r = 0.4, the plan is not the lever fo
 so and stop.
 
 *So: saying so and stopping.* Across 538 committed scenes from 16 runs, an outline naming a
-refusal, a denial or a blocking correlates with `refusal_rate` at **r = +0.217** and with
-`refusal_per_ask` at +0.200. An outline naming a price scores +0.075. All are below 0.4.
+refusal, a denial or a blocking correlates with `refusal_rate` at **r = +0.111** and with
+`refusal_per_ask` at +0.063. An outline naming a price scores +0.032. All are below 0.4, and the
+bar is missed by four times over.
+
+*(First published as +0.217 and +0.200, against the contaminated measures. Narrowing them halved
+the correlation. The conclusion did not change and the margin got wider — the only direction in
+which a correction to one's own negative result is comfortable.)*
 
 *The controls are clean, which is what makes this a result rather than a broken instrument: the
 same plan features score +0.001 and −0.021 against gesture rate, so they are not simply
@@ -250,19 +264,19 @@ corpus, "the outline names a spoken act" against dialogue share reproduces at **
 the same crude regex over the same fields. The one axis that moved still scores twice what this
 one does.*
 
-*The effect is real and small: scenes whose plan names a refusal average 2.25 refusals per
-thousand words against 1.54, and 16% contain none against 30%. The plan moves this axis about
-half as hard as it moves dialogue. Recorded in `plan_names_a_refusal`'s docstring so a later
-attempt starts from "this scored 0.217" rather than from the same hypothesis unexamined.*
+*The effect is real and small: scenes whose plan names a refusal average 0.78 refusals per
+thousand words against 0.58, and 50% contain none against 60%. The plan moves this axis about a
+quarter as hard as it moves dialogue. Recorded in `plan_names_a_refusal`'s docstring so a later
+attempt starts from "this scored 0.111" rather than from the same hypothesis unexamined.*
 
 *(The r = +0.672 figure was measured on 108 scenes; the same measure on 538 gives +0.446. The
 direction and the ranking hold, the magnitude does not — one more reminder that a correlation
 from a hundred scenes is not a constant.)*
 
 **19. Add `want`, `obstacle` and `cost` to the scene spec.** ⛔ **Not done, by step 18's kill
-criterion.** ~~Mirror the thread-operator shape: named fields with their own audit, not prose.~~
+criterion** (r = 0.111 against a 0.4 bar).** ~~Mirror the thread-operator shape: named fields with their own audit, not prose.~~
 
-*Adding three fields to every scene spec on r = 0.217 would be building the intervention the
+*Adding three fields to every scene spec on r = 0.111 would be building the intervention the
 evidence says will not carry. The fields are cheap; the brief they would swell is not — everything
 in there arrives in every one of seventy scenes, and this project already has a rule about that.
 If this axis is worth another attempt, the next move is a better prose measure or a different

@@ -1456,38 +1456,68 @@ def check_rhythm(scene: Scene, min_stdev: float = 6.0) -> list[Violation]:
 # quarter of every book, and a measure that does not vary cannot be improved. These do vary.
 # --------------------------------------------------------------------------------------
 
+# **Both of these were narrowed on 31 August, hours after they shipped, and the audit that
+# narrowed them is the reason to trust the current form and not the first.**
+#
+# The first `_REFUSAL` also matched `won't`, `wouldn't`, `would not` and `will not`. Counted
+# across 400 committed scenes those four were **409 of 714 matches — 56%** — and reading them
+# showed what they mostly were: "whatever lay beyond this door would not be easy", "voice low so
+# the others wouldn't hear", "it wouldn't end with a decision". Ordinary negated futures. The
+# measure's own docstring claimed it excluded "could not" and "did not" precisely so as not to
+# measure English, and it was measuring English through a different door.
+#
+# The first `_ASKED` was worse in the same way: `wanted`, `needed` and `meant to` were **493 of
+# 873 — 56%** — and they are internal desire, not a request made of another person. "He wanted to
+# press harder" is not an ask that anyone can refuse.
+#
+# What is left in both is a speech act performed at somebody, which is the only thing that can be
+# said no to.
 _REFUSAL = re.compile(
-    r"\b(?:refus\w+|declin\w+|would not|wouldn.t|will not|won.t|shook (?:his|her|their) head"
+    r"\b(?:refus\w+|declin\w+|shook (?:his|her|their) head"
     r"|said no\b|turned (?:him|her|them) down)\b", re.I)
 
 _ASKED = re.compile(
-    r"\b(?:asked|demanded|wanted|needed|tried to|meant to|set out to)\b", re.I)
+    r"\b(?:asked|demanded|requested|begged|insisted|pressed (?:him|her|them) for)\b", re.I)
 
 
 def refusal_rate(text: str) -> float:
-    """Refusals per thousand words.
+    """Refusals per thousand words — a refusal *performed at somebody*.
 
-    Deliberately narrow. It counts a refusal being *performed* — a head shaken, a request
-    declined, a "won't" — and not the far larger class of things merely going wrong, because
-    "could not" and "did not" catch every negated verb in the language and a measure that fires
-    on "she did not sit down" is measuring English.
+    A head shaken, a request declined, a no said out loud. Not the far larger class of things
+    merely going wrong: "could not" and "did not" catch every negated verb in the language, and
+    a measure that fires on "she did not sit down" is measuring English.
 
-    It varies, which is the bar step 17 set: 25% of 538 committed scenes contain none at all,
-    the median is 1.41 and the maximum 12.55. Between two identical runs of one plan it moves
-    14%, and across eight books it ranges from 0.83 to 2.29 — so what it separates is books, not
-    samplings.
+    The first version of this said exactly that and then did it anyway, through a different door.
+    It also matched `won't`, `wouldn't`, `would not` and `will not`, which were 56% of all its
+    matches and were mostly ordinary negated futures — "whatever lay beyond this door would not
+    be easy". Those are gone. **Read the numbers below as the narrowed measure's; the ones first
+    published for this were the contaminated version's and were roughly twice as large.**
+
+    It varies, which is the bar step 17 set, but it is coarse: **50%** of 444 current-corpus
+    scenes contain no refusal at all, the median is 0.00 and the maximum 3.74. Between two
+    identical runs of one plan it moves 22%, and across eight books it ranges 0.32 to 1.01 — a
+    94% spread against a 22% floor, so what it separates is still books rather than samplings.
     """
     n = len(text.split())
     return len(_REFUSAL.findall(text)) / n * 1000 if n else 0.0
 
 
 def refusal_per_ask(text: str) -> float:
-    """Refusals as a share of asks — how often somebody wanting something is told no.
+    """Refusals as a share of asks — how often somebody who asks is told no.
 
     The rate above rises with any scene that is busy. This one is closer to the actual question,
     because a scene with ten requests and ten grants is a scene of errands however much dialogue
-    it contains. Across the two runs of one plan it reads .817 and .820 — the steadiest measure
-    in the whole panel — and across books it runs from .343 to .973.
+    it contains.
+
+    **The first version of this was reported as the steadiest measure in the panel, at 0.3%
+    between identical runs. That was an artefact and the claim is withdrawn.** Its denominator
+    matched `wanted`, `needed` and `meant to` — 56% of all its matches, and internal desire
+    rather than a request anyone could refuse — so both halves of the ratio were dominated by
+    ordinary English, which is very stable. Narrowed to speech acts it moves **37%** between the
+    same two runs, which makes it one of the *noisiest* measures here rather than the steadiest.
+
+    It still varies more than it wobbles: .037 to .833 across eight books, a 221% spread against
+    that 37% floor.
     """
     asks = len(_ASKED.findall(text))
     return len(_REFUSAL.findall(text)) / asks if asks else 0.0
@@ -1502,18 +1532,22 @@ def plan_names_a_refusal(spec: SceneSpec) -> bool:
     """Does this scene's own outline say somebody is refused, blocked or denied?
 
     The plan-side half of step 18, and the answer it gave was no. Across 538 committed scenes it
-    correlates with `refusal_rate` at **r = +0.217** and with `refusal_per_ask` at +0.200, against
+    correlates with `refusal_rate` at **r = +0.111** and with `refusal_per_ask` at +0.063, against
     a bar of 0.4 — while the same crude method scores +0.446 for "the outline names a spoken act"
     against dialogue share on the identical corpus, which is the intervention that worked.
 
-    The effect is real and small: scenes whose plan names a refusal average 2.25 refusals per
-    thousand words against 1.54, and 16% of them contain none against 30%. So the plan moves this
-    axis about half as hard as it moves dialogue, and the honest conclusion is the one phase 4's
-    kill criterion asks for — the plan is not the lever here, and `want`/`obstacle`/`cost` fields
-    were not added on this evidence.
+    *(Published first as +0.217 and +0.200, against the contaminated prose measures. Narrowing
+    those halved it. The conclusion did not change and the margin got wider, which is the only
+    direction in which a correction to one's own negative result is comfortable.)*
+
+    The effect is real and small: scenes whose plan names a refusal average 0.78 refusals per
+    thousand words against 0.58, and 50% of them contain none against 60%. So the plan moves this
+    axis about a quarter as hard as it moves dialogue, and the honest conclusion is the one phase
+    4's kill criterion asks for — the plan is not the lever here, and `want`/`obstacle`/`cost`
+    fields were not added on this evidence.
 
     Kept because the measurement is the finding, and because a later attempt should start from
-    "this scored 0.217" rather than from the same hypothesis unexamined.
+    "this scored 0.111" rather than from the same hypothesis unexamined.
     """
     parts = [spec.summary] + [b.summary for b in spec.beats]
     for op in spec.thread_ops.values():
@@ -1612,8 +1646,8 @@ NOISE_FLOOR: dict[str, float] = {
     "somatic_share": 0.67,
     "repetition_concentration": 0.28,
     "worst_refrain": 0.45,
-    "refusal_rate": 0.15,
-    "refusal_per_ask": 0.01,
+    "refusal_rate": 0.22,
+    "refusal_per_ask": 0.37,
 }
 
 # Measures whose floor is 0.00 because **both replicates were identically zero**, not because a

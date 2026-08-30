@@ -458,11 +458,17 @@ has measured. All four mechanisms that shipped without an off switch now have on
 floor is generating.
 
 **Two phases have concluded, and one of them concluded no.** Phase 4 went looking for a second
-quality axis, found two prose measures that vary properly — `refusal_rate` and `refusal_per_ask`,
-the latter moving 0.3% between identical runs — and then failed its own correlation bar at
-r = 0.217 against 0.4. So `want`/`obstacle`/`cost` were **not** added to the scene spec. The
-controls are clean and the method reproduces the one intervention that worked at +0.446 on the
-same corpus, which is what makes that a result rather than a broken instrument.
+quality axis, found two prose measures that vary properly — `refusal_rate` and `refusal_per_ask`
+— and then failed its own correlation bar at r = 0.111 against 0.4. So `want`/`obstacle`/`cost`
+were **not** added to the scene spec. The controls are clean and the method reproduces the one
+intervention that worked at +0.446 on the same corpus, which is what makes that a result rather
+than a broken instrument.
+
+Both measures were **56% contaminated** when first shipped, and were caught a few hours later by
+counting what their patterns actually matched instead of trusting the docstring that said they
+were narrow. `_REFUSAL` was matching ordinary negated futures — *"whatever lay beyond this door
+would not be easy"* — and `_ASKED` was matching internal desire. Correcting them withdrew a
+headline claim and halved the correlation.
 [docs/evidence/want-obstacle-cost.md](docs/evidence/want-obstacle-cost.md).
 
 **Phase 6 wrote the rule down and made a test enforce it.** The gate may refuse only on evidence

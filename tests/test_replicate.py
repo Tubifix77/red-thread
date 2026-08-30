@@ -426,3 +426,53 @@ class TestLengthSensitiveMeasures(unittest.TestCase):
         args = build_parser().parse_args(
             ["measures", "runs/current", "runs/replicate", "--emit-floor"])
         self.assertTrue(args.emit_floor)
+
+
+class TestRefusalMeasuresAreActuallyNarrow(unittest.TestCase):
+    """The audit that halved these, written down as tests so it cannot silently un-happen.
+
+    Both regexes shipped with a docstring asserting they excluded ordinary negation, and both
+    were 56% ordinary negation. The assertion was convincing enough to have stopped anyone
+    checking, which is why the check is here now instead of in a comment.
+    """
+
+    def test_a_negated_future_is_not_a_refusal(self):
+        for line in ("Whatever lay beyond this door would not be easy.",
+                     "She spoke low so the others wouldn't hear.",
+                     "It wouldn't end with a decision.",
+                     "The ledger will not forgive your ignorance.",
+                     "He won't be back before dawn."):
+            self.assertEqual(checks.refusal_rate(line), 0.0, line)
+
+    def test_a_vow_is_not_a_refusal(self):
+        # "He would not betray them" is a resolution, not somebody being told no. It was 42
+        # matches in the first version.
+        self.assertEqual(checks.refusal_rate("He would not betray them."), 0.0)
+
+    def test_a_performed_refusal_still_counts(self):
+        for line in ("She refused to hand over the ledger.",
+                     "He declined the offer.",
+                     "He shook his head.",
+                     "She said no.",
+                     "They turned him down."):
+            self.assertGreater(checks.refusal_rate(line), 0.0, line)
+
+    def test_wanting_something_is_not_asking_for_it(self):
+        # The denominator's contamination: "He wanted to press harder" is not a request anybody
+        # can refuse. wanted/needed/meant to were 493 of 873 matches.
+        for line in ("He wanted to press harder. He refused.",
+                     "She needed proof. She refused.",
+                     "He meant to say it. He refused."):
+            self.assertEqual(checks.refusal_per_ask(line), 0.0, line)
+
+    def test_asking_somebody_still_counts(self):
+        self.assertGreater(
+            checks.refusal_per_ask("She asked for the ledger. He refused."), 0.0)
+        self.assertGreater(
+            checks.refusal_per_ask("She demanded the ledger. He shook his head."), 0.0)
+
+    def test_the_floors_are_the_narrowed_ones(self):
+        # Pinning these catches a revert of the narrowing, which would otherwise show up only as
+        # a quietly more impressive number.
+        self.assertEqual(checks.NOISE_FLOOR["refusal_rate"], 0.22)
+        self.assertEqual(checks.NOISE_FLOOR["refusal_per_ask"], 0.37)

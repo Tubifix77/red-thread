@@ -41,8 +41,8 @@ corpus and several are unquoted reported speech, where past perfect is doing leg
 | `manuscript_refrains` | .015 book-wide at 9 scenes, .055 at 71 | fed into the next brief |
 | dialogue share | .077 vs .223 between two books of the same plan | advisory; selection |
 | beats naming a spoken act | r = +0.446 with dialogue in the prose, over 538 scenes | the planner prompt |
-| `refusal_rate` | 0.83 to 2.29 across books; 14% between identical runs | the panel |
-| `refusal_per_ask` | .343 to .973 across books; **0.3%** between identical runs | the panel |
+| `refusal_rate` | 0.32 to 1.01 across books; 22% between identical runs | the panel |
+| `refusal_per_ask` | .037 to .833 across books; 37% between identical runs | the panel |
 
 *The spoken-act correlation was reported here as r = +0.672. That was measured on 108 scenes; the
 same measure over 538 gives **+0.446**. The direction and the ranking hold — it is still, by a
@@ -67,15 +67,34 @@ those where they are only perceiving. Flat at 0.13–0.20 in every quarter of ev
 a proxy for "does a character want something" and it discriminates nothing.
 
 *Its replacement works and its plan-side lever does not.* `refusal_rate` and `refusal_per_ask`
-pass every bar POV agency failed — 25% of 538 scenes contain no refusal at all, the median is
-1.41 per thousand words and the maximum 12.55, and both separate books far more than they
-separate two runs of one plan. But an outline naming a refusal predicts them at only **r =
-+0.217**, against a 0.4 bar and against +0.446 for the one lever that worked. So the measure is
-kept and the intervention is not built. Full result, with its controls, in
+pass the bar POV agency failed — 94% and 221% between-book spread against 22% and 37% floors — so
+what they separate is books rather than samplings. But an outline naming a refusal predicts them
+at only **r = +0.111**, against a 0.4 bar and against +0.446 for the one lever that worked. So the
+measures are kept and the intervention is not built. Full result, with its controls, in
 [evidence/want-obstacle-cost.md](evidence/want-obstacle-cost.md).
 
-**A plan naming a price.** r = +0.075 against refusal in the prose. Same corpus, same method,
+**A plan naming a price.** r = +0.032 against refusal in the prose. Same corpus, same method,
 and the weakest of the three plan features tried.
+
+### A measure that said it was narrow, and was not
+
+Both refusal regexes were audited hours after shipping, by counting what they matched rather than
+trusting the intent behind them, and both were **56% contaminated**. `_REFUSAL` matched `won't`,
+`wouldn't`, `would not` and `will not` — 409 of 714 matches, mostly ordinary negated futures like
+*"whatever lay beyond this door would not be easy"*. `_ASKED` matched `wanted`, `needed` and
+`meant to` — 493 of 873, internal desire rather than a request anyone could refuse.
+
+The docstring said in as many words that the measure excluded "could not" and "did not" so as not
+to measure English. It was measuring English through a different door, and the assertion was
+convincing enough to have stopped anyone checking.
+
+Narrowing halved the correlation, from +0.217 to +0.111, and **withdrew a headline claim**:
+`refusal_per_ask` was reported as the steadiest measure in the panel at 0.3% between identical
+runs. Both halves of that ratio were dominated by ordinary English, which is very stable.
+Narrowed, it moves 37% — one of the noisiest measures here.
+
+**Count what a pattern actually matched before publishing anything computed from it, and read a
+sample in context.** Both audits took minutes.
 
 **Within-scene gesture variety.** Distinct gesture pairs over total gestures sits at ~1.0 across
 four books. Gestures are already varied *inside* a scene; the repetition is between scenes, which
