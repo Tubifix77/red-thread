@@ -292,12 +292,20 @@ Mostly not. The increase is **more turns** — spans more than doubled — with 
 and a median of 7 words is an exchange rather than a speech. Monologues over 30 words did go from
 1% to 4%, which is 52 of them where there were 6.
 
-*And then the control refuted the worry outright.* The book written from the hand-authored
-reference plan runs at **10.8%** over thirty words and 3.6% over fifty, against 3.8% and 0.1% in
-the latest book. The closest thing this project has to a human-guided manuscript has nearly three
-times the long-speech rate of the one that prompted the concern. Four per cent is not a defect;
-it is well under the reference, and the alarm came from reading six passages rather than counting
-them.
+*A control was run and then withdrawn, which is worth recording as its own lesson.* The book
+written from the hand-authored reference plan runs at 10.8% over thirty words against 3.8% in the
+latest book, and that looked like a clean refutation for about ten minutes.
+
+It is not one. That book was written from a human plan but with **old code** — before the sampler
+fix and before every prose check in the project — and it shows: duplication .363 per scene against
+.001, recap .370 against .044, thematic gloss in 30% of scenes against 0%, 25 blocks of recap
+against none. Its dialogue habits are the old writer's, not a human standard, and using it as a
+prose reference compares against a book this project spent two days learning to stop writing.
+
+**A hand-authored plan does not make a prose reference.** The cold reference drafts contain no
+dialogue at all, so there is no valid comparator for long-speech rate in this project. The worry
+is neither confirmed nor refuted: 52 speeches over thirty words is a fact, and whether that is
+many is unknown.
 
 **`probe_forecast` — fails.** Scored against the scene it predicted versus a random other scene
 from the same book, the real scene wins 41% of the time. Detail above.
