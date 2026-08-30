@@ -159,7 +159,7 @@ class ScoreResult:
 
 
 def score(predictions: list[Prediction], texts: list[str], scorer, name: str,
-          seed: int = 0) -> ScoreResult:
+          seed: int = 0, context_scenes: int = 3) -> ScoreResult:
     """Score every prediction against its scene and against a random other scene.
 
     The control is not optional and is not a second step. Lexical overlap produced a distribution
@@ -167,6 +167,14 @@ def score(predictions: list[Prediction], texts: list[str], scorer, name: str,
     only thing that revealed it was scoring the same guesses against scenes they were not about.
     So the two are computed together and the win rate is what gets reported, because an absolute
     similarity is a property of the book's vocabulary and not of the prediction.
+
+    **The decoy pool excludes the scenes the model was actually shown.** `story_so_far` puts the
+    last three committed scenes in the prompt, so a prediction necessarily echoes them — draw a
+    decoy from there and the control is scoring the model against its own input, which inflates
+    it and makes any predictor look worse than it is. A decoy that was in the prompt is not a
+    decoy. This is a fairer control than the one the original 41% figure was computed with, and
+    the direction of the correction is toward the predictor, so a result that still fails fails
+    for real.
     """
     rng = random.Random(seed)
     on_target: list[float] = []
@@ -176,7 +184,9 @@ def score(predictions: list[Prediction], texts: list[str], scorer, name: str,
         guess = prediction.predictions[0] if prediction.predictions else ""
         if not guess or prediction.index >= len(texts):
             continue
-        others = [i for i in range(len(texts)) if i != prediction.index]
+        shown = set(range(max(0, prediction.index - context_scenes), prediction.index))
+        others = [i for i in range(len(texts))
+                  if i != prediction.index and i not in shown]
         if not others:
             continue
         real = scorer(guess, texts[prediction.index])

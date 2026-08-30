@@ -179,7 +179,12 @@ class TestScoreAndControl(unittest.TestCase):
         def spy(guess, scene):
             seen.append(scene)
             return 0.5
-        score(self._predictions(3), self._texts(3), spy, "spy")
+        # Predictions late enough in the book to have decoys outside their own context window.
+        # A three-scene fixture has none at all, which is the exclusion working rather than a
+        # failure — see TestTheDecoyPoolExcludesThePrompt.
+        predictions = [Prediction(index=i, context="c", predictions=[f"guess {i}"])
+                       for i in (8, 9, 10)]
+        score(predictions, self._texts(12), spy, "spy")
         self.assertEqual(len(seen), 6, "one real and one control score per prediction")
 
     def test_a_semantic_scorer_runs_through_the_embedder(self):
@@ -373,6 +378,48 @@ class TestIncrementalSave(unittest.TestCase):
             {"forecast": json.dumps({"prediction": "x"})})
         generate([fakes.clean_prose(150, i) for i in range(12)], models, wanted=3)
         self.assertFalse(store.exists())
+
+
+class TestTheDecoyPoolExcludesThePrompt(unittest.TestCase):
+    """A decoy that was in the prompt is not a decoy.
+
+    `story_so_far` puts the last three committed scenes in front of the model, so a prediction
+    necessarily echoes them. Drawing a control from there scores the model against its own input,
+    which inflates the control and makes any predictor look worse than it is.
+    """
+
+    def _texts(self, n=12):
+        return [f"scene {i} " + fakes.clean_prose(150, i) for i in range(n)]
+
+    def test_the_three_scenes_before_the_target_are_never_drawn(self):
+        seen = []
+
+        def spy(guess, scene):
+            seen.append(scene)
+            return 0.5
+        predictions = [Prediction(index=8, context="c", predictions=["a guess"])]
+        texts = self._texts()
+        score(predictions, texts, spy, "spy", seed=1)
+        # One real score and one control. The control must not be scenes 5, 6 or 7.
+        control = seen[1]
+        for shown in (5, 6, 7):
+            self.assertNotEqual(control, texts[shown],
+                                f"scene {shown} was in the prompt and was drawn as a decoy")
+
+    def test_a_scene_with_nothing_outside_its_own_context_is_skipped(self):
+        # Scene 3 with a three-scene window leaves scenes 0, 1, 2 shown and nothing else before
+        # it; in a four-scene book there is no legitimate decoy at all.
+        predictions = [Prediction(index=3, context="c", predictions=["a guess"])]
+        self.assertEqual(score(predictions, self._texts(4), lexical_scorer, "l").n, 0)
+
+    def test_the_window_size_is_adjustable(self):
+        # So a change to story_so_far cannot silently desynchronise the control from the prompt.
+        seen = []
+        predictions = [Prediction(index=8, context="c", predictions=["a guess"])]
+        texts = self._texts()
+        score(predictions, texts, lambda g, s: (seen.append(s) or 0.5), "spy",
+              seed=1, context_scenes=0)
+        self.assertEqual(len(seen), 2)
 
 
 if __name__ == "__main__":
