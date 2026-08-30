@@ -880,10 +880,19 @@ def manuscript_gestures(committed_texts: list[str], min_scenes: int = 4,
     if not committed_texts:
         return []
     scenes_with: Counter[tuple[str, str]] = Counter()
+    # The verb half of a pair is a five-character stem, which groups "curled", "curling" and
+    # "curls" together and is unreadable as English. Keep one real spelling per stem for the
+    # label: this list goes into a brief, and telling a model to stop writing "fingers curle"
+    # asks it to avoid a word nobody wrote.
+    spelling: dict[tuple[str, str], str] = {}
     for text in committed_texts:
+        for part, stem, where in gesture_pairs(text):
+            spelling.setdefault((part, stem), _GESTURE_VERB.search(text, where,
+                                                                   where + 60).group(1).lower())
         for pair in {(p, v) for p, v, _ in gesture_pairs(text)}:
             scenes_with[pair] += 1
-    hot = [(f"{part} {verb}", c) for (part, verb), c in scenes_with.items() if c >= min_scenes]
+    hot = [(f"{part} {spelling.get((part, stem), stem)}", c)
+           for (part, stem), c in scenes_with.items() if c >= min_scenes]
     hot.sort(key=lambda kv: (-kv[1], kv[0]))
     return hot[:limit]
 

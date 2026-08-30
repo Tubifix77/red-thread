@@ -1171,7 +1171,12 @@ class TestManuscriptGestures(unittest.TestCase):
                   "His jaw tightened and he said nothing at all.",
                   "Her jaw tightened once, then let go."]
         found = checks.manuscript_gestures(scenes)
-        self.assertTrue(any(p == "jaw tight" for p, _ in found), found)
+        self.assertTrue(any(p.startswith("jaw tight") for p, _ in found), found)
+        # The label must be a word somebody could have written, not the five-character
+        # stem used to group inflections: a brief telling a model to stop writing
+        # "jaw tighte" asks it to avoid a word nobody wrote.
+        self.assertTrue(any(p in ("jaw tightened", "jaw tightening")
+                            for p, _ in found), found)
         self.assertEqual(checks.manuscript_refrains(scenes), [],
                          "the phrase check must see nothing here — that is the whole point")
 
@@ -1192,6 +1197,6 @@ class TestManuscriptGestures(unittest.TestCase):
         from redthread import brief as briefmod
         from redthread.ledger import Ledger
         text = briefmod.render_brief(make_spec(), make_story(), Ledger(),
-                                     gestures=[("jaw tight", 13)])
-        self.assertIn("jaw tight", text)
+                                     gestures=[("jaw tightened", 13)])
+        self.assertIn("jaw tightened", text)
         self.assertIn("same movement", text)
