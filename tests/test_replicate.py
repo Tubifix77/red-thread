@@ -266,10 +266,6 @@ class TestReplicateHarness(unittest.TestCase):
         self.assertEqual(means["scenes"], 1.0)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestRefusalMeasures(unittest.TestCase):
     """Phase 4, step 17: a countable property of the want/obstacle/cost axis that varies."""
 
@@ -499,3 +495,44 @@ class TestRepeopleCommand(unittest.TestCase):
         from redthread.cli import build_parser
         args = build_parser().parse_args(["repeople", "run", "--local", "m"])
         self.assertFalse(args.write)
+
+
+class TestCommonPrefix(unittest.TestCase):
+    """Unequal runs cannot be compared on a manuscript-wide measure — the difference is length.
+
+    Not hypothetical. An overnight four-run floor came back at 71, 71, 44 and 22 scenes, because
+    two runs halted on one unrepairable MAJOR each, and `replicate` printed the panel without a
+    word of complaint: `words` "spread" 106%. On the common prefix it is 4%, which is the
+    published word floor. The length was the whole story.
+    """
+
+    def test_it_truncates_to_the_shortest_run(self):
+        from redthread.replicate import common_prefix
+        runs = [("a", ["1", "2", "3", "4"]), ("b", ["1", "2"]), ("c", ["1", "2", "3"])]
+        self.assertEqual([len(t) for _n, t in common_prefix(runs)], [2, 2, 2])
+
+    def test_equal_runs_are_untouched(self):
+        from redthread.replicate import common_prefix
+        runs = [("a", ["1", "2"]), ("b", ["3", "4"])]
+        self.assertEqual(common_prefix(runs), runs)
+
+    def test_it_keeps_the_prefix_not_a_sample(self):
+        # Scenes 1..k of every run are the same plan assignments in the same order, which is why
+        # the prefix compares and a random subset would not.
+        from redthread.replicate import common_prefix
+        runs = [("a", ["p", "q", "r"]), ("b", ["p", "q"])]
+        self.assertEqual(common_prefix(runs)[0][1], ["p", "q"])
+
+    def test_truncation_collapses_the_length_artefact(self):
+        from redthread.replicate import common_prefix, observed_floor
+        long_run = [fakes.clean_prose(300, i) for i in range(8)]
+        short_run = [fakes.clean_prose(300, i) for i in range(3)]
+        runs = [("long", long_run), ("short", short_run)]
+        before = observed_floor(runs)["words"]
+        after = observed_floor(common_prefix(runs))["words"]
+        self.assertGreater(before, 0.5)
+        self.assertLess(after, 0.10)
+
+
+if __name__ == "__main__":
+    unittest.main()

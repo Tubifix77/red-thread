@@ -704,16 +704,48 @@ _GLOSS_PATTERNS = [
 ]
 
 
+def dialogue_spans(text: str) -> list[tuple[int, int]]:
+    """Character ranges occupied by quoted speech, for checks that are about narration.
+
+    Offsets into the *original* text, so a caller can exclude a match without losing the
+    position a repair needs to locate it. `strip_dialogue` is the other half of this pair and
+    cannot be used where offsets matter, because substituting a space per quote shifts
+    everything after it.
+    """
+    return [(m.start(), m.end()) for m in _DIALOGUE.finditer(text)]
+
+
 def check_thematic_gloss(scene: Scene, max_allowed: int = 0) -> list[Violation]:
     """A cheap deterministic subset of thematic over-explanation.
 
-    These patterns catch the narrator stepping out to name the point. They do not catch the
+    These patterns catch **the narrator** stepping out to name the point. They do not catch the
     subtle cases — that is what the LLM `theme_gloss` probe in verify.py is for. Two layers,
     because this is the loudest tell in the StoryScope data and worth catching twice.
+
+    **Dialogue is excluded, and it took an unattended run dying to notice.** A character saying
+    "This isn't just about punishment" is characterisation; the narrator saying it is the tell.
+    The check's own detail line says "the narration explains the point here", and it was reading
+    speech. `check_pov` has stripped dialogue since it was written, for exactly this reason.
+
+    The cost of the omission was not a bad number. This is a MAJOR whose repair is to delete the
+    offending clause, and a line of dialogue cannot be deleted without breaking the scene — so
+    the repair failed five times and `write_all` halted the book. Scene 22 of a 71-scene
+    replicate died there, one of two runs of four lost overnight.
+
+    Worth noting what the fix does *not* cover: gloss spoken aloud is a real tell of its own, the
+    "dialogue as philosophical debate" the brief already forbids. It belongs to that prohibition,
+    not to this check.
     """
+    spoken = dialogue_spans(scene.text)
+
+    def inside_dialogue(position: int) -> bool:
+        return any(lo <= position < hi for lo, hi in spoken)
+
     found: list[tuple[int, str]] = []
     for pattern in _GLOSS_PATTERNS:
         for m in pattern.finditer(scene.text):
+            if inside_dialogue(m.start()):
+                continue
             start = max(0, m.start() - 40)
             found.append((m.start(), scene.text[start:m.end() + 60].strip()))
     if len(found) <= max_allowed:

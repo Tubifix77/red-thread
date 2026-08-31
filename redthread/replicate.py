@@ -63,6 +63,26 @@ def fresh_copy(source: Project, root: Path) -> Project:
     return project
 
 
+def common_prefix(runs: list[tuple[str, list[str]]]) -> list[tuple[str, list[str]]]:
+    """Every run truncated to the shortest one's scene count.
+
+    A replicate set writes one plan in one order, so scenes 1..k of every run are the same
+    assignments and are comparable. Runs of unequal length are not: `words` and
+    `duplication_manuscript` grow with the book, so a set of 71, 71, 44 and 22 scenes reports a
+    "spread" of 106% in words that is almost entirely length.
+
+    That is not hypothetical. An overnight four-run floor came back at exactly those lengths —
+    two runs halted on a scene the repair loop could not fix — and `replicate` printed the panel
+    without a word of complaint. The guard for it already existed in `measures --against` and had
+    simply not been put here.
+
+    Truncating rather than discarding is the better trade: a 22-scene floor from four runs is
+    weaker than a 71-scene one and is still a floor, where two usable runs of four are not.
+    """
+    shortest = min(len(texts) for _name, texts in runs)
+    return [(name, texts[:shortest]) for name, texts in runs]
+
+
 def group_panel(runs: list[tuple[str, list[str]]]) -> dict[str, list[float]]:
     """Every measure across a group of runs, as name -> one value per run."""
     panels = [checks.manuscript_measures(texts) for _name, texts in runs]

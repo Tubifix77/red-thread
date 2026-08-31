@@ -499,6 +499,19 @@ def cmd_replicate(args) -> int:
     if not runs:
         print("\n  No committed scenes in any replicate. Nothing to measure.")
         return 1
+
+    # Unequal runs cannot be compared on a manuscript-wide measure — the difference is the
+    # length. A halt is not rare: `write_all` stops on a scene it cannot commit, and an overnight
+    # set came back 71, 71, 44 and 22 because two runs died on one unrepairable MAJOR each. The
+    # panel it printed reported a 106% "spread" in words that was almost entirely that.
+    lengths = [len(texts) for _name, texts in runs]
+    if len(set(lengths)) > 1:
+        from .replicate import common_prefix
+        print(f"\n  ⚠ Runs of unequal length: {', '.join(str(n) for n in lengths)} scenes.")
+        print(f"    A halt leaves a short book, and words and duplication grow with length — so")
+        print(f"    the panel below is measured on the first {min(lengths)} scenes of each, which")
+        print(f"    are the same assignments in the same order and do compare.")
+        runs = common_prefix(runs)
     print_group("Replicate set", runs)
     if ablated:
         print("\n  A switch was flipped, so this spread is effect and noise together. Compare "

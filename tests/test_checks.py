@@ -1348,3 +1348,70 @@ class TestInternalRepetitionThreshold(unittest.TestCase):
         text = "She turned it over in her hands. " * 6 + "The kettle boiled and she took it off."
         found = checks.check_internal_repetition(self._scene(text))
         self.assertTrue(any(v.severity is Severity.MAJOR for v in found))
+
+
+class TestGlossIsAboutNarrationNotSpeech(unittest.TestCase):
+    """A character saying it is characterisation; the narrator saying it is the tell.
+
+    This cost an unattended run. `check_thematic_gloss` is a MAJOR whose repair is to delete the
+    offending clause, and a line of dialogue cannot be deleted without breaking the scene — so
+    the repair failed five times and `write_all` halted the book. Scene 22 of a 71-scene
+    replicate died there, one of two runs of four lost overnight.
+    """
+
+    def _scene(self, text):
+        from redthread.models import Scene
+        return Scene(spec_id="s", index=1, text=text)
+
+    def test_the_narrator_naming_the_point_still_fires(self):
+        found = checks.check_thematic_gloss(
+            self._scene("She set the ledger down. This was not just about the money, and she "
+                        "had known it since the beginning."))
+        self.assertEqual(len(found), 1)
+
+    def test_a_character_saying_it_does_not(self):
+        # The exact line that killed the run.
+        found = checks.check_thematic_gloss(
+            self._scene('Kai narrowed his eyes. "This isn\'t just about punishment. If the '
+                        'fugitive gets away, others will follow."'))
+        self.assertEqual(found, [])
+
+    def test_curly_quotes_are_excluded_too(self):
+        found = checks.check_thematic_gloss(
+            self._scene("Kai narrowed his eyes. “This isn’t just about punishment.”"))
+        self.assertEqual(found, [])
+
+    def test_narration_after_a_quote_still_fires(self):
+        # Excluding speech must not excuse the sentence that follows it.
+        found = checks.check_thematic_gloss(
+            self._scene('"Go," she said. It was not just about the money to him, not any more.'))
+        self.assertEqual(len(found), 1)
+
+    def test_the_quote_still_locates_in_the_original_text(self):
+        # Offsets must survive the exclusion, or the repair cannot find what to delete —
+        # which is why dialogue spans are computed rather than `strip_dialogue` being used.
+        text = ('"Go," she said. She looked at the door. It was not just about the money to '
+                'him, not any more.')
+        found = checks.check_thematic_gloss(self._scene(text))
+        self.assertTrue(found)
+        for violation in found:
+            self.assertIsNotNone(checks.locate_quote(text, violation.quote),
+                                 f"a repair cannot delete what it cannot find: {violation.quote!r}")
+
+    def test_dialogue_spans_are_offsets_into_the_original(self):
+        text = 'He paused. "Not this." She waited.'
+        spans = checks.dialogue_spans(text)
+        self.assertEqual(len(spans), 1)
+        lo, hi = spans[0]
+        self.assertEqual(text[lo:hi], '"Not this."')
+
+    def test_the_reference_drafts_stay_clean(self):
+        # rule V's spirit, applied to a prose check: the three cold drafts in docs/evidence are
+        # the calibration standard, and a widened or narrowed check must not move them.
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent / "docs" / "evidence"
+        for draft in sorted(root.glob("scene01-*.txt")):
+            self.assertEqual(
+                checks.check_thematic_gloss(
+                    self._scene(draft.read_text(encoding="utf-8"))), [],
+                f"{draft.name} should stay clean")
