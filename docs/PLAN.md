@@ -272,6 +272,29 @@ kinds were attempted and which converged — a small change to `pipeline.py`, de
 made tonight, because `scripts/phase1.sh` refuses to run the ablations if the write path moves
 under their control. It is the first thing to do once phase 1 is finished.
 
+**The other half of the question was answered immediately, by grepping for the shape.** The
+re-people bug was a number a model returned, used to address a list, with no check that it
+addresses anything. Searching the codebase for that shape found **two more instances within the
+hour**, and one of them was worse:
+
+| | consequence |
+|---|---|
+| `planner.repeople_solo_scenes` | 90% of the pass discarded; a rewrite could land on the wrong scene |
+| `verify.judge_conflicts` | a **BLOCKER** on facts the model was not judging — a halted run |
+| `verify.check_threads` (twice) | a verdict reported against the wrong obligation |
+
+All three share one root: `xs[-1]` raises nothing in Python, so a missing field defaulting to −1
+selects the *last* element instead of being dropped, and catching `IndexError` does not protect
+you. `tests/test_rule.py` now scans for it — no subscript may contain both `int(` and a negative
+default.
+
+*That scan shipped **vacuous** on its first attempt.* Its regex used `[^)]*?`, which cannot cross
+the inner `)` of `row.get(...)`, so it matched none of the three real instances and passed by
+finding nothing. Caught by probing it against the bugs it was written for — which is the same
+discipline as the pattern audit, applied to a test instead of a measure, and it was needed inside
+the very test written to enforce that discipline. Two companion tests now assert the scan fires
+on the real shapes and stays quiet on the safe ones.
+
 ---
 
 ## Phase 2 — rebuild tension on meaning rather than words  *(~5 h GPU)*
