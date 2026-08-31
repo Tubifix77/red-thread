@@ -1815,6 +1815,24 @@ def clears_noise(measure: str, a: float, b: float) -> bool:
     return abs(a - b) / mean > floor
 
 
+def fold_change(a: float, b: float) -> float:
+    """How many times larger one value is than the other. 0.0 if either is zero.
+
+    The companion to the relative-difference statistic, and necessary because that statistic
+    **saturates**. `|a - b| / mean` cannot exceed 200%, since as one value approaches zero the
+    ratio approaches 2 — so a hundredfold change scores 197% and a five-hundredfold change scores
+    199%, and the two are indistinguishable.
+
+    That is not academic here. This project's strongest single result is per-scene duplication
+    falling from .279 to .002, and against the n=4 floor of 189% it reads as *barely clearing* —
+    while two identical runs wobbling between .001 and .003 read as 100%. Relative-to-mean is the
+    right statistic for a measure that varies around a stable value and the wrong one for a
+    measure that has moved through orders of magnitude.
+    """
+    lo, hi = min(abs(a), abs(b)), max(abs(a), abs(b))
+    return hi / lo if lo else 0.0
+
+
 def describe_difference(measure: str, a: float, b: float) -> str:
     """One line stating a difference and whether it survives the floor. For reports."""
     floor = noise_floor(measure)
@@ -1825,6 +1843,15 @@ def describe_difference(measure: str, a: float, b: float) -> str:
         # floor wider than the mean, so the honest line is that the measure is exhausted.
         return (f"{measure:<26} {a:>10.3f} {b:>10.3f}  {rel:>6.0%} of mean  "
                 f"NO TEST POSSIBLE — it varies more than its own mean between identical runs")
+    # Near saturation the percentage stops meaning anything, so the fold change is shown beside
+    # it. Without this a reader sees "197% of mean" and reasonably takes it for "about twice the
+    # noise", when it is a hundredfold difference the statistic cannot express.
+    scale = ""
+    if rel > 1.5:
+        fold = fold_change(a, b)
+        scale = (f"  [{fold:,.0f}x — the percentage is saturated]" if fold
+                 else "  [one value is zero]")
+
     verdict = "clears" if clears_noise(measure, a, b) else "INSIDE"
     if not floor_is_established(measure) and verdict == "clears":
         # Not "clears the 0% floor", which reads as a strong result and is the weakest one
@@ -1832,7 +1859,7 @@ def describe_difference(measure: str, a: float, b: float) -> str:
         return (f"{measure:<26} {a:>10.3f} {b:>10.3f}  {rel:>6.0%} of mean  "
                 f"differs, but NO FLOOR WAS MEASURED (both replicates were zero)")
     return (f"{measure:<26} {a:>10.3f} {b:>10.3f}  {rel:>6.0%} of mean  "
-            f"{verdict} the {floor:.0%} floor")
+            f"{verdict} the {floor:.0%} floor{scale}")
 
 
 # --------------------------------------------------------------------------------------

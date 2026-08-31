@@ -671,5 +671,44 @@ class TestAnExhaustedMeasure(unittest.TestCase):
         self.assertFalse(checks.DEGENERATE_FLOOR & checks.UNINFORMATIVE_FLOOR)
 
 
+class TestSaturation(unittest.TestCase):
+    """The relative-difference statistic cannot exceed 200%, and that hides the best result here.
+
+    `|a - b| / mean` approaches 2 as one value approaches zero. So per-scene duplication falling
+    from .279 to .002 — a hundredfold improvement and the strongest single result in this project
+    — scores 197%, while two identical runs wobbling between .001 and .003 score 100%. The
+    statistic is right for a measure varying around a stable value and wrong for one that has
+    moved through orders of magnitude.
+    """
+
+    def test_the_statistic_saturates(self):
+        def rel(a, b):
+            return abs(a - b) / ((abs(a) + abs(b)) / 2)
+        self.assertLess(rel(0.279, 0.002), 2.0)
+        self.assertLess(rel(0.279, 0.0000001), 2.0)
+        # and cannot separate a hundredfold change from a millionfold one
+        self.assertAlmostEqual(rel(0.279, 0.002), rel(0.279, 0.0000001), places=1)
+
+    def test_fold_change_separates_what_the_percentage_cannot(self):
+        self.assertAlmostEqual(checks.fold_change(0.279, 0.002), 139.5, places=0)
+        self.assertGreater(checks.fold_change(0.279, 0.0000001), 1000)
+
+    def test_fold_change_is_symmetric(self):
+        self.assertEqual(checks.fold_change(0.002, 0.279), checks.fold_change(0.279, 0.002))
+
+    def test_a_zero_gives_no_fold_change_rather_than_infinity(self):
+        self.assertEqual(checks.fold_change(0.5, 0.0), 0.0)
+
+    def test_the_description_shows_the_scale_when_saturated(self):
+        line = checks.describe_difference("gesture_rate", 0.279, 0.002)
+        self.assertIn("saturated", line)
+        self.assertIn("140x", line)
+
+    def test_an_ordinary_difference_is_left_uncluttered(self):
+        line = checks.describe_difference("gesture_rate", 2.0, 2.1)
+        self.assertNotIn("saturated", line)
+        self.assertNotIn("x —", line)
+
+
 if __name__ == "__main__":
     unittest.main()

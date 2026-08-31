@@ -442,6 +442,22 @@ count are stable to within 4% between identical runs, duplication and recap to w
 **anything counting a maximum — worst refrain, worst gesture — swings by half its own value**.
 Maxima are the least trustworthy statistic in this project and were the ones quoted most often.
 
+### The statistic saturates, and it hides the best result in the project
+
+`clears_noise` compares `|a - b|` against the mean of the two, which is right for a measure
+varying around a stable value and wrong for one that has moved through orders of magnitude.
+**The ratio cannot exceed 200%**: as one value approaches zero it approaches 2.
+
+So per-scene duplication falling from **.279 to .002** — a 140-fold improvement and the strongest
+single result here — scores **197%**, while two identical runs wobbling between .001 and .003
+score 100%. The statistic cannot separate a hundredfold change from a millionfold one; both read
+as "about 198%".
+
+`checks.fold_change` is reported alongside whenever the percentage passes 150%, so a reader sees
+`197% of mean [140x — the percentage is saturated]` rather than a number that invites being read
+as "about twice the noise". The gate itself is unchanged; what changed is that it no longer
+reports a saturated figure without saying so.
+
 ### The floor now lives in code, and stating a difference has to pass through it
 
 `checks.NOISE_FLOOR` holds it, keyed identically to `checks.manuscript_measures` — a test asserts
