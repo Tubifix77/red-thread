@@ -26,7 +26,7 @@ in dialogue share by threefold, so a difference in ratings has to survive being 
  21  pre-prose-work      narrated  He had not expected them to want to take Riven.
  22  current-era         narrated  Eventually, he closed his fingers around the folded paper and pushed it deeper into his coat, the motion precise, deliberate, final.
  23  current-era         narrated  His voice carried the weight of dust and memory, slow as the drip of water from a leaking pipe.
- 24  current-era         spoken  I know what you're asking," Vay finally said, his voice steady despite the tremor in his thoughts.
+ 24  current-era         spoken  "I know what you're asking," Vay finally said, his voice steady despite the tremor in his thoughts.
  25  current-era         spoken  “Nor will those who built this place.” Kai hesitated, unsure which part hurt more—the knowledge that the system allowed such things, or the realization that the ones living here saw their existence as justified.
  26  current-era         narrated  He kept his weight shifted onto the balls of his feet, toes curling against the uneven ground, the gravel shifting under his boots like dead leaves stirred by wind.
  27  pre-prose-work      narrated  He had believed Riven, had trusted him, had let him save the enclave.

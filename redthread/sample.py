@@ -46,6 +46,26 @@ def restore_quotes(sentence: str) -> str:
     last_open = sentence.rfind("“")
     if last_open != -1 and sentence.find("”", last_open) == -1:
         sentence = sentence + "”"
+
+    # Straight quotes are about a sixth of the quote marks in this corpus, in both eras, and they
+    # are harder: one character does both jobs, so an odd count says the sentence is unbalanced
+    # without saying which end is missing.
+    #
+    # What settles it is the character beside the first mark. A quote preceded by a comma or
+    # terminal punctuation is a *closing* one — `asking," Vay said` is the dialogue-tag shape —
+    # so the opener is what went missing. A quote followed directly by a letter is an *opening*
+    # one, so the closer is. Anything else is left exactly as it was rather than guessed at.
+    if sentence.count('"') % 2 == 1:
+        first = sentence.find('"')
+        # `before` is compared with an explicit emptiness guard rather than by membership: an
+        # empty string is `in` every string in Python, so a sentence *starting* on a quote would
+        # otherwise be read as one that ends on a dialogue tag and get a second opener.
+        before = sentence[first - 1] if first > 0 else ""
+        after = sentence[first + 1] if first + 1 < len(sentence) else ""
+        if before and before in ",.?!":
+            sentence = '"' + sentence
+        elif after.isalpha():
+            sentence = sentence + '"'
     return sentence
 
 

@@ -36,7 +36,7 @@ the instrument's job, and the instrument already has an opinion.
 [ ]   21.  He had not expected them to want to take Riven.
 [ ]   22.  Eventually, he closed his fingers around the folded paper and pushed it deeper into his coat, the motion precise, deliberate, final.
 [ ]   23.  His voice carried the weight of dust and memory, slow as the drip of water from a leaking pipe.
-[ ]   24.  I know what you're asking," Vay finally said, his voice steady despite the tremor in his thoughts.
+[ ]   24.  "I know what you're asking," Vay finally said, his voice steady despite the tremor in his thoughts.
 [ ]   25.  “Nor will those who built this place.” Kai hesitated, unsure which part hurt more—the knowledge that the system allowed such things, or the realization that the ones living here saw their existence as justified.
 [ ]   26.  He kept his weight shifted onto the balls of his feet, toes curling against the uneven ground, the gravel shifting under his boots like dead leaves stirred by wind.
 [ ]   27.  He had believed Riven, had trusted him, had let him save the enclave.

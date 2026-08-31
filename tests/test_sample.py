@@ -262,6 +262,41 @@ class TestRestoreQuotes(unittest.TestCase):
                                 "at her from the bench."], min_words=3)
         self.assertTrue(any(s.startswith("“") for s in found), found)
 
+    def test_a_straight_quoted_sentence_missing_its_opener(self):
+        self.assertEqual(restore_quotes('You have nothing left to lose?"'),
+                         '"You have nothing left to lose?"')
+
+    def test_a_dialogue_tag_marks_the_quote_as_a_closer(self):
+        # The shape the first pass missed. The mark sits mid-sentence, not at the end, but it is
+        # preceded by a comma and followed by a tag — so it closes, and the opener is what went.
+        self.assertEqual(
+            restore_quotes('I know what you are asking," Vay said.'),
+            '"I know what you are asking," Vay said.')
+
+    def test_a_straight_quoted_sentence_missing_its_closer(self):
+        self.assertEqual(restore_quotes('"You have nothing left to lose.'),
+                         '"You have nothing left to lose."')
+
+    def test_a_balanced_straight_quote_is_untouched(self):
+        line = '"Go," she said, and he went.'
+        self.assertEqual(restore_quotes(line), line)
+
+    def test_a_quote_followed_by_a_letter_opens(self):
+        # The mirror case: an opening mark with nothing closing it.
+        self.assertEqual(restore_quotes('She said "go and he went on for a while.'),
+                         'She said "go and he went on for a while."')
+
+    def test_an_ambiguous_straight_quote_is_left_alone(self):
+        # Neither shape: the mark is preceded by a space and followed by a space, so nothing
+        # about it says which job it was doing. Guessing here would edit the prose.
+        line = 'The sign read the word " and nothing else at all was printed on it.'
+        self.assertEqual(restore_quotes(line), line)
+
+    def test_straight_quotes_change_no_words(self):
+        line = 'You have nothing left to lose?"'
+        self.assertEqual(restore_quotes(line).replace('"', "").split(),
+                         line.replace('"', "").split())
+
 
 if __name__ == "__main__":
     unittest.main()
