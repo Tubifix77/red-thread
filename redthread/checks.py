@@ -2648,6 +2648,24 @@ def check_dependency_graph(plan: list[SceneSpec], story: StorySpec | None = None
                     f"depend on itself or on something the reader has not read yet",
                     "check_dependency_graph"))
 
+    # An ending that declared nothing and an ending that depends on nothing both give a reach of
+    # zero, and they are not the same finding. Reporting the first as the second is the exact
+    # conflation this check's own design rejects one level up, where a plan declaring nothing at
+    # all is passed over in silence — so it is rejected here too.
+    #
+    # A live plan produced the case within an hour of the check shipping: `solo-b5` had 22 of 24
+    # scenes declaring dependencies and its *final* scene declaring none, and was reported as
+    # having a middle the reader could skip. Nothing was known about its middle either way.
+    final = ordered[-1]
+    if len(ordered) > 8 and not final.depends_on:
+        out.append(Violation(
+            "ending_declares_nothing", Severity.MINOR,
+            f"scene {final.index} is the last in the plan and declares no dependencies, while "
+            f"{len(declared)} other scenes do. Nothing here can say whether its ending earns the "
+            f"book or ignores it — only that nobody was asked.",
+            "check_dependency_graph"))
+        return out
+
     reach = ending_reach(ordered)
     if len(ordered) > 8 and reach < thin:
         out.append(Violation(

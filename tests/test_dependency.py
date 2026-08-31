@@ -180,3 +180,48 @@ def _from_jsonable_spec(row):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAnEndingThatDeclaresNothing(unittest.TestCase):
+    """An ending that declared nothing and an ending that depends on nothing both read as a
+    reach of zero, and they are not the same finding.
+
+    A live plan produced the case within an hour of the check shipping: `solo-b5` had 22 of its
+    24 scenes declaring dependencies and its *final* scene declaring none, and was reported as
+    having a middle the reader could skip. Nothing was known about its middle either way — which
+    is the conflation this check already rejects one level up, where a plan declaring nothing at
+    all is passed over in silence.
+    """
+
+    def _plan(self, final_deps):
+        plan = [spec(1)] + [spec(i, [i - 1]) for i in range(2, 20)]
+        plan[-1] = spec(19, final_deps)
+        return plan
+
+    def test_a_silent_ending_is_reported_as_silent(self):
+        kinds = [v.kind for v in checks.check_dependency_graph(self._plan([]), story())]
+        self.assertIn("ending_declares_nothing", kinds)
+        self.assertNotIn("ending_reaches_shallow", kinds)
+
+    def test_a_genuinely_shallow_ending_is_still_reported_as_shallow(self):
+        plan = [spec(i) for i in range(1, 20)]
+        plan[17] = spec(18, [17])
+        plan[-1] = spec(19, [18])
+        kinds = [v.kind for v in checks.check_dependency_graph(plan, story())]
+        self.assertIn("ending_reaches_shallow", kinds)
+        self.assertNotIn("ending_declares_nothing", kinds)
+
+    def test_a_deep_ending_reports_neither(self):
+        kinds = [v.kind for v in checks.check_dependency_graph(self._plan([18]), story())]
+        self.assertNotIn("ending_declares_nothing", kinds)
+        self.assertNotIn("ending_reaches_shallow", kinds)
+
+    def test_a_plan_declaring_nothing_at_all_still_says_nothing(self):
+        # The rule one level up, unchanged: silence from everybody is not a finding about the
+        # ending either.
+        plan = [spec(i) for i in range(1, 20)]
+        self.assertEqual(checks.check_dependency_graph(plan, story()), [])
+
+    def test_a_short_plan_is_not_judged_on_its_ending(self):
+        plan = [spec(1), spec(2, [1]), spec(3)]
+        self.assertEqual([v.kind for v in checks.check_dependency_graph(plan, story())], [])
