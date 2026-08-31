@@ -15,9 +15,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from redthread.embed import Embedder, cosine
-from redthread.forecast import (Prediction, declared_vs_random, generate, lexical_scorer,
-                                load, prediction_spread, sample_scenes, save, score,
-                                semantic_scorer, spread_stability, story_so_far)
+from redthread.forecast import (Prediction, ScoreResult, declared_vs_random, generate,
+                                lexical_scorer, load, prediction_spread, sample_scenes, save,
+                                score, semantic_scorer, spread_stability, story_so_far)
 
 from . import fakes
 
@@ -211,7 +211,10 @@ class TestScoreAndControl(unittest.TestCase):
         result.win_rate = 0.60
         self.assertIn("below", result.verdict(0.65))
         result.win_rate = 0.70
-        self.assertEqual(result.verdict(0.65), "clears the bar")
+        # No longer a bare "clears the bar": on twelve comparisons a coin manages 70% often
+        # enough to matter, and the verdict now says which case it is.
+        self.assertIn("clears the", result.verdict(0.65))
+        self.assertIn("coin", result.verdict(0.65))
 
     def test_the_control_is_deterministic_for_a_seed(self):
         a = score(self._predictions(), self._texts(), lexical_scorer, "l", seed=3)
@@ -302,7 +305,7 @@ class TestDeclaredVsRandom(unittest.TestCase):
         from redthread.models import Beat, SceneSpec
         return [SceneSpec(id=f"s{i}", index=i, summary=f"scene {i}",
                           beats=[Beat(summary="x")], depends_on=list(deps.get(i, [])))
-                for i in range(1, 9)]
+                for i in range(1, 10)]
 
     def _texts(self):
         # Scene 8 is written out of scene 3's vocabulary. If the measure works, declaring
@@ -429,7 +432,7 @@ class TestDeclaredDependencyControl(unittest.TestCase):
         from redthread.models import Beat, SceneSpec
         return [SceneSpec(id=f"s{i}", index=i, summary=f"scene {i}",
                           beats=[Beat(summary="x")], depends_on=list(deps.get(i, [])))
-                for i in range(1, 9)]
+                for i in range(1, 10)]
 
     def test_the_immediate_predecessor_is_never_a_decoy(self):
         # Scene N is written against the last twenty-five words of N-1 — check_seam enforces
@@ -455,10 +458,32 @@ class TestDeclaredDependencyControl(unittest.TestCase):
         self.assertEqual(result.n, 1)
         self.assertEqual(result.win_rate, 1.0)
 
-    def test_a_scene_with_no_decoy_left_is_skipped(self):
+    def test_the_decoy_is_matched_for_distance(self):
+        # The correction that mattered. On the first live book the declared ancestor sat a median
+        # of one scene away and the decoy pool averaged 7.7, so the comparison was "the scene
+        # just before" against "a scene far away" — proximity, not dependency. Unmatched it
+        # scored 86%; matched, 67%.
+        seen = []
+
+        class Spy(FakeEmbedder):
+            def one(self, text):
+                seen.append(text)
+                return super().one(text)
+
+        texts = [f"scene {i} " + fakes.clean_prose(150, i) for i in range(9)]
+        # Scene 9 is position 8; its declared ancestor at index 7 is position 6, a gap of 2.
+        declared_vs_random(self._plan({9: [7]}), texts, Spy(), seed=1)
+        drawn = [t for t in seen if t not in (texts[8], texts[6])]
+        for t in drawn:
+            gap = 8 - texts.index(t)
+            self.assertLessEqual(abs(gap - 2), 1,
+                                 f"decoy at gap {gap} against an ancestor at gap 2")
+
+    def test_a_scene_with_no_distance_matched_decoy_is_skipped(self):
         texts = [f"scene {i} " + fakes.clean_prose(150, i) for i in range(8)]
-        # Scene 3: position 2. Predecessor at 1 is excluded, 0 is the declared ancestor.
-        self.assertEqual(declared_vs_random(self._plan({3: [1]}), texts, FakeEmbedder()).n, 0)
+        # Scene 2 is position 1; its ancestor at index 1 is position 0, a gap of 1. The only
+        # other scene within one of that gap is the ancestor itself, so there is no decoy.
+        self.assertEqual(declared_vs_random(self._plan({2: [1]}), texts, FakeEmbedder()).n, 0)
 
 
 class TestSpreadStability(unittest.TestCase):
@@ -506,6 +531,36 @@ class TestDegenerateArguments(unittest.TestCase):
     def test_asking_for_no_scenes_returns_none_rather_than_dividing_by_zero(self):
         self.assertEqual(sample_scenes(40, 0), [])
         self.assertEqual(sample_scenes(40, -3), [])
+
+
+class TestChanceProbability(unittest.TestCase):
+    """A win rate flatters a small sample, and the verdict now says so."""
+
+    def _r(self, win_rate, n):
+        return ScoreResult(name="x", on_target=0.9, on_control=0.8, win_rate=win_rate, n=n)
+
+    def test_a_coin_is_a_coin(self):
+        self.assertAlmostEqual(self._r(0.5, 10).chance_probability(), 0.623, places=2)
+
+    def test_the_live_case_is_about_one_in_eight(self):
+        # 12 of 18, which is what step 16's distance-matched control actually produced.
+        p = self._r(12 / 18, 18).chance_probability()
+        self.assertGreater(p, 0.05)
+        self.assertLess(p, 0.20)
+
+    def test_a_large_clean_win_is_significant(self):
+        self.assertLess(self._r(0.86, 50).chance_probability(), 0.01)
+
+    def test_the_verdict_names_the_doubt_rather_than_hiding_it(self):
+        verdict = self._r(12 / 18, 18).verdict(0.65)
+        self.assertIn("suggestive, not established", verdict)
+        self.assertIn("18", verdict)
+
+    def test_a_strong_result_is_still_reported_as_one(self):
+        self.assertIn("clears the bar", self._r(0.86, 50).verdict(0.65))
+
+    def test_an_empty_result_is_pure_chance(self):
+        self.assertEqual(self._r(0.0, 0).chance_probability(), 1.0)
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ makes a claim — the claim has been through `checks.clears_noise`.
 | 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
 | 1 — confirm what exists | 2 of 4 | **step 7 found the pass 90% broken**; 8 answered; 5, 6 queued |
 | 2 — tension on embeddings | 5 of 5 | **three attempts, three controls, three failures** |
-| 3 — dependency graph | 2 of 3 | plans now declare dependencies; step 16 needs a **book written from one** |
+| 3 — dependency graph | 3 of 3 | step 16 **suggestive, not established** — 67% on 18, after its confound |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
 | 6 — write the rule down | 2 of 3 | step 25 is the final panel; needs phase 1 |
@@ -409,15 +409,32 @@ graph in which every edge points backwards cannot contain a cycle, so the one ch
 `ancestors` is still written to terminate on a hand-edited cycle, with a test, because a
 traversal that loops forever is worse than one that reports a violation.*
 
-**16. Test whether declared dependency shows up in the prose.** ⏳ *(built; needs a plan that
-declares some)* Does scene N sit closer to its declared ancestors than to a random earlier scene?
-If a declared dependency leaves no trace, the field is bookkeeping.
+**16. Test whether declared dependency shows up in the prose.** ✅ *Suggestive, not established —
+and the first answer was mostly an artefact.* Does scene N sit closer to its declared ancestors
+than to a random earlier scene? If a declared dependency leaves no trace, the field is bookkeeping.
 
-*`redthread depends <run> --prose`. Same result-plus-control shape as the forecast scorers,
-because an absolute similarity between two scenes of one novel is a property of the novel's
-vocabulary — two scenes with the same cast in the same town will always look alike, and the
-question is whether the declared ones look more alike than that. No plan on disk declares
-dependencies yet, so this runs when the next book is planned.*
+*A 24-scene book was written from `solo-a4`, the densest and most connected of the twelve plans
+generated for step 8, chosen before it was written: if a declared dependency leaves no trace
+there it leaves none anywhere.*
+
+| control | win rate | n |
+|---|---:|---:|
+| unmatched decoy — **what shipped first** | **86%** | 22 |
+| distance-matched decoy | **67%** | 18 |
+| non-adjacent edges only, matched | 75% | 12 |
+
+***The 86% was mostly proximity.*** Declared ancestors sit a median of **one** scene away while
+the decoy pool averaged **7.7**, so the comparison was "the scene just before" against "a scene
+far away". Scenes near each other resemble each other for reasons that are not dependency:
+`check_seam` enforces continuity across the join, and the cast and setting persist. Excluding only
+the immediate predecessor, which the control already did, was not enough.
+
+*Matched for distance the effect survives at 67% — and 67% of 18 is twelve of eighteen, which a
+coin manages about **one time in eight**. `ScoreResult.verdict` now says so itself, with an exact
+binomial, rather than reporting "clears the bar" on a sample that cannot carry it.*
+
+**So the field is not bookkeeping, and it is not proven either.** One book, eighteen comparisons.
+The honest next step is more books rather than a firmer claim from this one.
 
 ## Phase 4 — want, obstacle, cost  *(~4 h GPU)*
 

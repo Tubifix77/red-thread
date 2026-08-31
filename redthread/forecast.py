@@ -148,14 +148,31 @@ class ScoreResult:
     """How often the real scene beat the random one. This is the number that matters."""
     n: int
 
+    def chance_probability(self) -> float:
+        """One-sided exact binomial: how often a coin would do this well or better.
+
+        Added because a win rate flatters a small sample. 67% of 18 sounds like a result and is
+        twelve heads out of eighteen, which a coin manages about one time in eight — and the
+        first version of this class would have called it "clears the bar" without saying so.
+        """
+        import math
+        if self.n < 1:
+            return 1.0
+        wins = round(self.win_rate * self.n)
+        return sum(math.comb(self.n, k) for k in range(wins, self.n + 1)) / 2 ** self.n
+
     def verdict(self, floor: float = 0.65) -> str:
         if self.n < 10:
-            return "too few predictions to say anything"
+            return f"only {self.n} comparisons — too few to say anything"
         if self.win_rate < 0.55:
             return "CHANCE — this scorer cannot tell a right guess from a wrong one"
         if self.win_rate < floor:
             return f"below the {floor:.0%} bar — not usable"
-        return "clears the bar"
+        p = self.chance_probability()
+        if p > 0.05:
+            return (f"clears the {floor:.0%} bar, but on {self.n} comparisons a coin does this "
+                    f"well {p:.0%} of the time — suggestive, not established")
+        return f"clears the bar (a coin does this well {p:.1%} of the time)"
 
 
 def score(predictions: list[Prediction], texts: list[str], scorer, name: str,
@@ -276,13 +293,27 @@ def declared_vs_random(plan, texts: list[str], embedder: Embedder,
         declared = [by_position[e] for e in spec.depends_on
                     if e in by_position and by_position[e] < position]
         declared = [p for p in declared if p < len(texts)]
-        # The immediately preceding scene is excluded from the decoy pool unless it was itself
-        # declared. Scene N always follows N-1 and is written against its last twenty-five words
-        # — `check_seam` enforces continuity across exactly that join — so N-1 is similar to N
-        # for reasons that have nothing to do with a declared dependency. Leaving it in would
-        # inflate the control whenever it happened to be drawn.
-        others = [p for p in range(position - 1) if p not in declared]
-        if not declared or not others:
+        if not declared:
+            continue
+
+        # **The decoy is matched for distance, and that changes the answer.**
+        #
+        # Excluding only the immediate predecessor was not enough. On the first live book,
+        # declared ancestors sat a median of *one* scene away while the decoy pool averaged 7.7 —
+        # so the comparison was "the scene just before" against "a scene far away", which tests
+        # proximity and not dependency. Scenes near each other resemble each other: `check_seam`
+        # enforces continuity across the join, the cast and the setting persist, and none of that
+        # is a declared edge.
+        #
+        # Unmatched it scored 86%. Matched, 67%. Most of the headline was recency.
+        #
+        # A scene whose ancestor has no distance-matched alternative is skipped rather than
+        # compared against something nearer or further, which costs sample size and is the only
+        # honest option.
+        gap = position - max(declared)
+        others = [p for p in range(position)
+                  if p not in declared and abs((position - p) - gap) <= 1]
+        if not others:
             continue
 
         scene = embedder.one(texts[position])
