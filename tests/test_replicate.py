@@ -476,3 +476,26 @@ class TestRefusalMeasuresAreActuallyNarrow(unittest.TestCase):
         # a quietly more impressive number.
         self.assertEqual(checks.NOISE_FLOOR["refusal_rate"], 0.22)
         self.assertEqual(checks.NOISE_FLOOR["refusal_per_ask"], 0.37)
+
+
+class TestRepeopleCommand(unittest.TestCase):
+    """`redthread repeople` — step 7 needed the pass runnable on a plan already on disk.
+
+    Measuring it by generating two plans, one with the pass and one without, compares two
+    different plans. Running it on an existing plan makes the before and after the same object,
+    which is the only version of the comparison that means anything.
+    """
+
+    def test_the_command_exists_with_its_switches(self):
+        from redthread.cli import build_parser
+        args = build_parser().parse_args(
+            ["repeople", "run", "--local", "m", "--limit", "0.2", "--write"])
+        self.assertEqual(args.limit, 0.2)
+        self.assertTrue(args.write)
+
+    def test_it_does_not_write_by_default(self):
+        # A pass that rewrites a plan on disk without being asked would make the before-and-after
+        # comparison it exists for impossible to repeat.
+        from redthread.cli import build_parser
+        args = build_parser().parse_args(["repeople", "run", "--local", "m"])
+        self.assertFalse(args.write)
