@@ -223,3 +223,48 @@ class TestChecksReportEveryInstance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestADeletableSpanMustBeNarration(unittest.TestCase):
+    """If the repair for a kind is "delete this span", the span cannot be a character's line.
+
+    The structural lesson of a lost overnight run. `check_thematic_gloss` fired on
+    `Kai narrowed his eyes. "This isn't just about punishment."` — a MAJOR, whose remedy is in
+    DELETE_KINDS, pointing at a line of dialogue. You cannot delete a character's speech without
+    breaking the scene, so the repair failed five times and `write_all` halted the book at scene
+    22 of 71. One of two runs of four lost that way.
+
+    The invariant that would have caught it: a kind that is both *deleted* and *blocking* must
+    come from a check that excludes dialogue. The set is pinned rather than inferred, so adding a
+    blocking delete-kind fails here and whoever adds it has to answer the question.
+    """
+
+    def test_only_one_delete_kind_can_block_a_commit(self):
+        blocking = set()
+        for source in (Path(checks.__file__), Path(checks.__file__).with_name("verify.py")):
+            text = source.read_text(encoding="utf-8")
+            for kind in DELETE_KINDS:
+                pattern = r'Violation\(\s*"' + kind + r'",\s*Severity\.(MAJOR|BLOCKER)'
+                if __import__("re").search(pattern, text):
+                    blocking.add(kind)
+        self.assertEqual(
+            blocking, {"thematic_gloss"},
+            "a delete-repaired kind that can block a commit must come from a check that excludes "
+            "dialogue — a character's line cannot be deleted, and the repair will not converge. "
+            "If you are adding one, exclude dialogue as check_thematic_gloss does and then widen "
+            "this assertion.")
+
+    def test_the_blocking_delete_kind_excludes_dialogue(self):
+        from redthread.models import Scene
+        spoken = Scene(spec_id="s", index=1,
+                       text='Kai narrowed his eyes. "This isn\'t just about punishment."')
+        self.assertEqual(checks.check_thematic_gloss(spoken), [],
+                         "the kind whose repair is deletion must never point at speech")
+
+    def test_the_other_delete_kinds_are_advisory(self):
+        # thread_prohibition and tell_thematic_gloss are MINOR, so a quote of theirs falling in
+        # dialogue costs a wasted repair round rather than a halted book. Recorded so the
+        # asymmetry is deliberate rather than lucky.
+        self.assertEqual(len(DELETE_KINDS), 3)
+        self.assertIn("thread_prohibition", DELETE_KINDS)
+        self.assertIn("tell_thematic_gloss", DELETE_KINDS)
