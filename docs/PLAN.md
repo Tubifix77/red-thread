@@ -179,6 +179,28 @@ the same, or the plan it writes is not the plan `make_plan` would have produced.
 5, 5, 22, 24, 10, 28 solo scenes. Generate six of a *different* premise. If the split persists it
 is the planner; if one premise clusters low and another high, it is the story asking for solitude.
 
+### What step 7 implies for everything else
+
+The re-people pass was 90% broken behind a green suite, and the reason it survived is general:
+**a scripted fixture answers in the shape the code expects.** `tests/fakes.py` echoed the scene
+indices back correctly, because the person writing the fixture knew what the parser wanted. A
+live 8B did not know, and had no reason to.
+
+So the question step 7 leaves is: *what else in this project has only ever been exercised by a
+fixture?* Two answers are already known and recorded in `MEASUREMENTS.md` — `cohesion_cut` and
+`missed_deadline` have unit tests and no live instance in 373 scenes. The larger and less
+comfortable case is the **repair ladder**. It has a dozen rungs, several of them narrow, and
+nothing on disk records which ever fired: the scene record stores the violations a scene carried
+*at commit*, after repair, so a rung that has silently done nothing since it was written is
+indistinguishable from one that has never been needed.
+
+That cannot be answered from the corpus. It needs one run instrumented to record which repair
+kinds were attempted and which converged — a small change to `pipeline.py`, deliberately **not**
+made tonight, because `scripts/phase1.sh` refuses to run the ablations if the write path moves
+under their control. It is the first thing to do once phase 1 is finished.
+
+---
+
 ## Phase 2 — rebuild tension on meaning rather than words  *(~5 h GPU)*
 
 The forecast probe fails because a two-sentence prediction and an 800-word scene share too little
