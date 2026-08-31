@@ -109,7 +109,7 @@ exactly how a measure shipped with a docstring asserting it was narrow.
 | `_PLAN_REFUSAL` | 31 Aug | largely clean — 103 of 119 matches are `refus*`. Lost `will not`, `won't` and a bare `bars` |
 | `_SOMATIC_PATTERNS` | 31 Aug | clean. 182 beats across 444 scenes, and every sampled match is a bodily-sensation beat — jaw tightened, throat tightened, chest twisted |
 | `_GLOSS_PATTERNS` | 31 Aug | **unmeasurable from the corpus.** One match in 444 committed scenes, because the repair loop deletes them — see above |
-| `_PAST_PERFECT` | — | not audited |
+| `_PAST_PERFECT` | 31 Aug | clean, with one documented over-inclusion. 2,319 matches across 343 scenes and every sampled one is a genuine past perfect — `had known`, `had been`, `had made`. It also counts *subordinate* uses ("slower than it had been earlier"), which are ordinary prose rather than recap, so `summary_distance` runs slightly high in absolute terms. It is only ever read comparatively and the inflation is roughly constant, so the 8× between-era gap (.380 against .047) is far too large to be explained by it. `recap_blocks` is unaffected: four consecutive past-perfect sentences is not a run of subordinate clauses |
 | `slop` list | 30 Aug | clean, and externally sourced. Zero entries appear in 30% or more of scenes; 70 of 75 appear in under 5% |
 
 Two of the six audited were badly contaminated and one was mildly so. That is a hit rate high
