@@ -3,21 +3,32 @@
 *31 August 2026. Illustrated version:
 <https://claude.ai/code/artifact/79ab4f28-db0c-4e86-80ce-c74d837b4c53>*
 
-Four of the seven open items need an instrument that does not exist. Two are built and unproven.
-One is a design decision. **Nothing here can be evaluated at all until phase 0 is done**, because
-four mechanisms are currently shipped with no way to turn them off and the noise floor rests on a
-single replicate pair.
+Four of the seven open items needed an instrument that did not exist. Two were built and
+unproven. One was a design decision. **Nothing here could be evaluated at all until phase 0 was
+done**, because four mechanisms were shipped with no way to turn them off and the noise floor
+rested on a single replicate pair.
 
-**Progress.** Each step below is marked ✅ done, ⏳ running, or left unmarked. A step is only
-done when its code is committed, its tests pass, and — where it makes a claim — the claim has
-been through `checks.clears_noise`.
+The instruments exist now, and the first results are in — including four the plan was written to
+be able to receive: *no*. Half of these steps were designed to conclude that something does not
+work, and that is them working.
+
+The pattern across the results is sharper than any of them alone. **Every instrument built to
+check the work found something wrong with the work that built it.** The noise-floor table failed
+its own self-test on four measures. A prose measure shipped with a docstring asserting it was
+narrow while being 56% ordinary English. A test written to enforce a rule refuted the statement
+of the rule twice in five minutes. And running the re-people pass against a live plan for the
+first time found it discarding 90% of its own output, silently, behind 780 green tests.
+
+**Progress.** Each step below is marked ✅ done, ⛔ killed by its own criterion, ⏳ running, or
+left unmarked. A step is only done when its code is committed, its tests pass, and — where it
+makes a claim — the claim has been through `checks.clears_noise`.
 
 | phase | done | state |
 |---|---|---|
 | 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
 | 1 — confirm what exists | 1 of 4 | **step 7 found the pass 90% broken**; 5, 6, 8 queued |
 | 2 — tension on embeddings | 3 of 5 | **step 11 fired its kill criterion**; 12 needs its replicate |
-| 3 — dependency graph | 2 of 3 | step 16 needs a plan carrying the new field |
+| 3 — dependency graph | 2 of 3 | plans now declare dependencies; step 16 needs a **book written from one** |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
 | 6 — write the rule down | 2 of 3 | step 25 is the final panel; needs phase 1 |
