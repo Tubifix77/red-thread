@@ -635,6 +635,11 @@ def cmd_measures(args) -> int:
         print(f"\n  Differs, with no floor to clear: {', '.join(unestablished)}")
         print("  Both replicates were identically zero on these, so nothing is known about how "
               "\n  much they move on their own. The difference may be real; this cannot say so.")
+    if exhausted:
+        print(f"\n  No test possible on: {', '.join(exhausted)}")
+        print("  These vary more than their own mean between identical runs — the prose has "
+              "\n  driven them so close to zero that a relative comparison says nothing. They "
+              "\n  are not evidence in either direction.")
     if not survived and not unestablished:
         print("\n  Nothing clears the floor. This instrument cannot tell these two apart, "
               "\n  which is not the same as their being the same.")

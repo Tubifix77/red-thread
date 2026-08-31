@@ -27,7 +27,7 @@ makes a claim — the claim has been through `checks.clears_noise`.
 
 | phase | done | state |
 |---|---|---|
-| 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
+| 0 — trustworthy instruments | **4 of 4** | the floor is n=4 at 71 scenes |
 | 1 — confirm what exists | 2 of 4 | **step 7 found the pass 90% broken**; 8 answered; 5, 6 queued |
 | 2 — tension on embeddings | 5 of 5 | **three attempts, three controls, three failures** |
 | 3 — dependency graph | 3 of 3 | step 16 **suggestive, not established** — 67% on 18, after its confound |
@@ -93,8 +93,23 @@ panel for a group as mean and range, and puts every between-group difference thr
 `clears_noise`. Ablation flags are on `replicate` too, because with one switch flipped a
 replicate set and an experiment are the same object.*
 
-**2. Take the noise floor from n=2 to n=4.** ⏳ Two runs give a range, not a distribution, and a
+**2. Take the noise floor from n=2 to n=4.** ✅ Two runs give a range, not a distribution, and a
 range from two samples systematically understates the spread.
+
+*Done, and the prediction held in direction while understating the size. Seven of eleven live
+measures widened, three by more than double — `refusal_rate` 22% → 69%, `recap_grammar` 34% →
+59%. **Two tightened sharply**, `somatic_share` 67% → 19% and `gesture_rate` 31% → 22%, which is
+the more useful half: a two-sample range is unstable in both directions, so the old floor was too
+generous on some measures and too harsh on others with no way to tell which from inside it.*
+
+*`duplication_scene` came back at **189%** — it reads .0007, .0005, .0005 and .0025, all
+effectively zero, so a relative comparison on it says nothing. That is the mirror of a degenerate
+floor: 0.00 means everything clears, above 1.00 means nothing ever will, and the measure stops
+supporting claims while still printing "INSIDE the floor". `UNINFORMATIVE_FLOOR` names it and the
+report says "no test possible". The measure is not broken — it succeeded, and there is nothing
+left in it to measure.*
+
+*Full table in [evidence/replicate-noise-floor.md](evidence/replicate-noise-floor.md).*
 
 *Running: four fresh replicates of the 71-scene* Debt of Years *plan at current HEAD. The
 existing pair (`runs/current`, `runs/replicate`) cannot simply be extended — `ledgerfix` and

@@ -1695,17 +1695,17 @@ def _mean_where_defined(committed_texts: list[str]) -> float:
 NOISE_FLOOR: dict[str, float] = {
     "words": 0.02,
     "scenes": 0.00,
-    "dialogue_share": 0.05,
-    "duplication_scene": 0.28,
-    "duplication_manuscript": 0.12,
-    "recap_grammar": 0.34,
+    "dialogue_share": 0.11,
+    "duplication_scene": 1.89,
+    "duplication_manuscript": 0.19,
+    "recap_grammar": 0.59,
     "recap_block_share": 0.00,
-    "gesture_rate": 0.31,
-    "somatic_share": 0.67,
-    "repetition_concentration": 0.28,
-    "worst_refrain": 0.45,
-    "refusal_rate": 0.22,
-    "refusal_per_ask": 0.37,
+    "gesture_rate": 0.22,
+    "somatic_share": 0.19,
+    "repetition_concentration": 0.38,
+    "worst_refrain": 0.52,
+    "refusal_rate": 0.69,
+    "refusal_per_ask": 0.53,
 }
 
 # Measures whose floor is 0.00 because **both replicates were identically zero**, not because a
@@ -1736,11 +1736,23 @@ LENGTH_SENSITIVE: frozenset[str] = frozenset({
 })
 
 NOISE_FLOOR_SOURCE = "docs/evidence/replicate-noise-floor.md"
-NOISE_FLOOR_N = 2
-"""Replicates the floor above was measured from. Two runs give a range, not a distribution, and
-a range from two samples systematically understates the spread — so every number in
-`NOISE_FLOOR` is a lower bound on the true noise, and a difference that only just clears it has
-cleared the most generous possible reading of the evidence."""
+NOISE_FLOOR_N = 4
+"""Replicates the floor above was measured from.
+
+Four runs of the 71-scene *Debt of Years* plan at one revision, 1 September 2026, replacing a
+two-run floor. The plan predicted the direction and understated the size: **a range from two
+samples systematically understates the spread**, and going to four widened seven of the eleven
+live measures, three of them by more than double.
+
+    refusal_rate           22% -> 69%        gesture_rate     31% -> 22%
+    recap_grammar          34% -> 59%        somatic_share    67% -> 19%
+    duplication_scene      28% -> 189%       worst_refrain    45% -> 52%
+    dialogue_share          5% -> 11%
+
+Two tightened sharply, which is the part worth noticing: `somatic_share` and `gesture_rate` were
+*over*-stated at n=2. A range from two samples is unstable in both directions, so the old floor
+was too generous on some measures and too harsh on others, and there was no way to tell which
+from the inside. Four is still not many."""
 
 
 def noise_floor(measure: str) -> float:
@@ -1753,6 +1765,26 @@ def noise_floor(measure: str) -> float:
             f"{', '.join(sorted(NOISE_FLOOR))}. Run `redthread replicate` on one plan and add "
             f"the result to NOISE_FLOOR before making a claim about this measure."
         ) from None
+
+
+# The mirror of a degenerate floor, and it arrived with the n=4 set.
+#
+# `duplication_scene` reads .0007, .0005, .0005 and .0025 across four identical runs — all
+# effectively zero, because current-era prose has almost no within-scene duplication. In absolute
+# terms that is nothing; as a *fraction of the mean* it is 189%. The measure has hit its own
+# floor, and a relative comparison on a quantity pinned near zero says nothing.
+#
+# The consequence is the opposite of a degenerate floor and just as misleading. A floor of 0.00
+# means everything clears it; a floor above 1.00 means **nothing ever will**, so the measure
+# silently stops being able to support any claim while still printing "INSIDE the floor" — which
+# reads as though the instrument checked something.
+UNINFORMATIVE_FLOOR: frozenset[str] = frozenset(
+    name for name, floor in NOISE_FLOOR.items() if floor >= 1.0)
+
+
+def floor_is_informative(measure: str) -> bool:
+    """Can this measure support a claim at all, or is its spread wider than its mean?"""
+    return noise_floor(measure) < 1.0
 
 
 def floor_is_established(measure: str) -> bool:
@@ -1788,6 +1820,11 @@ def describe_difference(measure: str, a: float, b: float) -> str:
     floor = noise_floor(measure)
     mean = (abs(a) + abs(b)) / 2
     rel = abs(a - b) / mean if mean else 0.0
+    if not floor_is_informative(measure):
+        # Not "INSIDE the 189% floor", which implies a test was applied. Nothing can clear a
+        # floor wider than the mean, so the honest line is that the measure is exhausted.
+        return (f"{measure:<26} {a:>10.3f} {b:>10.3f}  {rel:>6.0%} of mean  "
+                f"NO TEST POSSIBLE — it varies more than its own mean between identical runs")
     verdict = "clears" if clears_noise(measure, a, b) else "INSIDE"
     if not floor_is_established(measure) and verdict == "clears":
         # Not "clears the 0% floor", which reads as a strong result and is the weakest one

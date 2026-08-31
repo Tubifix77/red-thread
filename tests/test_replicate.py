@@ -467,11 +467,17 @@ class TestRefusalMeasuresAreActuallyNarrow(unittest.TestCase):
         self.assertGreater(
             checks.refusal_per_ask("She demanded the ledger. He shook his head."), 0.0)
 
-    def test_the_floors_are_the_narrowed_ones(self):
-        # Pinning these catches a revert of the narrowing, which would otherwise show up only as
-        # a quietly more impressive number.
-        self.assertEqual(checks.NOISE_FLOOR["refusal_rate"], 0.22)
-        self.assertEqual(checks.NOISE_FLOOR["refusal_per_ask"], 0.37)
+    def test_both_measures_carry_a_floor(self):
+        # This used to pin the floor *values* to catch a revert of the narrowing. That was the
+        # wrong guard: a floor legitimately moves every time it is re-measured, and it did — the
+        # n=4 set took refusal_rate from 22% to 69%. Pinning it would have meant editing a test
+        # to accept a real measurement, which teaches the wrong reflex.
+        #
+        # The narrowing is guarded by the behaviour tests above instead, which assert what the
+        # patterns do and do not match. Those cannot drift with the corpus.
+        for name in ("refusal_rate", "refusal_per_ask"):
+            self.assertIn(name, checks.NOISE_FLOOR)
+            self.assertGreater(checks.NOISE_FLOOR[name], 0.0)
 
 
 class TestRepeopleCommand(unittest.TestCase):
@@ -623,6 +629,46 @@ class TestAHaltIsReported(unittest.TestCase):
         source = inspect.getsource(cli.cmd_replicate)
         self.assertIn("Severity.MINOR", source,
                       "a halt report that lists minors buries the cause")
+
+
+class TestAnExhaustedMeasure(unittest.TestCase):
+    """The mirror of a degenerate floor, and it arrived with the n=4 set.
+
+    `duplication_scene` reads .0007, .0005, .0005 and .0025 across four identical runs — all
+    effectively zero, because current-era prose has almost no within-scene duplication. In
+    absolute terms that is nothing; as a fraction of the mean it is 189%.
+
+    A floor of 0.00 means everything clears it. A floor above 1.00 means nothing ever will, so
+    the measure silently stops supporting any claim while still printing "INSIDE the floor" —
+    which reads as though the instrument checked something.
+    """
+
+    def test_the_exhausted_measure_is_named(self):
+        self.assertIn("duplication_scene", checks.UNINFORMATIVE_FLOOR)
+        self.assertFalse(checks.floor_is_informative("duplication_scene"))
+
+    def test_a_usable_measure_is_not(self):
+        for name in ("dialogue_share", "gesture_rate", "worst_refrain"):
+            self.assertTrue(checks.floor_is_informative(name), name)
+
+    def test_the_set_is_derived_from_the_floor_rather_than_listed(self):
+        # So it cannot drift out of step with the table it describes.
+        self.assertEqual(
+            checks.UNINFORMATIVE_FLOOR,
+            frozenset(n for n, f in checks.NOISE_FLOOR.items() if f >= 1.0))
+
+    def test_the_description_refuses_rather_than_reporting_inside(self):
+        line = checks.describe_difference("duplication_scene", 0.001, 0.004)
+        self.assertIn("NO TEST POSSIBLE", line)
+        self.assertNotIn("INSIDE", line)
+
+    def test_an_unknown_measure_still_raises(self):
+        with self.assertRaises(KeyError):
+            checks.floor_is_informative("vibes")
+
+    def test_the_two_categories_do_not_overlap(self):
+        # A floor cannot be both zero and above one.
+        self.assertFalse(checks.DEGENERATE_FLOOR & checks.UNINFORMATIVE_FLOOR)
 
 
 if __name__ == "__main__":

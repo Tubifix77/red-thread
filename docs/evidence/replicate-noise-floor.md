@@ -61,3 +61,59 @@ And the measures divide cleanly enough to be worth remembering: **dialogue share
 are stable to within 4%**, duplication and recap to within a third, and anything counting a
 maximum — worst refrain, worst gesture — swings by half its own value between identical runs.
 Maxima are the least trustworthy statistic here and were the ones quoted most often.
+
+---
+
+# The floor at n=4
+
+*1 September 2026. Four runs of the same 71-scene plan, one revision, nothing varying but the
+sampling. This supersedes the two-run floor above, which is kept because what it got wrong is the
+point.*
+
+| measure | n=2 | **n=4** | |
+|---|---:|---:|---|
+| words | 2% | **2%** | |
+| dialogue_share | 5% | **11%** | wider |
+| duplication_scene | 28% | **189%** | see below |
+| duplication_manuscript | 12% | **19%** | wider |
+| recap_grammar | 34% | **59%** | wider |
+| gesture_rate | 31% | **22%** | *tighter* |
+| somatic_share | 67% | **19%** | *much tighter* |
+| repetition_concentration | 28% | **38%** | wider |
+| worst_refrain | 45% | **52%** | wider |
+| refusal_rate | 22% | **69%** | wider |
+| refusal_per_ask | 37% | **53%** | wider |
+
+The plan predicted the direction — *"a range from two samples systematically understates the
+spread"* — and understated the size. Seven of eleven live measures widened, three by more than
+double.
+
+**But two tightened sharply, and that is the part worth keeping.** `somatic_share` went from 67%
+to 19% and `gesture_rate` from 31% to 22%. A range from two samples is unstable in *both*
+directions: the old floor was too generous on some measures and too harsh on others, and there
+was no way to tell which from inside it. Four is still not many.
+
+## One measure has exhausted itself
+
+`duplication_scene` reads **.0007, .0005, .0005 and .0025** across the four runs. All effectively
+zero — current-era prose has almost no within-scene duplication, which is what the sampler fix
+achieved. In absolute terms the variation is nothing. As a fraction of the mean it is 189%.
+
+This is the mirror of a degenerate floor and just as misleading. A floor of 0.00 means everything
+clears it; a floor above 1.00 means **nothing ever will**, so the measure quietly stops being able
+to support a claim while still printing "INSIDE the floor" — which reads as though the instrument
+checked something. `checks.UNINFORMATIVE_FLOOR` names it and the report says *"no test possible"*
+instead.
+
+Worth stating plainly: the measure is not broken. It succeeded. Per-scene duplication was driven
+from .279 to .0005 and there is no longer anything left in it to measure.
+
+## And a halt rate, measured rather than assumed
+
+The set answers a question it was not built for. **Four of four runs reached 71 scenes.** The
+previous attempt, before `check_thematic_gloss` stopped reading dialogue, lost two of four — at
+scenes 44 and 22 — to a MAJOR whose repair could not converge.
+
+Eight runs, two conditions, and the difference is one check no longer firing on a character's
+line. That is not proof of a rate, but it is the first time "can it reach the end of a book
+unattended" has had anything but an anecdote attached to it.
