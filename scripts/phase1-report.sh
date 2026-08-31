@@ -27,6 +27,20 @@ if [ -z "$present" ]; then
 fi
 echo "Control: $present"
 
+# Did the three conditions actually share a writer? phase1.sh guards the write path by diffing
+# five files, which leaves `checks.py` out — deliberately, because it changes constantly for
+# reporting reasons, and inconveniently, because it holds every scene-level check. This closes
+# that hole after the fact by AST-comparing everything reachable from `run_all`.
+FLOOR_COMMIT=$(git log --format=%h --grep="Run the floor inside the chain" -1)
+if [ -n "$FLOOR_COMMIT" ]; then
+    echo
+    python scripts/same_code.py "$FLOOR_COMMIT" || {
+        echo
+        echo "  ^ Read the tables below with that in mind: the conditions differ by more than"
+        echo "    the switch, so a difference between them is not attributable to the switch."
+    }
+fi
+
 for pair in "norefrain:refrain feedback off:step 5" "nogesture:gesture feedback off:step 6"; do
     label="${pair%%:*}"; rest="${pair#*:}"; name="${rest%%:*}"; step="${rest##*:}"
     runs=""
