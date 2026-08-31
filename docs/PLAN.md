@@ -26,7 +26,7 @@ makes a claim — the claim has been through `checks.clears_noise`.
 | phase | done | state |
 |---|---|---|
 | 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
-| 1 — confirm what exists | 1 of 4 | **step 7 found the pass 90% broken**; 5, 6, 8 queued |
+| 1 — confirm what exists | 2 of 4 | **step 7 found the pass 90% broken**; 8 answered; 5, 6 queued |
 | 2 — tension on embeddings | 5 of 5 | **three attempts, three controls, three failures** |
 | 3 — dependency graph | 2 of 3 | plans now declare dependencies; step 16 needs a **book written from one** |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
@@ -194,13 +194,23 @@ trusted. One further thing it caught — the rewrite reached for a phrase the pl
 `make_plan` scrubs after this pass and so absorbs it; `redthread repeople` standalone now does
 the same, or the plan it writes is not the plan `make_plan` would have produced.*
 
-**8. Decide whether the bimodality is the planner or the premise.** ⏳ *(premise A done, B
-generating)* Six plans of one premise gave 5, 5, 22, 24, 10, 28 solo scenes. Generate six of a
+**8. Decide whether the bimodality is the planner or the premise.** ✅ **Mostly the planner.** Six plans of one premise gave 5, 5, 22, 24, 10, 28 solo scenes. Generate six of a
 *different* premise. If the split persists it is the planner; if one premise clusters low and
 another high, it is the story asking for solitude.
 
-*Six fresh plans of one premise, all with `--no-repeople` so what is measured is the planner's
-raw rate rather than the rate after the pass that exists to fix it:*
+*Twelve fresh plans, six of each premise, all with `--no-repeople` so what is measured is the
+planner's raw rate rather than the rate after the pass that exists to fix it.*
+
+| | solo, low–high | mean | ending reach, low–high |
+|---|---|---:|---|
+| premise A | 4% – 38% | 19% | 57% – 96% |
+| premise B | 0% – 21% | 12% | 0% – 96% |
+
+**Answer: mostly the planner.** Both premises span most of the range, so a story that "asks for
+solitude" is not what is happening — a premise that did would cluster. There is a modest premise
+effect on the *mean*, 19% against 12%, and none on the spread.
+
+*The per-plan detail, premise A:*
 
 | plan | solo | ending reach | edges/scene | beats/scene |
 |---|---:|---:|---:|---:|
@@ -213,24 +223,24 @@ raw rate rather than the rate after the pass that exists to fix it:*
 
 *The spread reproduces: 4% to 38% within one premise, so whatever drives it is not the story.*
 
-**But the interesting reading did not survive its control, and there is a third option the step
-did not consider.** Solo share and ending reach correlate at **r = −0.904** across these six — a
-plan that leaves people alone is also a plan whose ending does not need its middle — which would
-be a real structural finding if it held up.
+### And a correlation of my own that did not survive
 
-*It probably does not. Solo share also correlates with **beats per scene** at −0.808, and the
-share of scenes with fewer than three beats predicts solo share at +0.715. Per scene, though, a
-solo scene is **not** itself thin: r = −0.163 against its own beat count and +0.052 against its
-own edge count. So the effect lives at the level of the whole generation run, not the scene — some
-runs come back thinner across the board, in beats and characters and declared dependencies alike.*
+On premise A's six plans alone, solo share and ending reach correlate at **r = −0.904** — a plan
+that leaves people alone is also a plan whose ending does not need its middle. That would be a
+real structural finding about what the planner is doing wrong.
 
-*Which makes the likeliest answer neither "the planner" nor "the premise" but **run-to-run
-variance in how completely a plan gets filled**. That is a more mundane explanation and a more
-actionable one: it points at the fill step rather than at the instruction. Premise B decides
-whether the range reproduces on a different story.*
+**It was noise.** Across all twelve it is **r = −0.142**. Doubling the sample destroyed it, and
+the companion figure went the same way: solo share against beats per scene was −0.808 on six and
+is −0.222 on twelve.
 
-*A verbosity control was run first and came back clean — words per scene against ending reach is
-−0.589, pointing the opposite way to the confound it was testing for.*
+*This is the plan's own rule I, met in a new place and at a scale where it still bites. Six is
+not a sample. The claim was held pending premise B rather than published — which is the only
+reason there is nothing here to retract — and premise B refuted it within the hour.*
+
+*Two controls had already been run on the six and both came back clean: words per scene against
+ending reach at −0.589, pointing the opposite way to the confound it tested for, and — per scene
+rather than per plan — a solo scene is not itself thin, at r = −0.163 against its own beat count.
+Clean controls did not make a six-point correlation true.*
 
 ### What step 7 implies for everything else
 
