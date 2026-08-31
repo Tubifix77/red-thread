@@ -111,20 +111,19 @@ left in it to measure.*
 
 *Full table in [evidence/replicate-noise-floor.md](evidence/replicate-noise-floor.md).*
 
-*Running: four fresh replicates of the 71-scene* Debt of Years *plan at current HEAD. The
-existing pair (`runs/current`, `runs/replicate`) cannot simply be extended — `ledgerfix` and
-`tally6` share its plan and story hashes exactly, but had different code, so they are three
+*The existing pair (`runs/current`, `runs/replicate`) could not simply be extended — `ledgerfix`
+and `tally6` share its plan and story hashes exactly but had different code, so they are three
 conditions and not four replicates.*
 
-*⚠ **Restarted once, deliberately.** Ninety-three scenes in, a validation bug turned up in
-`judge_conflicts` — a model's index used without checking it addresses anything, on the one path
-in this project that emits a BLOCKER. Fixing it changed `verify.py`, `scripts/phase1.sh`'s guard
-refused to run the ablations against a control written with the old code, and the floor set was
-**discarded and regenerated** rather than the guard waived. About two GPU-hours.*
+*⚠ **Discarded and regenerated three times, deliberately.** Twice because fixing a validation bug
+changed `verify.py`, and once because the dialogue fix changed a scene check; each time
+`scripts/phase1.sh`'s guard refused to run the ablations against a control written with the older
+code. The first cost about two GPU-hours, the others minutes. **A guard waived the first time it
+is inconvenient is decoration** — and the changes it objected to were each unreachable in normal
+operation, which is exactly the reasoning it exists to refuse.*
 
-*The guard was written three hours earlier, for exactly this situation. Waiving it the first time
-it was inconvenient would have made it decoration, and the one-line change it was objecting to is
-unreachable in normal operation — which is precisely the reasoning it exists to refuse.*
+*A fourth stop was a clean pause, not a restart: `replicate` resumes, so the chain was stopped for
+the machine's owner and picked up later at the cost of one scene.*
 
 **3. Make the floor impossible to ignore.** ✅ `checks.clears_noise(measure, a, b)` returns false
 when a difference sits inside the published floor. The point is not the arithmetic — it is that
