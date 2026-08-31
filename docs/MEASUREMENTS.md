@@ -442,6 +442,32 @@ count are stable to within 4% between identical runs, duplication and recap to w
 **anything counting a maximum — worst refrain, worst gesture — swings by half its own value**.
 Maxima are the least trustworthy statistic in this project and were the ones quoted most often.
 
+### Can the noisy measures be made less noisy? Three estimators say no
+
+With the n=4 floor showing `refusal_rate` at 69% and `recap_grammar` at 59%, the obvious question
+is whether the *estimator* is at fault rather than the model. Each of these is a mean over 71
+per-scene rates, and a mean of a skewed low-count variable is a noisy thing. Three standard fixes,
+measured on the same four runs:
+
+| measure | mean of scenes | pooled | median | 10% trimmed |
+|---|---:|---:|---:|---:|
+| `refusal_rate` | **68%** | 69% | 216% | 86% |
+| `gesture_rate` | **22%** | 22% | 42% | 29% |
+| `recap_grammar` | **59%** | 63% | 87% | 86% |
+| `dialogue_share` | **11%** | — | 17% | 14% |
+
+The plain mean wins every row. Pooling — total refusals over total words, rather than averaging
+per-scene rates — changes nothing, and both robust estimators are markedly worse, because the
+per-scene distribution is so zero-heavy that a median throws away the signal along with the tail.
+
+**The noise is the model, not the statistic.** Between-run variation in what the writer produces
+is what these floors measure, and no reweighting of the same scenes reduces it. Recorded because
+all three are the first things anyone would reach for.
+
+*One estimator change did help, and it was about definition rather than robustness: excluding
+scenes with no ask from `refusal_per_ask` took it from 77% to 53%. That is not a smoothing
+technique — it is not averaging in cases where the question does not arise.*
+
 ### The statistic saturates, and it hides the best result in the project
 
 `clears_noise` compares `|a - b|` against the mean of the two, which is right for a measure
