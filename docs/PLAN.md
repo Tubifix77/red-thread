@@ -175,9 +175,43 @@ trusted. One further thing it caught — the rewrite reached for a phrase the pl
 `make_plan` scrubs after this pass and so absorbs it; `redthread repeople` standalone now does
 the same, or the plan it writes is not the plan `make_plan` would have produced.*
 
-**8. Decide whether the bimodality is the planner or the premise.** Six plans of one premise gave
-5, 5, 22, 24, 10, 28 solo scenes. Generate six of a *different* premise. If the split persists it
-is the planner; if one premise clusters low and another high, it is the story asking for solitude.
+**8. Decide whether the bimodality is the planner or the premise.** ⏳ *(premise A done, B
+generating)* Six plans of one premise gave 5, 5, 22, 24, 10, 28 solo scenes. Generate six of a
+*different* premise. If the split persists it is the planner; if one premise clusters low and
+another high, it is the story asking for solitude.
+
+*Six fresh plans of one premise, all with `--no-repeople` so what is measured is the planner's
+raw rate rather than the rate after the pass that exists to fix it:*
+
+| plan | solo | ending reach | edges/scene | beats/scene |
+|---|---:|---:|---:|---:|
+| `solo-a1` | 38% | 57% | 1.0 | 3.3 |
+| `solo-a2` | 21% | 70% | 1.6 | 4.0 |
+| `solo-a3` | 25% | 57% | 1.2 | 3.7 |
+| `solo-a4` | **4%** | **96%** | 1.5 | 4.0 |
+| `solo-a5` | 21% | 57% | 1.5 | 3.8 |
+| `solo-a6` | **4%** | **96%** | 1.6 | 3.9 |
+
+*The spread reproduces: 4% to 38% within one premise, so whatever drives it is not the story.*
+
+**But the interesting reading did not survive its control, and there is a third option the step
+did not consider.** Solo share and ending reach correlate at **r = −0.904** across these six — a
+plan that leaves people alone is also a plan whose ending does not need its middle — which would
+be a real structural finding if it held up.
+
+*It probably does not. Solo share also correlates with **beats per scene** at −0.808, and the
+share of scenes with fewer than three beats predicts solo share at +0.715. Per scene, though, a
+solo scene is **not** itself thin: r = −0.163 against its own beat count and +0.052 against its
+own edge count. So the effect lives at the level of the whole generation run, not the scene — some
+runs come back thinner across the board, in beats and characters and declared dependencies alike.*
+
+*Which makes the likeliest answer neither "the planner" nor "the premise" but **run-to-run
+variance in how completely a plan gets filled**. That is a more mundane explanation and a more
+actionable one: it points at the fill step rather than at the instruction. Premise B decides
+whether the range reproduces on a different story.*
+
+*A verbosity control was run first and came back clean — words per scene against ending reach is
+−0.589, pointing the opposite way to the confound it was testing for.*
 
 ### What step 7 implies for everything else
 
