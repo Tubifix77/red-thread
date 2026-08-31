@@ -213,10 +213,22 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
     for row in rows:
         if not isinstance(row, dict) or not row.get("contradiction"):
             continue
+        # Validated rather than caught. `pairs[-1]` raises nothing, so a judgement row with no
+        # "pair" key — the default was -1 — was silently attributed to the *last* pair, and a
+        # negative index wrapped to some other one. This path emits a BLOCKER: it would have
+        # stopped an unattended run on a contradiction between two facts the model was not
+        # judging, quoting both of them.
+        #
+        # Same class as the re-people bug found an hour earlier: a number a model returned, used
+        # as an index without checking it addresses anything. Worth looking for wherever a model
+        # is asked to refer back to a list.
         try:
-            old, new = pairs[int(row.get("pair", -1))]
-        except (ValueError, TypeError, IndexError):
+            index = int(row.get("pair", -1))
+        except (TypeError, ValueError):
             continue
+        if not 0 <= index < len(pairs):
+            continue
+        old, new = pairs[index]
         out.append(Violation(
             "continuity_contradiction", Severity.BLOCKER,
             f"{row.get('why', 'contradicts established state')} — earlier: "

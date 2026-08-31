@@ -152,3 +152,54 @@ class TestQuietChecksAreNamed(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestJudgeConflictsValidatesItsIndex(unittest.TestCase):
+    """A number a model returned, used as an index without checking it addresses anything.
+
+    The same class as the re-people bug found an hour earlier, on the one path in this project
+    that emits a BLOCKER from a model's answer. `pairs[-1]` raises nothing, so a judgement row
+    with no "pair" key was silently attributed to the *last* pair and a negative index wrapped to
+    another one — stopping an unattended run on a contradiction between two facts the model was
+    not judging, and quoting both of them.
+    """
+
+    def _run(self, judgements):
+        import json
+        from redthread.ledger import Ledger
+        from redthread.models import Fact, FactKind
+        from redthread.verify import judge_conflicts
+        from tests import fakes
+
+        # **Two** pairs, not one. With a single pair `pairs[-1]` is `pairs[0]` and the wrap is
+        # invisible — the test would pass against the bug it exists to catch, which is the trap
+        # the fixtures elsewhere in this suite fell into.
+        older = [Fact(subject="the vial", predicate="is", object="full", scene=1,
+                      kind=FactKind.STATE),
+                 Fact(subject="the door", predicate="is", object="locked", scene=1,
+                      kind=FactKind.STATE)]
+        newer = [Fact(subject="the vial", predicate="is", object="empty", scene=2,
+                      kind=FactKind.STATE),
+                 Fact(subject="the door", predicate="is", object="open", scene=2,
+                      kind=FactKind.STATE)]
+        ledger = Ledger(older)
+        models, _backend = fakes.scripted_models(
+            {"conflict": json.dumps({"judgements": judgements})})
+        assert len(ledger.conflict_candidates(newer)) == 2, "the fixture must offer two pairs"
+        return judge_conflicts(newer, ledger, models)
+
+    def test_a_well_formed_judgement_is_reported(self):
+        found = self._run([{"pair": 0, "contradiction": True, "why": "both cannot hold"}])
+        self.assertEqual([v.kind for v in found], ["continuity_contradiction"])
+
+    def test_a_row_with_no_pair_key_is_dropped_not_pinned_to_the_last_pair(self):
+        self.assertEqual(self._run([{"contradiction": True, "why": "unattributed"}]), [])
+
+    def test_a_negative_index_is_dropped_rather_than_wrapping(self):
+        self.assertEqual(self._run([{"pair": -1, "contradiction": True, "why": "x"}]), [])
+
+    def test_an_index_past_the_end_is_dropped(self):
+        self.assertEqual(self._run([{"pair": 99, "contradiction": True, "why": "x"}]), [])
+
+    def test_a_non_numeric_index_is_dropped(self):
+        self.assertEqual(self._run([{"pair": "first", "contradiction": True, "why": "x"}]), [])
