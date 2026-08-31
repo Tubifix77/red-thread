@@ -90,7 +90,7 @@ def sample_scenes(count: int, wanted: int, first: int = 4) -> list[int]:
     premise, and scoring it measures how well the premise describes its own first chapter.
     """
     usable = list(range(first, count))
-    if not usable:
+    if not usable or wanted < 1:
         return []
     if wanted >= len(usable):
         return usable

@@ -298,5 +298,10 @@ class TestRestoreQuotes(unittest.TestCase):
                          line.replace('"', "").split())
 
 
+class TestBootstrapDegenerate(unittest.TestCase):
+    def test_no_iterations_returns_zero_rather_than_indexing_an_empty_list(self):
+        self.assertEqual(bootstrap_ci([1.0, 2.0], iterations=0), (0.0, 0.0))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -500,5 +500,13 @@ class TestSpreadStability(unittest.TestCase):
         self.assertEqual(n, 1)
 
 
+class TestDegenerateArguments(unittest.TestCase):
+    """Found by probing the new code the way the regexes were probed, rather than by a run."""
+
+    def test_asking_for_no_scenes_returns_none_rather_than_dividing_by_zero(self):
+        self.assertEqual(sample_scenes(40, 0), [])
+        self.assertEqual(sample_scenes(40, -3), [])
+
+
 if __name__ == "__main__":
     unittest.main()

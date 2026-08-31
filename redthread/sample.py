@@ -254,7 +254,7 @@ def bootstrap_ci(values: list[float], iterations: int = 4000, seed: int = 0,
     interval is the whole point: a mean rating quoted without one would be the same mistake as
     every claim retracted on 30 August, made in a new place.
     """
-    if not values:
+    if not values or iterations < 1:
         return 0.0, 0.0
     rng = random.Random(seed)
     n = len(values)
