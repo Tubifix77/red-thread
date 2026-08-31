@@ -228,9 +228,29 @@ forecasting **distribution**, not the accuracy of one sample. Measuring how much
 disagree with each other never touches the scene, so shared vocabulary cannot confound it. That is
 step 12 of [PLAN.md](PLAN.md) and is the version that should have been built first.
 
-**The third attempt is running, and the more useful lesson came from setting it up.** The plan
-assumed the 35 calibration predictions were on disk and a re-score with embeddings would be free.
-They were not. `probe_forecast` records a Violation only when the overlap clears its threshold,
+**The third attempt has now run, with embeddings, and it fails the same control.** 35 scenes of a
+finished 71-scene novel, five blind predictions each, scored against the scene predicted and
+against a random other scene from the same book:
+
+| scorer | on target | on control | win rate |
+|---|---:|---:|---:|
+| lexical overlap | 0.549 | 0.543 | **51%** |
+| embedding cosine | 0.749 | 0.739 | **54%** |
+
+The bar was 65%. Meaning overlap separates a right guess from a wrong one no better than word
+overlap did. Read the absolute cosines rather than the win rate — **.749 against .739**: a raw
+similarity between any two scenes of one novel is high and says nothing at all, which is the
+whole reason the control exists.
+
+So the failure was never the *representation*. It is the comparison. A two-sentence prediction and
+an eight-hundred-word scene from the same book are dominated by the book, in words and in meaning
+alike, and no amount of better embedding removes that. The paper's own formulation — the entropy
+of a forecasting distribution, which never touches the scene — is the only version left standing,
+and it is now the one being measured.
+
+**The more useful lesson came from setting the experiment up.** The plan assumed the 35
+calibration predictions were on disk and a re-score with embeddings would be free. They were
+not. `probe_forecast` records a Violation only when the overlap clears its threshold,
 none ever did across the whole corpus, so the calibration lived in a throwaway script and left
 nothing behind — the generation had to be paid for twice.
 
