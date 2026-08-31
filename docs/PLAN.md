@@ -111,6 +111,12 @@ left in it to measure.*
 
 *Full table in [evidence/replicate-noise-floor.md](evidence/replicate-noise-floor.md).*
 
+*⚠ **The floor is measured on one plan**, and nothing establishes that it transfers. A book with
+more dialogue, or a longer one, could easily be noisier or steadier in any given measure. Step 25
+gives the first evidence either way: two runs of a different premise, which is an n=2 floor for
+that book and can be compared against this one. Until then every figure here is "the noise of
+*The Debt of Years* at 71 scenes", not "the noise of this system".*
+
 *The existing pair (`runs/current`, `runs/replicate`) could not simply be extended — `ledgerfix`
 and `tally6` share its plan and story hashes exactly but had different code, so they are three
 conditions and not four replicates.*
@@ -372,8 +378,13 @@ indistinguishable from one that has never been needed.
 
 That cannot be answered from the corpus. It needs one run instrumented to record which repair
 kinds were attempted and which converged — a small change to `pipeline.py`, deliberately **not**
-made tonight, because `scripts/phase1.sh` refuses to run the ablations if the write path moves
-under their control. It is the first thing to do once phase 1 is finished.
+made yet.
+
+**The write path must stay frozen until step 25 is written**, not merely until phase 1 finishes.
+The floor, both ablations *and* the fresh-premise panel are all compared against each other, so
+the freeze runs to the end of the comparison rather than to the end of the run that prompted it.
+That is a longer freeze than it first appears and worth stating plainly, because the natural
+moment to relax it — "the ablations are done" — is a scene too early.
 
 **The other half of the question was answered immediately, by grepping for the shape.** The
 re-people bug was a number a model returned, used to address a list, with no check that it
