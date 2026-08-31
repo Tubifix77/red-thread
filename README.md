@@ -213,7 +213,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`sample.py`](redthread/sample.py) | Sentences with no context and no scores; the blind rating sheet | — |
 | [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` `replicate` `measures` `forecast` `depends` `sample` `rate` | — |
 
-**778 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**847 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
 
@@ -224,7 +224,7 @@ mislabelled from memory and refuted the claim that only one blocker comes from a
 `tests/test_replicate.py` asserts that a difference exactly the size of a measure's own noise
 floor is never reported as a result, which the first floor table failed on four measures.
 
-That principle has since found its own limit. Run every check over all 467 committed scenes and
+That principle has since found its own limit. Run every check over all 562 committed scenes and
 **20 of 48 violation kinds have never fired once**, and the reasons divide: blocking kinds are
 absent from committed prose by construction, six checks test properties the scheduler or the
 brief already guarantees, and two are simply untested by any run. A check quiet because the gate
@@ -373,7 +373,7 @@ verbatim, a mid-run rejection halts cleanly with nothing from the failed scene i
 and a re-run resumes from the gap. Every check catches its defect.
 
 **Proven by running it to completion, all local, zero API calls:** **eight distinct books across
-15 completed runs** — 467 scenes and 426,614 words drafted on `qwen3:8b`. The gap between those
+17 completed runs** — 562 scenes and 507,215 words drafted on `qwen3:8b`. The gap between those
 two numbers is the method: five runs are one premise rewritten to test code changes, which is the
 only way anything here gets attributed to a change rather than to luck.
 

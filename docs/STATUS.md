@@ -21,8 +21,8 @@ What to do next, in order, with kill criteria: **[PLAN.md](PLAN.md)**.
 | 2 | Is the prose free of the obvious machine tells? | **per scene, yes** |
 | 3 | Is the finished book worth reading? | **one of five axes started** |
 
-**1 — Yes, at novel length.** **Eight distinct books** across **15 completed runs** — 467 scenes,
-426,614 words, zero API calls. The gap between those two numbers is deliberate: five runs are one
+**1 — Yes, at novel length.** **Nine distinct books** across **17 completed runs** — 562 scenes,
+507,215 words, zero API calls. The gap between those two numbers is deliberate: five runs are one
 premise rewritten to test code changes, which is how anything here gets attributed to a change
 rather than to luck.
 
@@ -305,11 +305,11 @@ difference.
 
 | | |
 |---:|---|
-| **8** | distinct books finished |
-| **426,614** | words drafted locally |
-| **467** | scenes committed |
+| **17** | distinct books finished |
+| **507,215** | words drafted locally |
+| **562** | scenes committed |
 | **0** | API calls |
-| **778** | tests passing |
+| **847** | tests passing |
 
 The longest is now 61,733 words, and running it found exactly what was predicted: defects that
 do not exist below about forty scenes. What it also found is the one measure that gets *worse*

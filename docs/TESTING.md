@@ -192,7 +192,7 @@ invisible to the command that was supposed to catch it.
 ## A check that never fires, and a check that always does
 
 `tests/test_checks.py` opens by saying a check that never fires is indistinguishable from a check
-that does not work. Running every check over all 467 committed scenes turns that principle on the
+that does not work. Running every check over all 562 committed scenes turns that principle on the
 suite itself: **20 of 48 violation kinds have never fired once**, and the reasons divide three
 ways.
 
@@ -212,7 +212,7 @@ ways.
   time without anything here changing. `redthread audit` prints both beside its own result, and
   `tests/test_rule.py` asserts every named kind is one the codebase can still emit.
 - **Two are simply untested by any run.** `cohesion_cut` and `missed_deadline` have unit tests and
-  no live instance in 467 scenes, so nothing is known about their false-positive rate on real
+  no live instance in 562 scenes, so nothing is known about their false-positive rate on real
   prose.
 
 The mirror matters too. Five kinds fire on more than half of all scenes and are carried into the

@@ -4,17 +4,23 @@ Every threshold in this project is set from a corpus rather than from taste, whi
 candidate measures get built, tested and thrown away. This file is the record of both halves.
 The refuted list is the more useful one: it is what stops the same afternoon being spent twice.
 
-Corpus as of 30 August 2026: 17 completed books, 482 scenes, `qwen3:8b` in every role. Reference
-band is three cold single scenes from `gemma3:12b`, `phi4:14b` and `qwen3:8b` with no
-orchestration, in `docs/evidence`.
+Corpus as of 31 August 2026: **17 completed books, 562 scenes, 507,215 words**, `qwen3:8b` in
+every role, zero API calls. Plus four halted runs contributing 33 more committed scenes — a run
+stops rather than write later scenes against an incomplete ledger, so a halt leaves a short book
+rather than a broken one. Reference band is three cold single scenes from `gemma3:12b`, `phi4:14b`
+and `qwen3:8b` with no orchestration, in `docs/evidence`.
 
 **The corpus has two eras, and most figures below mix them.** Ten books predate the prose work of
 29–30 August; seven were written after it. The difference is not incremental:
 
-| | scenes | duplication | recap | gestures | a run of 3+ | a run of 4+ | gloss |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| pre-prose-work | 109 | .279 | .380 | 3.4 | 75% | 61% | 47% |
-| current era | 373 | **.002** | **.047** | 2.2 | **4%** | **0%** | **0%** |
+| | books | scenes | duplication | recap | gestures | a run of 3+ | a run of 4+ | gloss |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| pre-prose-work | 8 | 94 | .279 | .380 | 3.4 | 75% | 61% | 47% |
+| current era | 9 | 468 | **.002** | **.047** | 2.2 | **4%** | **0%** | **0%** |
+
+*The era marker is mechanical and re-derived rather than remembered: a current-era book is one
+where zero scenes carry a run of four consecutive past-perfect sentences. The nine are `current`,
+`replicate`, `ledgerfix`, `tally6`, `scale60`, `var3`, `keeper`, `keeper2` and `deps-book`.*
 
 Any threshold in this project derived from "the committed corpus" was derived mostly from the top
 row. That is correct for a threshold meant to catch the defect — you calibrate on prose that has
