@@ -32,12 +32,17 @@ echo "[$(date +%H:%M)] floor set complete"
 # the ablations will run. A long session that improves the writer between them silently turns a
 # one-variable experiment into a two-variable one, and the arithmetic cannot tell.
 #
-# FLOOR_COMMIT is the revision the floor set was generated at. The paths below are the write path:
+# FLOOR_COMMIT is the revision the floor set was generated at. It moved once, on 31 August: a
+# validation bug was found in `judge_conflicts` — a model's index used without checking it
+# addresses anything, on the one path that emits a BLOCKER — and fixing it changed verify.py.
+# The guard refused, correctly, and the floor set was **discarded and regenerated** rather than
+# the guard overridden. About two GPU-hours. A guard that gets waived the first time it is
+# inconvenient is decoration. The paths below are the write path:
 # everything a scene passes through between its brief and its commit. `checks.py` is deliberately
 # not in the list because it changes constantly for reporting reasons; it was verified separately
 # by AST-diffing every function, which found only manuscript_measures, describe_difference and
 # audit_plan changed, none of them a scene-level check.
-FLOOR_COMMIT=9a97493
+FLOOR_COMMIT=c8be3d9
 WRITE_PATH="redthread/pipeline.py redthread/brief.py redthread/verify.py redthread/llm.py redthread/schedule.py"
 if ! git diff --quiet "$FLOOR_COMMIT..HEAD" -- $WRITE_PATH; then
     echo "[$(date +%H:%M)] REFUSING TO RUN."

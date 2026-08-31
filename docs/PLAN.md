@@ -94,6 +94,16 @@ existing pair (`runs/current`, `runs/replicate`) cannot simply be extended — `
 `tally6` share its plan and story hashes exactly, but had different code, so they are three
 conditions and not four replicates.*
 
+*⚠ **Restarted once, deliberately.** Ninety-three scenes in, a validation bug turned up in
+`judge_conflicts` — a model's index used without checking it addresses anything, on the one path
+in this project that emits a BLOCKER. Fixing it changed `verify.py`, `scripts/phase1.sh`'s guard
+refused to run the ablations against a control written with the old code, and the floor set was
+**discarded and regenerated** rather than the guard waived. About two GPU-hours.*
+
+*The guard was written three hours earlier, for exactly this situation. Waiving it the first time
+it was inconvenient would have made it decoration, and the one-line change it was objecting to is
+unreachable in normal operation — which is precisely the reasoning it exists to refuse.*
+
 **3. Make the floor impossible to ignore.** ✅ `checks.clears_noise(measure, a, b)` returns false
 when a difference sits inside the published floor. The point is not the arithmetic — it is that
 stating a difference should require passing through a function that knows what a difference is
