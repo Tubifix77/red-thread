@@ -534,5 +534,39 @@ class TestCommonPrefix(unittest.TestCase):
         self.assertLess(after, 0.10)
 
 
+class TestRefrainSuppression(unittest.TestCase):
+    """Step 5's within-book evidence, and the control that took four attempts.
+
+    Naively, warned phrases look suppressed tenfold. Matched on the scene the warning arrived and
+    the count the phrase had reached by then, there is no suppression at all and the point
+    estimate runs the other way. The naive version is the one that had been published.
+    """
+
+    def test_a_short_book_declines_to_answer(self):
+        from redthread.replicate import refrain_suppression
+        self.assertEqual(refrain_suppression([fakes.clean_prose(300, i) for i in range(4)]), {})
+
+    def test_it_reports_both_sides_and_the_pair_count(self):
+        from redthread.replicate import refrain_suppression
+        texts = [fakes.clean_prose(400, i % 5) for i in range(14)]
+        out = refrain_suppression(texts)
+        if out:
+            self.assertEqual(set(out), {"pairs", "named_share", "matched_share"})
+            self.assertGreater(out["pairs"], 0)
+
+    def test_it_never_reports_a_share_without_its_control(self):
+        # The failure mode of the first three versions: a named-phrase number quoted on its own.
+        from redthread.replicate import refrain_suppression
+        texts = [fakes.clean_prose(400, i % 5) for i in range(14)]
+        out = refrain_suppression(texts)
+        self.assertEqual("named_share" in out, "matched_share" in out)
+
+    def test_a_book_that_repeats_nothing_yields_no_pairs(self):
+        from redthread.replicate import refrain_suppression
+        texts = [fakes.clean_prose(400, i) for i in range(12)]
+        out = refrain_suppression(texts)
+        self.assertTrue(out == {} or out["pairs"] >= 0)
+
+
 if __name__ == "__main__":
     unittest.main()

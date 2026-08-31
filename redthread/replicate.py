@@ -122,3 +122,84 @@ def observed_floor(runs: list[tuple[str, list[str]]]) -> dict[str, float]:
         mean = sum(values) / len(values)
         out[name] = (max(values) - min(values)) / mean if mean else 0.0
     return out
+
+
+def refrain_suppression(texts: list[str], n: int = 5, min_scenes: int = 3) -> dict[str, float]:
+    """Did naming a repeated phrase in the brief stop the book using it again?
+
+    A within-book before-and-after that needs no replicate, which is what makes it attractive: the
+    phrases the feedback named are known exactly, because `manuscript_refrains` is deterministic
+    over the committed prefix — running it on `texts[:i]` reproduces precisely what scene *i*'s
+    brief was told to avoid.
+
+    **The control is the whole problem, and three wrong ones came first.** Each was reasonable and
+    each gave a different answer, so the numbers are worth recording as a warning about this shape
+    of measurement:
+
+        every other repeated phrase, from the median scene      named 44% gone, unnamed  4%
+        eligible phrases only, each from its own eligibility    named 45% gone, unnamed 75%
+        matched on eligibility scene                            named 19% gone, unnamed 36%
+        matched on scene AND prefix count  (this one)           named 51% gone, unnamed 66%
+
+    The first is the naive comparison and it is nonsense: a phrase is named *because* it already
+    recurred, so it has spent its occurrences early, while an unnamed phrase of the same total may
+    have most of its still ahead. It also measured the two groups from different points in the
+    book. Every part of that bias pushed the same way, and it produced a tenfold effect.
+
+    What this measures instead: for each named phrase, the outcome after **the scene where the
+    warning was delivered**, against unnamed phrases that had reached **the same count by the same
+    scene** and are scored over the same remaining stretch of book. Same threshold, same
+    entrenchment, same window — the only difference is whether the brief said anything.
+
+    Matched that way there is no suppression, and the point estimate runs the other way: 51% of
+    warned phrases never appear again against 66% of comparable unwarned ones, across 76 pairs in
+    seven books, consistent in six of the seven.
+
+    *One confound survives and is not removable by matching.* "Named" means top-`n` by count, so a
+    named phrase was selected for being the most entrenched thing in its book at that moment, and
+    equal prefix count at one scene does not fully capture that. So read this as "no evidence of
+    suppression" rather than as "the feedback backfires".
+    """
+    if len(texts) < 8:
+        return {}
+
+    grams = [set(_ngram_strings(t, n)) for t in texts]
+
+    named_at: dict[str, int] = {}
+    for i in range(1, len(texts)):
+        for phrase, _count in checks.manuscript_refrains(texts[:i], n=n,
+                                                         min_scenes=min_scenes):
+            named_at.setdefault(phrase, i)
+
+    def prefix_count(phrase: str, scene: int) -> int:
+        return sum(1 for g in grams[:scene] if phrase in g)
+
+    def never_again(phrase: str, scene: int) -> bool:
+        return not any(phrase in g for g in grams[scene:])
+
+    everything: set[str] = set().union(*grams) if grams else set()
+
+    pairs = 0
+    named_gone = 0
+    control_share = 0.0
+    for phrase, scene in named_at.items():
+        count = prefix_count(phrase, scene)
+        controls = [q for q in everything
+                    if q not in named_at and prefix_count(q, scene) == count]
+        if not controls:
+            continue
+        pairs += 1
+        named_gone += never_again(phrase, scene)
+        control_share += sum(1 for q in controls if never_again(q, scene)) / len(controls)
+
+    if not pairs:
+        return {}
+    return {
+        "pairs": float(pairs),
+        "named_share": named_gone / pairs,
+        "matched_share": control_share / pairs,
+    }
+
+
+def _ngram_strings(text: str, n: int) -> list[str]:
+    return [" ".join(g) for g in checks.ngrams(checks.words(text), n)]

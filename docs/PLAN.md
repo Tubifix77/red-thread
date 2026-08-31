@@ -153,12 +153,40 @@ that quietly defaults to off changes the shipped product instead of measuring it
 then writes both ablation pairs in order. Every `replicate` call resumes rather than restarts, so
 an interruption costs the current scene and re-running the script picks up where it stopped.
 
-**5. Ablate the refrain feedback.** Two runs each way. Compare on *concentration* and mean
-recurrence, never the worst refrain (rule III). One piece of evidence already survives the floor
-and should be kept either way: of ten phrases named to a brief mid-book, seven never appeared
-again *in that same book* — a within-book before-and-after that needs no replicate.
+**5. Ablate the refrain feedback.** ⏳ *(running)* Two runs each way. Compare on *concentration*
+and mean recurrence, never the worst refrain (rule III). ~~One piece of evidence already survives
+the floor and should be kept either way: of ten phrases named to a brief mid-book, seven never
+appeared again *in that same book* — a within-book before-and-after that needs no replicate.~~
 **Kill criterion:** concentration inside the floor means the feedback is prompt weight with no
 return, and comes out.
+
+*⚠ **That "already survives" evidence does not survive a control, and it was the naive
+comparison.*** The phrases a brief was told to avoid are recoverable exactly —
+`manuscript_refrains` is deterministic over the committed prefix — so this looked like a free
+within-book before-and-after. It took four controls to get right, and each gave a different
+answer:*
+
+| control | warned phrase never recurs | unwarned |
+|---|---:|---:|
+| every other repeated phrase, from the median scene | **44%** | **4%** |
+| eligible phrases only, each from its own eligibility scene | 45% | 75% |
+| matched on eligibility scene | 19% | 36% |
+| **matched on scene *and* prefix count** | **51%** | **66%** |
+
+*The first row is the published shape and it is nonsense: a phrase is named **because** it already
+recurred, so it has spent its occurrences early while an unnamed phrase of the same total may have
+most of its still ahead — and the two groups were measured from different points in the book. Every
+part of that bias pushed the same way, and it produced a tenfold effect.*
+
+*Matched on the scene the warning arrived and the count the phrase had reached by then — same
+threshold, same entrenchment, same remaining stretch of book — **there is no suppression, and the
+point estimate runs the other way**: 51% against 66%, across 76 pairs in seven books, consistent
+in six of the seven.*
+
+*One confound survives and matching cannot remove it: "named" means top-5 by count, so a named
+phrase was selected for being the most entrenched thing in its book at that moment. So the honest
+reading is **no evidence of suppression**, not "the feedback backfires". Either way, step 5 now
+rests entirely on the ablation, with nothing banked in advance.*
 
 **6. Ablate the gesture feedback.** Same design. Measure the mean gesture rate across four runs,
 not the first-fire scene, which is a maximum in disguise. **Kill criterion:** difference inside
