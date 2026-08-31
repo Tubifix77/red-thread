@@ -168,6 +168,27 @@ and drops them from the verdict. That comparison goes from ten survivors to six.
 `make_plan` parameter. All four default to on, and tests pin the defaults — an ablation switch
 that quietly defaults to off changes the shipped product instead of measuring it.*
 
+### What the panel can actually detect, now that the floor is n=4
+
+A floor is also a sensitivity limit: a measure cannot report an effect smaller than its own noise.
+Grouped by what each one can support:
+
+| | floor | what it takes to see something |
+|---|---:|---|
+| `words` | 2% | almost anything |
+| `dialogue_share` | 11% | a modest effect. This is the measure the one successful intervention moved, by 190% |
+| `duplication_manuscript`, `somatic_share` | 19% | a clear effect |
+| `gesture_rate` | 22% | a clear effect |
+| `repetition_concentration` | 38% | a large effect |
+| `worst_refrain`, `refusal_per_ask` | 52% | a very large effect — and `worst_refrain` is a maximum, which rule III says never to quote |
+| `recap_grammar`, `refusal_rate` | 59–69% | effects this size are rare; treat as advisory |
+| `duplication_scene` | 189% | **nothing.** Exhausted — see step 2 |
+
+The uncomfortable reading: **more than half the panel can only see effects larger than any this
+project has produced except the dialogue instruction.** That is not a reason to widen the
+criteria; it is the honest cost of having measured the noise instead of assuming it, and it says
+where the next instrument work belongs.
+
 ### An open question the halts raised
 
 `write_all` stops rather than write later scenes against a ledger missing a scene's facts, so an
@@ -205,7 +226,9 @@ and mean recurrence, never the worst refrain (rule III). ~~One piece of evidence
 the floor and should be kept either way: of ten phrases named to a brief mid-book, seven never
 appeared again *in that same book* — a within-book before-and-after that needs no replicate.~~
 **Kill criterion:** concentration inside the floor means the feedback is prompt weight with no
-return, and comes out.
+return, and comes out. *Against the n=4 floor that bar is **38%** for `repetition_concentration`
+— wider than the 28% this criterion was written against, so the feedback now has more to prove,
+not less.*
 
 *⚠ **That "already survives" evidence does not survive a control, and it was the naive
 comparison.*** The phrases a brief was told to avoid are recoverable exactly —
@@ -235,9 +258,14 @@ phrase was selected for being the most entrenched thing in its book at that mome
 reading is **no evidence of suppression**, not "the feedback backfires". Either way, step 5 now
 rests entirely on the ablation, with nothing banked in advance.*
 
-**6. Ablate the gesture feedback.** Same design. Measure the mean gesture rate across four runs,
-not the first-fire scene, which is a maximum in disguise. **Kill criterion:** difference inside
-the 31% floor.
+**6. Ablate the gesture feedback.** ⏳ *(running)* Same design. Measure the mean gesture rate
+across four runs, not the first-fire scene, which is a maximum in disguise. **Kill criterion:**
+difference inside the ~~31%~~ **22%** floor.
+
+*The n=4 floor moved this one the other way: `gesture_rate` tightened from 31% to 22%, so step 6
+is a **more** sensitive test than the plan assumed. Worth stating because the two criteria moved
+in opposite directions, and reading either against the old number would be wrong in a different
+direction.*
 
 **7. Run the re-people pass against a live plan for the first time.** ✅ **It was broken, and
 this is what found it.** It is tested only against a scripted backend. Generate plans until one
