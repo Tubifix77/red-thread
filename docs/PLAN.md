@@ -154,6 +154,32 @@ and drops them from the verdict. That comparison goes from ten survivors to six.
 `make_plan` parameter. All four default to on, and tests pin the defaults — an ablation switch
 that quietly defaults to off changes the shipped product instead of measuring it.*
 
+### An open question the halts raised
+
+`write_all` stops rather than write later scenes against a ledger missing a scene's facts, so an
+unrepairable MAJOR ends a book where it stands. Overnight, **two of four runs stopped short** — at
+scenes 44 and 22 of 71 — and that is a problem for a writer meant to run unattended.
+
+One of the two was the dialogue false positive, now fixed. The other was not: the gloss pattern
+that caught it is right 14 times in 15 on the pre-enforcement corpus, and the specific match
+("mingling with something older, something buried beneath the surface of memory") is a genuine
+tell. **The check was right and the repair did not converge in five attempts.**
+
+So this is a repair problem, not a check problem, and the honest position is that the post-fix
+halt rate is unknown. The floor set now running measures it as a side effect: four runs of the
+same plan, and how many reach 71 is the answer.
+
+Two levers exist that would not weaken the gate — more candidates per scene, so selection has more
+to choose from, and a longer repair budget. Both change how much is *tried* rather than what is
+*accepted*. Neither is being touched while the floor and its ablations run, because the three
+conditions must share their configuration as well as their code.
+
+*It also means `STATUS.md`'s answer to "can it get to the end of a book without help?" needs
+revisiting once the rate is known. It currently reads "yes, at novel length" on the strength of
+runs that all completed.*
+
+---
+
 ## Phase 1 — confirm or delete what exists  *(~10 h GPU)*
 
 ⏳ **Queued and running unattended** as `scripts/phase1.sh`, which waits for the floor set and
