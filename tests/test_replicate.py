@@ -600,5 +600,30 @@ class TestUndefinedIsNotZero(unittest.TestCase):
         self.assertEqual(checks.refusal_rate("The gauge read four inches."), 0.0)
 
 
+class TestAHaltIsReported(unittest.TestCase):
+    """A halt was silent, and an overnight set came back 71, 71, 44 and 22 with nothing in the
+    log to say why. It was found by counting files the next morning.
+
+    `write_all` halting is correct — it stops rather than write later scenes against a ledger
+    missing a scene's facts — so the fix is to say so, not to continue.
+    """
+
+    def test_the_replicate_command_reads_the_results(self):
+        # The bug was that the return value was discarded. Pinning that it is used at all, since
+        # a silent halt is indistinguishable from a short plan.
+        import inspect
+        from redthread import cli
+        source = inspect.getsource(cli.cmd_replicate)
+        self.assertIn("results = write_all(", source)
+        self.assertIn("HALTED at scene", source)
+
+    def test_it_names_the_blocking_kinds_not_just_the_scene(self):
+        import inspect
+        from redthread import cli
+        source = inspect.getsource(cli.cmd_replicate)
+        self.assertIn("Severity.MINOR", source,
+                      "a halt report that lists minors buries the cause")
+
+
 if __name__ == "__main__":
     unittest.main()

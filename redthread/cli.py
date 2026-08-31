@@ -491,8 +491,24 @@ def cmd_replicate(args) -> int:
                   f"scenes already written")
             progress = Progress.for_project(project, quiet=args.quiet)
             progress.run_header(project.story, writer_name, critic_name)
-            write_all(project, models, config, progress=progress)
+            results = write_all(project, models, config, progress=progress)
             project.write_manuscript()
+
+            # Say so when a run stops short. `write_all` halts rather than write later scenes
+            # against a ledger missing a scene's facts, which is correct — but the halt was
+            # silent here, and an overnight set came back 71, 71, 44 and 22 with nothing in the
+            # log to say why. It was found by counting files the next morning.
+            held = [r for r in results if not r.committed]
+            if held:
+                first = held[0]
+                kinds = sorted({v.kind for v in first.violations
+                                if v.severity is not Severity.MINOR})
+                print(f"    HALTED at scene {first.scene.index} after "
+                      f"{first.scene.attempts} attempts on: "
+                      f"{', '.join(kinds) or 'no blocking violation recorded'}")
+                print(f"    {len(project.committed_scenes())} of {len(project.plan)} scenes "
+                      f"committed. Later scenes are not written, so this run is short rather "
+                      f"than broken.")
 
     runs = [(t.name, committed_texts(t)) for t in targets if t.exists()]
     runs = [(name, texts) for name, texts in runs if texts]
