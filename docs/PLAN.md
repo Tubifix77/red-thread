@@ -27,7 +27,7 @@ makes a claim — the claim has been through `checks.clears_noise`.
 |---|---|---|
 | 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
 | 1 — confirm what exists | 1 of 4 | **step 7 found the pass 90% broken**; 5, 6, 8 queued |
-| 2 — tension on embeddings | 3 of 5 | **step 11 fired its kill criterion**; 12 needs its replicate |
+| 2 — tension on embeddings | 5 of 5 | **three attempts, three controls, three failures** |
 | 3 — dependency graph | 2 of 3 | plans now declare dependencies; step 16 needs a **book written from one** |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
@@ -299,12 +299,26 @@ so was lexical overlap's, which was noise. A distribution is not evidence.*
 
 *So `spread_stability` applies the replicate rule one level down: do two independent prediction
 sets agree about which scenes are predictable? If they rank the scenes differently, the spread
-measures the sampling rather than the scene, and step 13 has nothing to plot. A second set is
-generating.*
+measures the sampling rather than the scene, and step 13 has nothing to plot.*
 
-**13. Only now, look at the middle.** Plot tension across a manuscript; a sagging middle should
-appear as a run of low-spread scenes. First honest test of what four earlier attempts could not
-reach.
+*A second set of 175 calls, same scenes, same k, different sampling. **r = +0.337** — about a
+ninth of the variance shared. That is neither a refutation nor a result: at k = 5 the spread is
+dominated by the sampling rather than by the scene. Whether a larger k recovers a scene-level
+signal is untested, and is the obvious next move, because the noise in a mean of pairwise
+distances falls with k and five is a small number.*
+
+**13. Only now, look at the middle.** ⛔ **Blocked, and honestly so.** Plot tension across a
+manuscript; a sagging middle should appear as a run of low-spread scenes. First honest test of
+what four earlier attempts could not reach.
+
+*Step 12 does not deliver a stable enough ranking to plot. Three scenes stand out as low-spread
+in the first set; whether they are the same three in the second is what r = +0.337 answers, and
+the answer is mostly not. Plotting this would be plotting the sampler.*
+
+*Full write-up of all three attempts, with their controls, in
+[evidence/tension-on-embeddings.md](evidence/tension-on-embeddings.md).*
+
+
 
 ## Phase 3 — let the middle earn the ending  *(~1 h GPU)*
 
