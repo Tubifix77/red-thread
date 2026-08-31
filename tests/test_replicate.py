@@ -568,5 +568,37 @@ class TestRefrainSuppression(unittest.TestCase):
         self.assertTrue(out == {} or out["pairs"] >= 0)
 
 
+class TestUndefinedIsNotZero(unittest.TestCase):
+    """A ratio with no denominator is undefined, and averaging it in as zero is a claim.
+
+    47% of 359 committed scenes contain no ask at all. Counting them as "0% of asks refused"
+    halved the panel's figure — 0.291 against 0.543 — so half the entry was scenes where the
+    question does not arise. It also made this the widest floor in the panel, because what varied
+    between runs was substantially how many scenes happened to contain an ask.
+    """
+
+    def test_a_scene_with_no_ask_is_excluded_from_the_mean(self):
+        with_ask = "She asked for the ledger. He refused to hand it over."
+        without = "The gauge read four inches and she wrote the number down."
+        both = checks.manuscript_measures([with_ask, without])["refusal_per_ask"]
+        alone = checks.manuscript_measures([with_ask])["refusal_per_ask"]
+        self.assertAlmostEqual(both, alone,
+                              msg="the askless scene should not drag the mean down")
+
+    def test_a_book_with_no_asks_at_all_is_zero_rather_than_a_crash(self):
+        text = "The gauge read four inches and she wrote the number down."
+        self.assertEqual(checks.manuscript_measures([text])["refusal_per_ask"], 0.0)
+
+    def test_the_per_scene_function_still_returns_zero(self):
+        # Unchanged on purpose: a single scene has to return a number, and the docstring says
+        # what the zero means. The correction belongs where scenes are aggregated.
+        self.assertEqual(checks.refusal_per_ask("He refused."), 0.0)
+
+    def test_refusal_rate_needs_no_such_guard(self):
+        # Its denominator is words, which is never zero for real prose — so a zero there is a
+        # measurement rather than an absence.
+        self.assertEqual(checks.refusal_rate("The gauge read four inches."), 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

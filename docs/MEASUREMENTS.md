@@ -44,6 +44,13 @@ corpus and several are unquoted reported speech, where past perfect is doing leg
 | `refusal_rate` | 0.32 to 1.01 across books; 22% between identical runs | the panel |
 | `refusal_per_ask` | .037 to .833 across books; 37% between identical runs | the panel |
 
+*`refusal_per_ask` is averaged over the scenes where it is **defined**. It returns 0.0 for a scene
+containing no ask, because a ratio needs a denominator — but 0.0 means "nobody who asked was
+refused", and "nobody asked" is a different statement. **47% of 359 committed scenes contain no ask
+at all**, so averaging the zeros in halved the figure: 0.291 against 0.543. Half the panel entry
+was scenes where the question does not arise, and it was also the widest floor in the panel,
+because what varied between runs was substantially how many scenes happened to contain an ask.*
+
 *The spoken-act correlation was reported here as r = +0.672. That was measured on 108 scenes; the
 same measure over 538 gives **+0.446**. The direction and the ranking hold — it is still, by a
 factor of two, the strongest plan-to-prose link in the project — and the magnitude does not. A

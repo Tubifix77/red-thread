@@ -1658,8 +1658,25 @@ def manuscript_measures(committed_texts: list[str]) -> dict[str, float]:
         "repetition_concentration": concentration,
         "worst_refrain": float(worst),
         "refusal_rate": sum(refusal_rate(t) for t in committed_texts) / n,
-        "refusal_per_ask": sum(refusal_per_ask(t) for t in committed_texts) / n,
+        # Averaged over the scenes where it is *defined*, not over all of them.
+        #
+        # `refusal_per_ask` returns 0.0 for a scene containing no ask, because a ratio needs a
+        # denominator — but 0.0 means "nobody who asked was refused", and "nobody asked" is a
+        # different statement. **47% of 359 committed scenes contain no ask at all**, so averaging
+        # the zeros in halved the figure: 0.291 against 0.543. Half the panel entry was scenes
+        # where the question does not arise.
+        #
+        # It also explains why this measure's floor came out widest of anything here. What varied
+        # between runs was substantially *how many scenes happened to contain an ask*, which is
+        # not what the measure is for.
+        "refusal_per_ask": _mean_where_defined(committed_texts),
     }
+
+
+def _mean_where_defined(committed_texts: list[str]) -> float:
+    """Mean `refusal_per_ask` over scenes that contain an ask, or 0.0 if none do."""
+    defined = [refusal_per_ask(t) for t in committed_texts if _ASKED.search(t)]
+    return sum(defined) / len(defined) if defined else 0.0
 
 
 # How much each measure moves between runs that differ in nothing at all, as a fraction of the
