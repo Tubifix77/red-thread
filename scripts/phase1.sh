@@ -24,10 +24,23 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 mkdir -p logs
 
-START_COMMIT=$(git rev-parse --short HEAD)
+# The commit the floor was written at, remembered across restarts.
+#
+# This script resumes: `replicate` loads each existing run and `write_all` skips committed
+# scenes, so an interruption costs the scene in progress and nothing else. But the guard below
+# compares against the revision the floor was written at, and reading that from HEAD at *start*
+# time is wrong on a resume — the scenes already on disk would predate it and the guard could not
+# tell. So it is recorded on the first run and read back afterwards.
+MARKER=runs/.floor-commit
+if [ -f "$MARKER" ]; then
+    START_COMMIT=$(cat "$MARKER")
+    echo "[$(date +%H:%M)] resuming; the floor on disk was written at $START_COMMIT"
+else
+    START_COMMIT=$(git rev-parse --short HEAD)
+    echo "$START_COMMIT" > "$MARKER"
+    echo "[$(date +%H:%M)] phase 1 starting at $START_COMMIT"
+fi
 WRITE_PATH="redthread/pipeline.py redthread/brief.py redthread/verify.py redthread/llm.py redthread/schedule.py"
-
-echo "[$(date +%H:%M)] phase 1 starting at $START_COMMIT"
 
 # ---------------------------------------------------------------- step 2: the floor
 echo "[$(date +%H:%M)] step 2 — four replicates, nothing ablated"
