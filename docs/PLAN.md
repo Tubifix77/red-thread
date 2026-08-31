@@ -144,8 +144,16 @@ wrong scene.*
 `expand_beats` show contiguous ranges and are unaffected — a model asked for scenes 6 to 10
 returns 6 to 10, and every scene in every generated plan has beats and a summary. The fix removes
 the ambiguity rather than instructing around it: the window is numbered 1..N, real indices never
-appear as labels, and code owns the mapping back. **Live on the same plan: 1 of 9 becomes 7 of
-9.***
+appear as labels, and code owns the mapping back.*
+
+| plan | solo scenes | before the fix | after |
+|---|---:|---:|---:|
+| `solo-a1` | 9 of 24 (38%) | **1** | **7** |
+| `solo-a2` | 5 of 24 (21%) | 3 | **5**, twice |
+
+*`solo-a2`'s solo scenes are 16 to 20 — contiguous, which is why three of five landed even
+broken: on a contiguous window the model echoes the real indices and some of them match. The
+non-contiguous window is where it collapses, and a plan's solo scenes are usually scattered.*
 
 *The scripted fixtures echoed correct indices back, which is why 780 green tests could never have
 caught this.*
