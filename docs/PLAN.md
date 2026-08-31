@@ -8,16 +8,18 @@ unproven. One was a design decision. **Nothing here could be evaluated at all un
 done**, because four mechanisms were shipped with no way to turn them off and the noise floor
 rested on a single replicate pair.
 
-The instruments exist now, and the first results are in — including four the plan was written to
-be able to receive: *no*. Half of these steps were designed to conclude that something does not
+The instruments exist now, and the results are coming in — including several the plan was written
+to be able to receive: *no*. Half of these steps were designed to conclude that something does not
 work, and that is them working.
 
 The pattern across the results is sharper than any of them alone. **Every instrument built to
 check the work found something wrong with the work that built it.** The noise-floor table failed
 its own self-test on four measures. A prose measure shipped with a docstring asserting it was
 narrow while being 56% ordinary English. A test written to enforce a rule refuted the statement
-of the rule twice in five minutes. And running the re-people pass against a live plan for the
-first time found it discarding 90% of its own output, silently, behind 780 green tests.
+of the rule twice in five minutes. Running the re-people pass against a live plan for the first
+time found it discarding 90% of its own output, silently, behind 780 green tests. And step 5's
+banked within-book evidence — a tenfold effect — turned out to be the naive control; matched
+properly it reverses.
 
 **Progress.** Each step below is marked ✅ done, ⛔ killed by its own criterion, ⏳ running, or
 left unmarked. A step is only done when its code is committed, its tests pass, and — where it
@@ -35,18 +37,23 @@ makes a claim — the claim has been through `checks.clears_noise`.
 
 ### Picking this up
 
-Work is queued to finish unattended. In order, when you come back:
+`scripts/phase1.sh` runs step 2 and then steps 5 and 6 in one sequence — the floor set, then both
+ablations — so there is nothing to poll for and the three conditions share code by construction.
+An earlier version waited on a scene count and hung for four hours after the set had finished,
+because two runs halted short of 71 and the number it wanted never arrived.
+
+When it finishes:
 
 ```bash
-bash scripts/phase1-report.sh        # steps 5 and 6, read against their kill criteria
-python -m redthread measures runs/current-floor1 runs/current-floor2     runs/current-floor3 runs/current-floor4 --emit-floor     # step 2's new floor, to paste
-python -m redthread depends runs/deps-book --prose           # step 16
+bash scripts/phase1-report.sh
 ```
 
-`scripts/phase1.sh` writes the ablations once the floor set lands, and refuses to start if the
-write path has moved since the control was written — so if it declines, read what it says rather
-than overriding it. `scripts/step16.sh` writes a book from `solo-a4`, the only plan on disk that
-declares dependencies.
+That reads steps 5 and 6 out against their own kill criteria, so the verdict does not depend on
+remembering what they were. For step 2's new floor to paste into `checks.py`:
+
+```bash
+python -m redthread measures runs/current-floor1 runs/current-floor2 runs/current-floor3 runs/current-floor4 --emit-floor
+```
 
 The one thing none of this can do is [step 21](#phase-5--the-sentence). The sheet is at
 [evidence/sentences/sentences.md](evidence/sentences/sentences.md) and takes about twenty
