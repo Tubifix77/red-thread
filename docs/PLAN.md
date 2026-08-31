@@ -615,9 +615,18 @@ result, so a clean audit can never again read as coverage it does not provide. A
 every named kind is one the codebase can still emit, so a rename cannot leave the disclaimer
 pointing at nothing.*
 
-**25. Re-run the whole panel on a fresh premise and publish the numbers.** Two runs, every measure
-with its floor. Whatever it says then is the state of the project — and the first time that
-sentence will be true.
+**25. Re-run the whole panel on a fresh premise and publish the numbers.** ⏳ *(scripted, waiting
+on phase 1)* Two runs, every measure with its floor. Whatever it says then is the state of the
+project — and the first time that sentence will be true.
+
+*`scripts/step25.sh`. The premise is fresh to the prose: `solo-b2` is a plan of the night-nurse
+premise generated for step 8 and never written into a book, **chosen on its audit rather than
+after the fact** — 0% solo scenes, 91% ending reach. Picking the plan before seeing the prose is
+the whole difference between a report and a selection.*
+
+*It compares against the four-run* Debt of Years *floor, and says in its own output that the
+comparison is two premises rather than an effect, because nothing was ablated between them. What
+it answers is whether the measures hold their values on a book they were not tuned on.*
 
 ---
 
