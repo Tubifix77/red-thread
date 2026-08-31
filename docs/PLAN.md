@@ -33,6 +33,25 @@ makes a claim — the claim has been through `checks.clears_noise`.
 | 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
 | 6 — write the rule down | 2 of 3 | step 25 is the final panel; needs phase 1 |
 
+### Picking this up
+
+Work is queued to finish unattended. In order, when you come back:
+
+```bash
+bash scripts/phase1-report.sh        # steps 5 and 6, read against their kill criteria
+python -m redthread measures runs/current-floor1 runs/current-floor2     runs/current-floor3 runs/current-floor4 --emit-floor     # step 2's new floor, to paste
+python -m redthread depends runs/deps-book --prose           # step 16
+```
+
+`scripts/phase1.sh` writes the ablations once the floor set lands, and refuses to start if the
+write path has moved since the control was written — so if it declines, read what it says rather
+than overriding it. `scripts/step16.sh` writes a book from `solo-a4`, the only plan on disk that
+declares dependencies.
+
+The one thing none of this can do is [step 21](#phase-5--the-sentence). The sheet is at
+[evidence/sentences/sentences.md](evidence/sentences/sentences.md) and takes about twenty
+minutes.
+
 ---
 
 ## Six rules this plan obeys
