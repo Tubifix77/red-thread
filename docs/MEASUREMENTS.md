@@ -110,12 +110,40 @@ exactly how a measure shipped with a docstring asserting it was narrow.
 | `_ASKED` | 31 Aug | **contaminated, 56%.** `wanted`/`needed`/`meant to`, which are internal desire. Removed |
 | `_PLAN_REFUSAL` | 31 Aug | largely clean — 103 of 119 matches are `refus*`. Lost `will not`, `won't` and a bare `bars` |
 | `_SOMATIC_PATTERNS` | 31 Aug | clean. 182 beats across 444 scenes, and every sampled match is a bodily-sensation beat — jaw tightened, throat tightened, chest twisted |
-| `_GLOSS_PATTERNS` | 31 Aug | **unmeasurable from the corpus.** One match in 444 committed scenes, because the repair loop deletes them — see above |
+| `_GLOSS_PATTERNS` | 31 Aug | **contaminated by kind rather than by rate — it was reading dialogue.** Its own detail line says "the narration explains the point here", and it fired on `Kai narrowed his eyes. "This isn't just about punishment."` Dialogue is now excluded. Its *rate* remains unmeasurable from the corpus: one match in 444 committed scenes, because the repair loop deletes them |
 | `_PAST_PERFECT` | 31 Aug | clean, with one documented over-inclusion. 2,319 matches across 343 scenes and every sampled one is a genuine past perfect — `had known`, `had been`, `had made`. It also counts *subordinate* uses ("slower than it had been earlier"), which are ordinary prose rather than recap, so `summary_distance` runs slightly high in absolute terms. It is only ever read comparatively and the inflation is roughly constant, so the 8× between-era gap (.380 against .047) is far too large to be explained by it. `recap_blocks` is unaffected: four consecutive past-perfect sentences is not a run of subordinate clauses |
 | `slop` list | 30 Aug | clean, and externally sourced. Zero entries appear in 30% or more of scenes; 70 of 75 appear in under 5% |
 
-Two of the six audited were badly contaminated and one was mildly so. That is a hit rate high
-enough that "the docstring says it is narrow" should count for nothing.
+Three of the eight audited were contaminated, one mildly so, and one is clean with a nuance
+worth knowing. That is a hit rate high enough that "the docstring says it is narrow" should count
+for nothing.
+
+### The dialogue sweep, and why only one check failed it
+
+Finding `_GLOSS_PATTERNS` reading speech raised the obvious question: which other scene checks
+read dialogue when they are about narration? Measured across 367 committed scenes, testing
+whether each match falls inside a quoted span:
+
+| pattern | matches | inside dialogue |
+|---|---:|---:|
+| `_PAST_PERFECT` | 3,156 | 9 — **0.3%** |
+| `_GESTURE_PART` | 3,553 | 3 — **0.1%** |
+| `_SOMATIC_PATTERNS` | 84 | **0** |
+
+Gloss was the only one, and the reason is worth more than the number. **Gloss patterns are
+conversational assertions** — "this isn't just about", "something deeper", "she saw that" — which
+is precisely what people say out loud. Body parts tightening and past-perfect narration are things
+a *narrator* does; a character almost never says them. The vulnerability follows from what the
+pattern is made of rather than from carelessness in one place, and that is what tells you where to
+look next time.
+
+`check_pov` has stripped dialogue since it was written, for the same reason in reverse: characters
+say "I" in a third-person book.
+
+**Why offsets rather than `strip_dialogue`.** The existing helper substitutes a space per quote,
+which shifts every position after it — fine for counting pronouns, useless where a violation must
+carry a quote a repair can locate. `checks.dialogue_spans` returns ranges into the original text
+instead, and a test asserts every gloss violation still locates.
 
 **Within-scene gesture variety.** Distinct gesture pairs over total gestures sits at ~1.0 across
 four books. Gestures are already varied *inside* a scene; the repetition is between scenes, which
