@@ -1037,3 +1037,50 @@ class TestSoloScenesAreRepeopled(unittest.TestCase):
         backend.queue("repeople", self._reply([1, 2, 3, 4, 5]))
         self.assertEqual(repeople_solo_scenes(specs, self._story(), models), 5)
         self.assertTrue(all(len(s.characters) >= 2 for s in specs))
+
+    def test_rows_are_matched_by_position_not_by_scene_index(self):
+        """The bug a live model found and every fixture here was blind to.
+
+        Asked to repeople scenes 2, 4, 5, 6 and 8, a real qwen3:8b returned rows numbered 1, 3
+        and 4 — positions in the list it had been shown, not the indices printed beside them.
+        Nine solo scenes, one rewritten, and that one only because scene 4 happened to be both a
+        real index and a returned position.
+
+        The yield was the smaller half. A row meant for the third item, labelled 3, would have
+        been applied to *scene 3* had scene 3 been in the window: the wrong rewrite landing
+        silently on the wrong scene.
+        """
+        models, backend = fakes.scripted_models()
+        # Solo scenes at 2, 4, 5, 6, 8 — deliberately non-contiguous, which is the trigger.
+        specs = self._specs([2, 4, 5, 6, 8], n=10)
+        backend.queue("repeople", json.dumps({"scenes": [
+            {"index": n, "summary": f"rewritten {n}", "characters": ["ves", "ard"],
+             "beats": ["Vesna asks Ardo why the run is short"]}
+            for n in (1, 2, 3, 4, 5)]}))
+        fixed = repeople_solo_scenes(specs, self._story(), models)
+        self.assertEqual(fixed, 5, "every row should land")
+        by_index = {s.index: s for s in specs}
+        for position, index in enumerate([2, 4, 5, 6, 8], start=1):
+            self.assertEqual(by_index[index].summary, f"rewritten {position}",
+                             f"row {position} should have landed on scene {index}")
+
+    def test_a_row_numbered_outside_the_window_is_dropped(self):
+        models, backend = fakes.scripted_models()
+        specs = self._specs([2, 4, 5, 6, 8], n=10)
+        untouched = {s.index: s.summary for s in specs}
+        backend.queue("repeople", json.dumps({"scenes": [
+            {"index": 99, "summary": "wrong", "characters": ["ves", "ard"], "beats": ["x"]}]}))
+        self.assertEqual(repeople_solo_scenes(specs, self._story(), models), 0)
+        for s in specs:
+            self.assertEqual(s.summary, untouched[s.index])
+
+    def test_the_prompt_numbers_the_window_from_one(self):
+        # The fix is the removal of an ambiguity, not a firmer instruction — so the prompt must
+        # not show real scene indices at all, or the model has two plausible numberings again.
+        models, backend = fakes.scripted_models()
+        specs = self._specs([2, 4, 5, 6, 8], n=10)
+        repeople_solo_scenes(specs, self._story(), models)
+        prompt = next(p for role, p in backend.calls if role == "repeople")
+        self.assertIn("Scene 1:", prompt)
+        self.assertIn("Scene 5:", prompt)
+        self.assertNotIn("Scene 8:", prompt, "a real scene index must not appear as a label")

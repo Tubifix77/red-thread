@@ -862,6 +862,91 @@ def cmd_forecast(args) -> int:
     return 0
 
 
+def cmd_repeople(args) -> int:
+    """Run the re-people pass over an existing plan, in place, and report what moved.
+
+    Step 7 of docs/PLAN.md needs this. The pass has only ever run inside `make_plan`, against a
+    scripted backend, so its effect on a live plan is unmeasured — and measuring it by generating
+    two plans, one with the pass and one without, compares two different plans. Running it on a
+    plan already on disk makes the before and after the same object, which is the only version of
+    the comparison that means anything.
+
+    The prompt holds each scene's summary, setting and thread work fixed and asks only for who is
+    present and what passes between them. This reports whether it obeyed, rather than assuming.
+    """
+    import copy
+
+    from .planner import repeople_solo_scenes
+
+    project = _load(args.project)
+    plan = sorted(project.plan, key=lambda s: s.index)
+    if not plan:
+        raise SystemExit(f"{args.project} has no plan to re-people")
+
+    before = {s.index: copy.deepcopy(s) for s in plan}
+    solo = [s.index for s in plan if len(s.characters) < 2]
+    print(f"\n  {project.story.title} — {len(plan)} scenes")
+    print(f"  {len(solo)} solo ({len(solo) / len(plan):.0%}): "
+          f"{', '.join(str(i) for i in solo[:20])}" + (" …" if len(solo) > 20 else ""))
+    if len(solo) / len(plan) <= args.limit:
+        print(f"\n  At or below the {args.limit:.0%} threshold, so the pass leaves this plan "
+              f"alone.\n  A handful of solo scenes is a novel, not a defect.\n")
+        return 0
+
+    models, _writer, critic = _build_models(args)
+    print(f"  re-asking with {critic}")
+    fixed = repeople_solo_scenes(
+        plan, project.story, models, limit=args.limit,
+        on_batch=lambda w: print(f"    scenes {', '.join(str(s.index) for s in w)}", flush=True))
+
+    still_solo = [s.index for s in plan if len(s.characters) < 2]
+    print(f"\n  {fixed} scene(s) given somebody to talk to; {len(still_solo)} still solo")
+
+    # The half nothing checked before. A pass that repeoples a scene by quietly dropping what the
+    # scene was for has not improved the plan, it has damaged it.
+    print("\n  What the pass was not allowed to change:")
+    broken = []
+    for spec in plan:
+        old = before[spec.index]
+        for field, now, was in (("thread ops", spec.thread_ops, old.thread_ops),
+                                ("setting", spec.setting, old.setting),
+                                ("depends_on", spec.depends_on, old.depends_on)):
+            if now != was:
+                broken.append(f"scene {spec.index}: {field}")
+    if broken:
+        print("    CHANGED — " + "; ".join(broken[:10]))
+    else:
+        print("    thread obligations, settings and dependencies all intact")
+
+    changed_summary = sum(1 for s in plan if s.summary != before[s.index].summary)
+    print(f"\n  What it did change: {changed_summary} summaries, "
+          f"{sum(1 for s in plan if [b.summary for b in s.beats] != [b.summary for b in before[s.index].beats])} "
+          f"beat lists, {sum(1 for s in plan if s.characters != before[s.index].characters)} casts")
+
+    # `make_plan` runs the forbidden-phrase scrub *after* this pass, and it has to: a rewrite
+    # that puts somebody new in the room can reach for a word the plan bans, and a live run did —
+    # the repeopled text used "conspiracy" in a plan whose own forbidden list contains it. Every
+    # brief is built from this text, so a banned term sitting in a summary is injected into every
+    # scene that summary belongs to. Standalone, this command has to do the same or the plan it
+    # writes is not the plan `make_plan` would have produced.
+    from .planner import scrub_forbidden
+    scrubbed = scrub_forbidden(plan, project.story, models)
+    if scrubbed:
+        print(f"  {scrubbed} line(s) used a phrase the plan itself forbids; rewritten")
+
+    findings = [v for v in checks.audit_plan(plan, project.story, project.history)
+                if v.severity is not Severity.MINOR]
+    _print_violations(findings, "Plan audit after the pass")
+
+    if args.write:
+        project.plan = plan
+        project.save()
+        print(f"\n  written to {args.project}\n")
+    else:
+        print(f"\n  Nothing written. Pass --write to keep it.\n")
+    return 0
+
+
 def cmd_depends(args) -> int:
     """The declared dependency graph: its shape, and whether it shows up in the prose.
 
@@ -1113,6 +1198,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
     p.add_argument("--openai-compat", action="store_true")
     p.set_defaults(func=cmd_forecast)
+
+    p = add_project(sub.add_parser(
+        "repeople", help="run the re-people pass over an existing plan and report what moved"))
+    p.add_argument("--limit", type=float, default=0.15,
+                   help="solo share below which the plan is left alone")
+    p.add_argument("--write", action="store_true", help="keep the rewritten plan")
+    p.add_argument("--writer", default="claude-opus-5")
+    p.add_argument("--critic", default="claude-sonnet-5")
+    p.add_argument("--local", metavar="MODEL", help="local model")
+    p.add_argument("--all-local", metavar="MODEL", help="alias for --local")
+    p.add_argument("--local-critic", metavar="MODEL", help="a second local model")
+    p.add_argument("--base-url", default=DEFAULT_OLLAMA_BASE)
+    p.add_argument("--openai-compat", action="store_true")
+    p.set_defaults(func=cmd_repeople)
 
     p = add_project(sub.add_parser(
         "depends", help="the declared dependency graph, and whether the prose shows it"))

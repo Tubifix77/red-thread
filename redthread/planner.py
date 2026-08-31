@@ -750,9 +750,11 @@ THE CAST
 SCENES TO REPEOPLE
 {scenes}
 
+Return one entry for EVERY scene above, and give each the same number it carries above.
+
 {json_only}
 Schema:
-{{"scenes": [{{"index": 0, "summary": "...", "characters": ["id", "id"],
+{{"scenes": [{{"index": 1, "summary": "...", "characters": ["id", "id"],
   "beats": ["...", "...", "..."]}}]}}"""
 
 
@@ -783,12 +785,29 @@ def repeople_solo_scenes(specs: list[SceneSpec], story: StorySpec, models: Model
     fixed = 0
     for start in range(0, len(solo), CHUNK):
         window = solo[start:start + CHUNK]
+        # **Numbered 1..N within the window, not by scene index.**
+        #
+        # This is the one call in the planner that shows a model a *non-contiguous* set of
+        # scenes, and that turned out to matter. Asked to repeople scenes 2, 4, 5, 6 and 8, a
+        # live qwen3:8b returned rows numbered 1, 3 and 4 — positions in the list it had been
+        # shown, not the indices printed beside them. Matching by index then discarded almost
+        # everything: nine solo scenes, one rewritten, and that one only because scene 4 happened
+        # to be both a real index and a returned position.
+        #
+        # The yield was the smaller half of the problem. A row meant for the third item, labelled
+        # 3, would have been applied to *scene 3* had scene 3 been in the window — the wrong
+        # rewrite silently landing on the wrong scene.
+        #
+        # `flesh_scenes` and `expand_beats` show contiguous ranges and are unaffected; a model
+        # asked for scenes 6 to 10 returns 6 to 10. The fix here is not a firmer instruction but
+        # the removal of the ambiguity: the model is shown 1..N, and code owns the mapping back.
+        # The scripted fixtures echoed correct indices and so could never have caught this.
         rendered = "\n\n".join(
-            f"Scene {s.index}: {s.summary}\n  setting: {s.setting}\n"
+            f"Scene {n}: {s.summary}\n  setting: {s.setting}\n"
             f"  currently present: {', '.join(s.characters) or '(nobody named)'}\n"
             f"  must bring about: "
             + "; ".join(p for op in s.thread_ops.values() for p in op.post)
-            for s in window)
+            for n, s in enumerate(window, start=1))
         prompt = REPEOPLE_PROMPT.format(cast=_render_cast(story), scenes=rendered,
                                         json_only=JSON_ONLY)
         try:
@@ -798,14 +817,14 @@ def repeople_solo_scenes(specs: list[SceneSpec], story: StorySpec, models: Model
         except LLMError:
             continue
         rows = data.get("scenes") if isinstance(data, dict) else data
-        by_index = {s.index: s for s in window}
         for row in rows or []:
             if not isinstance(row, dict):
                 continue
             try:
-                spec = by_index.get(int(row.get("index", -1)))
+                position = int(row.get("index", -1))
             except (TypeError, ValueError):
                 continue
+            spec = window[position - 1] if 1 <= position <= len(window) else None
             if spec is None:
                 continue
             before = list(spec.characters)
