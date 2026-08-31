@@ -363,10 +363,18 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
         verdict = str(row.get("verdict", "")).lower()
         if verdict == "met":
             continue
+        # Validated, not caught — see `judge_conflicts`. A row with no "n" indexed `required[-1]`,
+        # which raises nothing, so an unattributed verdict was reported against the *last*
+        # requirement. Advisory here rather than blocking, so the cost is a misdirected repair
+        # rather than a halted book, but it is the same defect and it was found by grepping for
+        # the shape rather than by waiting for it to show.
         try:
-            tid, text = required[int(row.get("n", -1))]
-        except (ValueError, TypeError, IndexError):
+            index = int(row.get("n", -1))
+        except (TypeError, ValueError):
             continue
+        if not 0 <= index < len(required):
+            continue
+        tid, text = required[index]
         # Advisory, not a gate. "Did this scene accomplish what it was for?" is a reading, not
         # a measurement — an authorial judgement wearing a verifier's clothes. Gating on a small
         # model's answer to it produced two failure modes and no successes: scenes held back for
@@ -386,9 +394,12 @@ def check_threads(scene: Scene, spec: SceneSpec, story: StorySpec,
         if not isinstance(row, dict) or not row.get("violated"):
             continue
         try:
-            tid, text = forbidden[int(row.get("n", -1))]
-        except (ValueError, TypeError, IndexError):
+            index = int(row.get("n", -1))
+        except (TypeError, ValueError):
             continue
+        if not 0 <= index < len(forbidden):
+            continue
+        tid, text = forbidden[index]
         # Also advisory, and this one was the most expensive to learn. The asymmetry is real —
         # once the reader knows, no later scene can un-know it — but the *detection* is a
         # reading, and an 8B reading for an absence is the least reliable judgement in the

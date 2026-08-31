@@ -203,3 +203,117 @@ class TestJudgeConflictsValidatesItsIndex(unittest.TestCase):
 
     def test_a_non_numeric_index_is_dropped(self):
         self.assertEqual(self._run([{"pair": "first", "contradiction": True, "why": "x"}]), [])
+
+
+class TestJudgeThreadsValidatesItsIndex(unittest.TestCase):
+    """The same defect twice more, found by grepping for the shape rather than by a run.
+
+    `required[-1]` and `forbidden[-1]` raise nothing, so a row with no "n" reported its verdict
+    against the *last* obligation. Advisory rather than blocking here, so the cost is a
+    misdirected repair rather than a halted book — but it is the same bug, and the search that
+    found it took a minute after the second instance made the pattern obvious.
+    """
+
+    def _run(self, payload):
+        import json
+        from redthread.models import Beat, SceneSpec, Scene, StorySpec, Thread, ThreadKind, Transition
+        from redthread.verify import check_threads
+        from tests import fakes
+
+        story = StorySpec(title="T", premise="p", threads=[
+            Thread(id="T1", name="one", kind=ThreadKind.MAIN, states=["a", "b"]),
+            Thread(id="T2", name="two", kind=ThreadKind.SUBPLOT, states=["a", "b"])])
+        spec = SceneSpec(id="s", index=1, summary="x", beats=[Beat(summary="y")])
+        spec.thread_ops["T1"] = Transition(post=["the vial is handed back"],
+                                           forbid=["the enclave is named"])
+        spec.thread_ops["T2"] = Transition(post=["the licence is refused"],
+                                           forbid=["the printer confesses"])
+        scene = Scene(spec_id="s", index=1, text=fakes.clean_prose(300))
+        models, _b = fakes.scripted_models({"threads": json.dumps(payload)})
+        return check_threads(scene, spec, story, models)
+
+    def test_a_well_formed_verdict_is_reported(self):
+        found = self._run({"requirements": [{"n": 0, "verdict": "missed", "evidence": "no"}],
+                           "prohibitions": []})
+        self.assertEqual([v.kind for v in found], ["thread_obligation"])
+
+    def test_a_requirement_row_with_no_n_is_dropped(self):
+        self.assertEqual(self._run({"requirements": [{"verdict": "missed"}],
+                                    "prohibitions": []}), [])
+
+    def test_a_requirement_index_past_the_end_is_dropped(self):
+        self.assertEqual(self._run({"requirements": [{"n": 99, "verdict": "missed"}],
+                                    "prohibitions": []}), [])
+
+    def test_a_prohibition_row_with_no_n_is_dropped(self):
+        self.assertEqual(self._run({"requirements": [],
+                                    "prohibitions": [{"violated": True, "quote": "x"}]}), [])
+
+    def test_a_negative_prohibition_index_is_dropped(self):
+        self.assertEqual(self._run({"requirements": [],
+                                    "prohibitions": [{"n": -1, "violated": True}]}), [])
+
+
+class TestNoModelIndexIsUsedUnchecked(unittest.TestCase):
+    """The generalisation of three bugs found in one hour, made mechanical.
+
+    Every one was the same shape: a number a model returned, used to address a list, with no
+    check that it addresses anything. `xs[-1]` raises nothing in Python, so a missing field
+    defaulting to -1 silently selects the last element instead of being dropped.
+
+        planner.repeople_solo_scenes   90% of the pass discarded, and a rewrite could have
+                                       landed on the wrong scene
+        verify.judge_conflicts         a BLOCKER on facts the model was not judging
+        verify.check_threads           twice — a verdict reported against the wrong obligation
+
+    A scan is worth more than three fixes, because the fourth instance is the one nobody is
+    looking for.
+    """
+
+    # Written as a subscript scan plus two content tests rather than as one regex, because the
+    # one regex was wrong: `[^)]*?` cannot cross the inner `)` of `row.get(...)`, so it matched
+    # none of the three real instances and the test passed by finding nothing.
+    #
+    # A scan that cannot fail is worse than no scan — which is the lesson this whole file is
+    # about, committed here, in the test written to enforce it, an hour after being written down.
+    # The two tests below exist so that cannot happen again silently.
+    _SUBSCRIPT = re.compile(r"\[([^\[\]]+)\]")
+    _NEGATIVE_DEFAULT = re.compile(r",\s*-\d+\s*\)")
+
+    def _unchecked_subscripts(self, text: str) -> list[str]:
+        return [m.group(0) for m in self._SUBSCRIPT.finditer(text)
+                if "int(" in m.group(1) and self._NEGATIVE_DEFAULT.search(m.group(1))]
+
+    def test_the_scan_catches_the_shapes_it_is_for(self):
+        # The three real instances, verbatim, plus a variant.
+        for probe in ('tid, text = required[int(row.get("n", -1))]',
+                      'old, new = pairs[ int(row.get("pair", -1)) ]',
+                      'spec = window[int(row.get("index", -1))]',
+                      'x = xs[int(row.get("k", -2))]'):
+            self.assertTrue(self._unchecked_subscripts(probe), probe)
+
+    def test_the_scan_leaves_the_safe_shapes_alone(self):
+        for safe in ('spec = by_index.get(int(row.get("index", -1)))',
+                     'x = xs[index]',
+                     'lo = means[int(alpha / 2 * iterations)]',
+                     'tail = text[-1]'):
+            self.assertEqual(self._unchecked_subscripts(safe), [], safe)
+
+    def test_no_negative_default_reaches_a_subscript(self):
+        offenders = []
+        for path in sorted(SOURCE_DIR.glob("*.py")):
+            for found in self._unchecked_subscripts(path.read_text(encoding="utf-8")):
+                offenders.append(f"{path.name}  {found}")
+        self.assertEqual(
+            offenders, [],
+            "a model's number is being used as a subscript with a negative default. `xs[-1]` "
+            "raises nothing, so a missing field selects the last element rather than being "
+            "dropped. Validate the range instead of catching IndexError:\n  "
+            + "\n  ".join(offenders))
+
+    def test_the_dict_lookup_form_is_fine_and_still_used(self):
+        # `by_index.get(n)` returns None for anything unknown, so it needs no range check — and
+        # the planner uses it in two places that were audited and left alone. This test exists so
+        # the scan above is not read as banning every model-returned number.
+        source = (SOURCE_DIR / "planner.py").read_text(encoding="utf-8")
+        self.assertIn("by_index.get(int(row.get(\"index\", -1)))", source)
