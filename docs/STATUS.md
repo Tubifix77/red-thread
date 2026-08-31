@@ -309,7 +309,7 @@ difference.
 | **426,614** | words drafted locally |
 | **467** | scenes committed |
 | **0** | API calls |
-| **744** | tests passing |
+| **778** | tests passing |
 
 The longest is now 61,733 words, and running it found exactly what was predicted: defects that
 do not exist below about forty scenes. What it also found is the one measure that gets *worse*
