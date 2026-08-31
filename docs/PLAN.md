@@ -15,7 +15,7 @@ been through `checks.clears_noise`.
 | phase | done | state |
 |---|---|---|
 | 0 — trustworthy instruments | 3 of 4 | step 2 needs GPU hours; 1, 3, 4 shipped |
-| 1 — confirm what exists | 0 of 4 | ⏳ queued behind step 2 as `scripts/phase1.sh` |
+| 1 — confirm what exists | 1 of 4 | **step 7 found the pass 90% broken**; 5, 6, 8 queued |
 | 2 — tension on embeddings | 3 of 5 | **step 11 fired its kill criterion**; 12 needs its replicate |
 | 3 — dependency graph | 2 of 3 | step 16 needs a plan carrying the new field |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
@@ -124,10 +124,37 @@ return, and comes out.
 not the first-fire scene, which is a maximum in disguise. **Kill criterion:** difference inside
 the 31% floor.
 
-**7. Run the re-people pass against a live plan for the first time.** It is tested only against a
-scripted backend. Generate plans until one comes back solo-heavy — the count is bimodal, so
-roughly one in three — then verify the rewritten scenes keep their thread obligations. The prompt
-holds summary, setting and posts fixed and nothing currently checks that it obeyed.
+**7. Run the re-people pass against a live plan for the first time.** ✅ **It was broken, and
+this is what found it.** It is tested only against a scripted backend. Generate plans until one
+comes back solo-heavy — the count is bimodal, so roughly one in three — then verify the rewritten
+scenes keep their thread obligations. The prompt holds summary, setting and posts fixed and
+nothing currently checks that it obeyed.
+
+*The first live plan came back 38% solo, nine scenes. The pass fixed **one**. Not because the
+model refused: asked to repeople scenes 2, 4, 5, 6 and 8, `qwen3:8b` returned rows numbered
+**1, 3 and 4** — positions in the list it had been shown, not the indices printed beside them.
+Matching by index discarded almost everything, and the single success was a coincidence, scene 4
+being both a real index and a returned position.*
+
+*The yield was the smaller half. **A row meant for the third item, labelled 3, would have been
+applied to scene 3** had scene 3 been in the window — the wrong rewrite landing silently on the
+wrong scene.*
+
+*This is the only planner call that shows a model a non-contiguous set. `flesh_scenes` and
+`expand_beats` show contiguous ranges and are unaffected — a model asked for scenes 6 to 10
+returns 6 to 10, and every scene in every generated plan has beats and a summary. The fix removes
+the ambiguity rather than instructing around it: the window is numbered 1..N, real indices never
+appear as labels, and code owns the mapping back. **Live on the same plan: 1 of 9 becomes 7 of
+9.***
+
+*The scripted fixtures echoed correct indices back, which is why 780 green tests could never have
+caught this.*
+
+*And the obligation check the step asked for now runs and passes: thread ops, settings and
+declared dependencies are all intact through the pass, snapshotted and restored rather than
+trusted. One further thing it caught — the rewrite reached for a phrase the plan forbids.
+`make_plan` scrubs after this pass and so absorbs it; `redthread repeople` standalone now does
+the same, or the plan it writes is not the plan `make_plan` would have produced.*
 
 **8. Decide whether the bimodality is the planner or the premise.** Six plans of one premise gave
 5, 5, 22, 24, 10, 28 solo scenes. Generate six of a *different* premise. If the split persists it
