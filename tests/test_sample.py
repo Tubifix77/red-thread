@@ -11,8 +11,8 @@ from __future__ import annotations
 import unittest
 
 from redthread.sample import (blind_sheet, bootstrap_ci, correlate, draw, parse_key,
-                              parse_ratings, render_key, render_sheet, sentence_signals,
-                              sentences_from)
+                              parse_ratings, render_key, render_sheet, restore_quotes,
+                              sentence_signals, sentences_from)
 
 from . import fakes
 
@@ -221,6 +221,46 @@ class TestParseKey(unittest.TestCase):
 
     def test_ignores_the_preamble(self):
         self.assertEqual(parse_key("# Key — do not read before rating\n\nsome prose\n"), {})
+
+
+class TestRestoreQuotes(unittest.TestCase):
+    """The splitter eats a quotation mark; this puts it back. Restoration, not editing.
+
+    It matters because the artefact tracks dialogue and the two sides of a sheet can differ in
+    dialogue share by threefold — 10.9% of current-era sentences begin inside a quote against
+    5.4% of the older ones. Left alone it biases a blind rating against exactly the prose the
+    work was meant to improve, for a reason that is not the prose.
+    """
+
+    def test_a_sentence_that_begins_mid_speech_gets_its_opener_back(self):
+        self.assertEqual(restore_quotes("You have nothing left to lose?” He did not look up."),
+                         "“You have nothing left to lose?” He did not look up.")
+
+    def test_a_sentence_that_opens_a_quote_and_never_closes_gets_its_closer(self):
+        self.assertEqual(restore_quotes("“You don’t get to decide what happens to them."),
+                         "“You don’t get to decide what happens to them.”")
+
+    def test_a_balanced_sentence_is_untouched(self):
+        line = "“Go,” she said, and he went."
+        self.assertEqual(restore_quotes(line), line)
+
+    def test_prose_with_no_speech_is_untouched(self):
+        line = "The gauge read four inches and she wrote it down."
+        self.assertEqual(restore_quotes(line), line)
+
+    def test_it_changes_no_words(self):
+        line = "You have nothing left to lose?” He did not look up."
+        self.assertEqual(restore_quotes(line).replace("“", "").split(),
+                         line.split())
+
+    def test_two_complete_quotes_are_untouched(self):
+        line = "“Go,” she said. “Now.”"
+        self.assertEqual(restore_quotes(line), line)
+
+    def test_it_runs_over_drawn_sentences(self):
+        found = sentences_from(["She spoke. You have nothing left to lose?” He did not look up "
+                                "at her from the bench."], min_words=3)
+        self.assertTrue(any(s.startswith("“") for s in found), found)
 
 
 if __name__ == "__main__":

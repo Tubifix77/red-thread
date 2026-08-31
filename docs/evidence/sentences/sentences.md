@@ -13,31 +13,31 @@ For each, write a single digit in the brackets:
 Read fast. First reaction is the measurement — a considered second look is you doing
 the instrument's job, and the instrument already has an opinion.
 
-[ ]    1.  You don’t think I have anything left to lose?” He could hear Varyn’s silence, the weight of it pressing down on the line.
+[ ]    1.  “You don’t think I have anything left to lose?” He could hear Varyn’s silence, the weight of it pressing down on the line.
 [ ]    2.  “I won’t let myself be part of their game.” Mir regarded him for a long moment, unreadable as ever.
 [ ]    3.  “You think you’re the first to decide who lives and who dies?” He did not look at Riven.
-[ ]    4.  “Then tell me the name of the man whose years were stolen, the official who lost thirty of his days to keep you alive.
-[ ]    5.  “You don’t get to decide what happens to them.
+[ ]    4.  “Then tell me the name of the man whose years were stolen, the official who lost thirty of his days to keep you alive.”
+[ ]    5.  “You don’t get to decide what happens to them.”
 [ ]    6.  “So you’re saying the Ledger isn’t punishment—it’s murder disguised as justice.” Mir stopped mid-step, hand hovering near the edge of a volume.
-[ ]    7.  I only knew the ledger, the rules, the people who got their years taken and those who never did.” His voice was low, almost a whisper, but the words carried the weight of something deeper.
+[ ]    7.  “I only knew the ledger, the rules, the people who got their years taken and those who never did.” His voice was low, almost a whisper, but the words carried the weight of something deeper.
 [ ]    8.  Only the lantern blinked weakly overhead, flicker-by-flicker, as if trying to remember what it was meant to show.
 [ ]    9.  “And if I tell them where you are?” A silence settled between them, heavy as water before storm.
 [ ]   10.  He had made his choice, and now it was time to live with it.
 [ ]   11.  “You think you’re the first to believe the numbers mean more than the lives they took?” He looked at Dain, his eyes dark, unreadable.
 [ ]   12.  He was already moving, his body remembering what it had once been, what it had once known.
-[ ]   13.  You take what you need to stay alive.” A pause followed, short and precise.
-[ ]   14.  “But the Bureau doesn’t make choices for you.
+[ ]   13.  “You take what you need to stay alive.” A pause followed, short and precise.
+[ ]   14.  “But the Bureau doesn’t make choices for you.”
 [ ]   15.  But now, he was beginning to see the truth.
 [ ]   16.  But he had also known that if he left, if he let the Bureau take the years, he would never be able to look at himself in the mirror again.
 [ ]   17.  But here, in this quiet space, among ghosts and dust, something shifted.
 [ ]   18.  But the truth was there, and it would not let him walk away.
-[ ]   19.  If someone takes my life, I would fight back, not thank them.” For the briefest second, Vay looked away.
+[ ]   19.  “If someone takes my life, I would fight back, not thank them.” For the briefest second, Vay looked away.
 [ ]   20.  He needed proof, a trace, some sign that the case hadn’t gone unnoticed.
 [ ]   21.  He had not expected them to want to take Riven.
 [ ]   22.  Eventually, he closed his fingers around the folded paper and pushed it deeper into his coat, the motion precise, deliberate, final.
 [ ]   23.  His voice carried the weight of dust and memory, slow as the drip of water from a leaking pipe.
 [ ]   24.  I know what you're asking," Vay finally said, his voice steady despite the tremor in his thoughts.
-[ ]   25.  Nor will those who built this place.” Kai hesitated, unsure which part hurt more—the knowledge that the system allowed such things, or the realization that the ones living here saw their existence as justified.
+[ ]   25.  “Nor will those who built this place.” Kai hesitated, unsure which part hurt more—the knowledge that the system allowed such things, or the realization that the ones living here saw their existence as justified.
 [ ]   26.  He kept his weight shifted onto the balls of his feet, toes curling against the uneven ground, the gravel shifting under his boots like dead leaves stirred by wind.
 [ ]   27.  He had believed Riven, had trusted him, had let him save the enclave.
 [ ]   28.  He had heard the name before, whispered in the backrooms of the Bureau, muttered in the dead of night when the real work had already been done.
@@ -45,8 +45,8 @@ the instrument's job, and the instrument already has an opinion.
 [ ]   30.  His expression wasn’t anger, not really—it was something colder, sharper, like frost beneath the skin.
 [ ]   31.  He had already spoken through the warrant in his hand, through the way the Bureau had marked this place as unclaimed.
 [ ]   32.  He had made his choice, and he was going to live with it.
-[ ]   33.  Only the transfer.” He shook his head, the motion small, dismissive.
-[ ]   34.  “You were born into this world, Kai Maren.
+[ ]   33.  “Only the transfer.” He shook his head, the motion small, dismissive.
+[ ]   34.  “You were born into this world, Kai Maren.”
 [ ]   35.  Dain had seen that motion before — a man who had once thought he could keep the years he had stolen, but who now understood the cost was more than he had expected.
 [ ]   36.  He had made his choice, and now it was time to live with it.
 [ ]   37.  They simply closed in, their movements methodical, their presence an unshakable wall of steel and order.
@@ -60,7 +60,7 @@ the instrument's job, and the instrument already has an opinion.
 [ ]   45.  He had known the Bureau would not let him walk away.
 [ ]   46.  He had not expected the Bureau to take him.
 [ ]   47.  “And what if I refuse to destroy it?” Kai said.
-[ ]   48.  You took them, not me.” “A transaction can feel less like a trade and more like coercion when done under duress,” Mir replied, watching him closely.
+[ ]   48.  “You took them, not me.” “A transaction can feel less like a trade and more like coercion when done under duress,” Mir replied, watching him closely.
 [ ]   49.  His words were even, calm, but the space between them tightened, pulled taught by something neither named aloud.
 [ ]   50.  Kai’s fingers tightened around the edges of the folded sheet, the grain of the paper rough beneath his calloused palm.
 [ ]   51.  “The Ledger doesn’t save anyone unless they give their time freely.” His tone shifted, quieter, less sure.
@@ -75,7 +75,7 @@ the instrument's job, and the instrument already has an opinion.
 [ ]   60.  It did not meet the warmth of true laughter.
 [ ]   61.  His coat remained stiff around the shoulders, clinging like memory to the shape of his back.
 [ ]   62.  This wasn’t the time to speak, nor even to move beyond standing ground.
-[ ]   63.  Which they won’t.” Kai nodded slowly, watching their hand trace the line of characters etched onto the screen.
+[ ]   63.  “Which they won’t.” Kai nodded slowly, watching their hand trace the line of characters etched onto the screen.
 [ ]   64.  Dain had seen it in the records, in the coded notes, in the way the ledger had shifted.
 [ ]   65.  He had spent his life chasing stolen years, but now he was one of them.
 [ ]   66.  He had not yet decided whether the enclave would live or die.
@@ -111,5 +111,5 @@ the instrument's job, and the instrument already has an opinion.
 [ ]   96.  Yet here, in the ruined remnants of a structure long abandoned, time seemed less rigid, almost fluid, as if it waited for someone to shape it back into something meaningful.
 [ ]   97.  He landed near the center of the bridge, boots sinking slightly into packed earth, then stepped onto solid ground.
 [ ]   98.  Vay inclined his head very slightly, as if weighing something internal.
-[ ]   99.  And claims demand risk.” “What are you afraid of?” Kai asked, his voice lower now, edged with frustration and exhaustion.
+[ ]   99.  “And claims demand risk.” “What are you afraid of?” Kai asked, his voice lower now, edged with frustration and exhaustion.
 [ ]  100.  The child’s laughter followed him, distant and light, and for a moment, he felt the weight of something greater than himself.
