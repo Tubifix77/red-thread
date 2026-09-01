@@ -28,7 +28,7 @@ makes a claim — the claim has been through `checks.clears_noise`.
 | phase | done | state |
 |---|---|---|
 | 0 — trustworthy instruments | **4 of 4** | the floor is n=4 at 71 scenes |
-| 1 — confirm what exists | **4 of 4** | refrain feedback **confirmed**, gesture feedback **deleted** |
+| 1 — confirm what exists | 3.5 of 4 | refrain **confirmed**; gesture killed on its criterion, **deletion suspended** pending n=4 |
 | 2 — tension on embeddings | 5 of 5 | **three attempts, three controls, three failures** |
 | 3 — dependency graph | 3 of 3 | step 16 **suggestive, not established** — 67% on 18, after its confound |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
@@ -269,14 +269,24 @@ phrase was selected for being the most entrenched thing in its book at that mome
 reading is **no evidence of suppression**, not "the feedback backfires". Either way, step 5 now
 rests entirely on the ablation, with nothing banked in advance.*
 
-**6. Ablate the gesture feedback.** ⛔ **Kill criterion fired — it comes out.** `gesture_rate`
-1.88 → 2.00, a 6% difference inside the 22% floor. Machinery and prompt weight in every brief,
-no measurable return.
+**6. Ablate the gesture feedback.** ⛔⏳ **Kill criterion fired; deletion suspended.**
+`gesture_rate` 1.88 → 2.00, a 6% difference inside the 22% floor — no measurable return on the
+statistic the plan named.
 
-*Two caveats, both weakening the test rather than the verdict: the ablated runs halted at 66 and
-48 scenes, and the feedback only names a movement after it recurs across four scenes — so a
-shorter book received less of the treatment, which biases toward finding nothing. Recorded so a
-re-test is a reasonable thing to want rather than a pointless one.* Same design. Measure the mean gesture rate
+*Then the caveat turned out to be real. The mechanism names a movement only **after four
+recurrences**, so its effect should grow across a book — and it does. Gesture rate falls **32% on
+average** from first quarter to last across six feedback-on runs, and is flat, −1%, across the two
+without it. The whole-book mean cannot see that.*
+
+*Suggestive, not established: the ranges overlap, n=2 on the ablated side cannot carry it, and
+**the statistic was chosen after the pre-registered one failed** — which is the shape of every
+result this project has retracted. It is being treated as a new hypothesis needing its own test,
+and **two more ablation runs are queued** to take that side to n=4. If the trajectory does not
+survive, the mechanism goes on the original criterion.*
+
+*The real finding is about the plan, not the mechanism: **a kill criterion is only as good as the
+measure it names**, and this one named a statistic that could not see the effect the mechanism was
+built to have. Choosing that measure is the part to get right before the GPU hours, not after.* Same design. Measure the mean gesture rate
 across four runs, not the first-fire scene, which is a maximum in disguise. **Kill criterion:**
 difference inside the ~~31%~~ **22%** floor.
 
