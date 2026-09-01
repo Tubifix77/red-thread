@@ -70,10 +70,10 @@ python -m redthread rate docs/evidence/sentences/sentences.md --key docs/evidenc
 1 September at this milestone, gated the same way: step 21 remains open here and is PLAN2's
 phase 10 gate.
 
-## Seven rules this plan obeys
+## Eight rules this plan obeys
 
-Each was learned by breaking it. Most of the steps below exist because of one of them, and the
-seventh was learned by this plan's own step 6.
+Each was learned by breaking it. Most of the steps below exist because of one of them; the
+seventh was learned by this plan's own step 6, and the eighth by [PLAN2](PLAN2.md)'s step 29.
 
 | | |
 |---|---|
@@ -84,6 +84,7 @@ seventh was learned by this plan's own step 6.
 | **V** | **Test every new plan check against the hand-authored reference plan first.** Four have been reverted for firing on it, each matching vocabulary rather than the property. |
 | **VI** | **Quality is addressed at the plan, never at the gate.** Gating on a model's reading of a story is the rule this project exists to keep; the plan is the lever that rule leaves open. |
 | **VII** | **A kill criterion is only as good as the measure it names, and an accumulating mechanism needs a measure that accumulates.** Step 5's criterion used a manuscript-level statistic and saw its effect; step 6's used a per-scene mean and could not. Both mechanisms work the same way — naming a thing only after it recurs — so the difference in verdict was the difference in statistic. Choose it before the GPU hours, not after. |
+| **VIII** | **Before measuring a difference in something, confirm the something ever happens.** A gated mechanism has two failure modes, not one — it can do nothing when it runs, and it can never run — and the second is far cheaper to test. Rule IV is the special case for checks; this is the general form, and it has now caught: the re-people pass, gated at 15% while the corpus plan sat at 14.08%, so its ablation would have compared a condition against itself; `drop_unavoidable_bans`, inert on the same corpus; a writer guard that compared git against git while the writer imported the working tree; and a scan written to catch a class of bug that matched none of the three real instances. Ask what fraction of the target corpus a mechanism acts on **before** designing its experiment. It is arithmetic over files already on disk. |
 
 ---
 

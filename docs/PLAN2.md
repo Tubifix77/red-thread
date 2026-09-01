@@ -25,9 +25,14 @@ Reader-facing quality work is gated on step 21's human sheet, because both the e
 and this project's own dry run say the proxies are unproven. Within every budget, cheapest
 information first.
 
-The seven rules of [PLAN.md](PLAN.md) apply to every step here unchanged. Rule VII is applied at
+The rules of [PLAN.md](PLAN.md) apply to every step here unchanged. Rule VII is applied at
 design time: each experiment below names its statistic *and the statistic's type*, so a per-scene
 mean is never again asked to see an accumulating effect.
+
+**This plan also produced rule VIII, at its own step 29:** *before measuring a difference in
+something, confirm the something ever happens.* Every ablation below now states what fraction of
+the target corpus its mechanism acts on, checked with `scripts/mechanism_coverage.py` before any
+GPU-hour is committed.
 
 ---
 

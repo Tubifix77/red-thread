@@ -646,6 +646,12 @@ Neither inert mechanism is dead code; both fire elsewhere. But an ablation of ei
 corpus compares a condition against itself, and would report "no difference" with error bars and
 a kill criterion attached.
 
+**This is now rule VIII** — *before measuring a difference in something, confirm the something
+ever happens.* Rule IV is its special case for checks. The general form has caught four things:
+this pass, `drop_unavoidable_bans`, a writer guard that compared git against git while the writer
+imported the working tree, and a scan written to catch a class of bug that matched none of the
+three real instances.
+
 **The cheap check this earns:** before designing an ablation, ask what fraction of the target
 corpus the mechanism acts on. It is arithmetic over files on disk, and it saved ~3 GPU-hours the
 night it was first run.
