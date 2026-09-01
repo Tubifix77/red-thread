@@ -34,6 +34,7 @@ difference smaller than the floor is a coin, and several here are.
 | `two-run-screen.md` | PLAN2 step 27: a 2-run floor is half a 4-run floor and all its errors are false claims — so n=2 may kill, never confirm |
 | `repeople-never-fired.md` | PLAN2 step 29 stage 1: the re-people pass is gated at 15% solo scenes and the corpus plan sits at 14.08% — so it has never run on any measured book, and two experiment designs died before any GPU was spent |
 | `repair-backfill.md` | PLAN2 step 31's backfill: 72.5% of scenes commit with no repair, and the one repair field on disk is a sum of two quantities only one of which is interesting |
+| `step28-preregistration.md` | A targeted statistic for step 28, its control measured and its reading decided, committed while the ablated runs were a quarter written |
 | `sentences/sentences.md` | A hundred sentences, half from each era, shuffled and unlabelled — the one thing here that needs a person rather than a measurement. **Still blank; still the open step** |
 | `sentences/sentences-key.md` | Its key, deliberately a separate file. Do not open it before the sheet is filled in |
 | `sentences/sentences-claude.md` | The same sheet filled in by Claude, blind, into a separate file so the blank one stays blind. A dry run of the analysis, not the step |
