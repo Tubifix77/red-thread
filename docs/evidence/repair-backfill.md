@@ -92,6 +92,57 @@ statistic swapped after seeing data:
   instrumentation change. The new fields give a second, finer comparison that has no pre-31
   control — those two are never mixed, as PLAN2 already requires.
 
+## Exploratory: where repair concentrates — and it does not
+
+*Labelled exploratory deliberately. PLAN2 requires step 32's mechanism to be designed from step
+31's instrumented data; this is hypothesis generation from the backfill, and nothing here is a
+confirmed result. It is recorded now so that whatever step 32 proposes can be checked against
+what was believed before it ran.*
+
+Across the four floor runs (n=284), taking repairs as `attempts − 3`:
+
+**By position in the book** — flat. Q1 29.2%, Q2 26.4%, Q3 26.4%, Q4 27.9% of scenes repairing at
+all. Whatever drives repair does not accumulate, which is the opposite of the gesture feedback's
+shape and means a Q1→Q4 statistic would be the wrong instrument here (rule VII, applied before
+the fact for once).
+
+**By committed length** — mild. 17.9% for scenes under 700 words, ~30% between 700 and 1000, 26.0%
+above 1000. Short scenes repair less; nothing else stands out.
+
+**By scene identity** — and this is the interesting one. If certain scene *specs* were hard, the
+same indices would repair across independent runs. Testing that against a binomial with the
+observed 27.5% base rate:
+
+| repaired in k of 4 runs | expected if independent | observed |
+|---:|---:|---:|
+| 0 | 19.6 | 21 |
+| 1 | 29.8 | 29 |
+| 2 | 16.9 | 15 |
+| 3 | 4.3 | 5 |
+| 4 | 0.4 | 1 |
+
+χ² ≈ 1.33 on ~3 df, against a 7.81 critical value. **The fit to independence is close to perfect.**
+
+### The hypothesis this generates
+
+Repair need appears to be a property of *the draft*, not of *the scene*. No scene in this plan is
+reliably hard; roughly one draft in four comes back needing a fix, near-independently each time.
+
+If that survives instrumentation, it discriminates sharply between the two candidates PLAN2
+listed for step 32:
+
+- **Better briefs for hard scenes** — the intuitive fix — would be aimed at a pattern that does
+  not exist. There are no hard scenes here, only unlucky drafts.
+- **Fresh-draft-after-k** becomes the principled response rather than the pragmatic one: if each
+  draft independently has a ~27% chance of needing repair, redrawing is a second independent
+  sample, and the scale test already recorded a scene that failed five repairs then committed on a
+  fresh whole attempt with nothing changed.
+
+**What would falsify it:** rung-level data showing that the scenes which repair are repairing for
+*the same reason* each time. Independence of *which scene* is not independence of *why* — the
+backfill cannot see the reason, only the count, and that distinction is exactly what step 31 is
+for.
+
 ## The pattern
 
 The panel has an eleven-measure instrument for prose and, for the machinery that decides whether
