@@ -9,8 +9,14 @@ Closing it by diffing the whole file would make the guard fire on every measurem
 is how guards get switched off. So this compares the *scene-check surface* instead: `run_all` and
 every function it calls, by AST, ignoring docstrings and comments.
 
-Used after the fact by `scripts/phase1-report.sh`, so a comparison states whether its conditions
-actually shared a writer rather than assuming it. Exit 0 if they did.
+It also compares **what is on disk**, not only what is in git. `git diff revision..HEAD` and
+`git show HEAD:path` both describe committed history; the writer imports the working tree. An
+uncommitted edit to `pipeline.py` therefore used to pass every guard this project had while
+changing every scene it wrote — verified by probe, 1 September 2026, before it cost anything.
+
+Used before a chain by `scripts/phase8.sh` and after the fact by `scripts/phase1-report.sh`, so
+a comparison states whether its conditions actually shared a writer rather than assuming it.
+Exit 0 if they did.
 
     python scripts/same_code.py <revision>
 """
@@ -18,6 +24,7 @@ actually shared a writer rather than assuming it. Exit 0 if they did.
 from __future__ import annotations
 
 import ast
+import pathlib
 import subprocess
 import sys
 
@@ -38,6 +45,34 @@ def _source_at(revision: str, path: str) -> str:
                             capture_output=True, text=True,
                             encoding="utf-8", errors="replace")
     return result.stdout if result.returncode == 0 else ""
+
+
+def _source_on_disk(path: str) -> str:
+    """The file as the interpreter will actually import it.
+
+    **This is the fix for a hole that existed for the whole of phase 1.** Every comparison here
+    used to be `git show revision:path` against `git show HEAD:path` — two versions out of git,
+    neither of them the one that runs. An uncommitted edit to `pipeline.py` is executed by the
+    writer and is invisible to both that diff and the commit-range diff in the chain scripts, so
+    the guard printed "the writer is unchanged" over a modified writer. Verified by probe on
+    1 September 2026 before it cost anything.
+
+    A guard that reads a different artefact than the one under test is the same defect as a
+    check over a scheduler-guaranteed field (rule IV): it confirms something, just not the thing
+    its name claims.
+    """
+    try:
+        return pathlib.Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def _working_tree_is_dirty(paths: list[str]) -> list[str]:
+    """Which of `paths` differ from HEAD on disk right now."""
+    result = subprocess.run(["git", "status", "--porcelain", "--"] + paths,
+                            capture_output=True, text=True,
+                            encoding="utf-8", errors="replace")
+    return [line[3:].strip() for line in result.stdout.splitlines() if line.strip()]
 
 
 def _functions(source: str) -> dict[str, str]:
@@ -95,12 +130,20 @@ def main(argv: list[str]) -> int:
 
     problems: list[str] = []
     for path in WRITE_PATH:
+        # `git diff revision..HEAD` compares two commits and cannot see the working tree, so the
+        # committed comparison and the on-disk one are both required. Only the second describes
+        # the code that will actually run.
         diff = subprocess.run(["git", "diff", "--quiet", f"{revision}..HEAD", "--", path])
         if diff.returncode != 0:
-            problems.append(f"{path} changed")
+            problems.append(f"{path} changed (committed)")
+        if _source_at(revision, path) != _source_on_disk(path):
+            problems.append(f"{path} differs ON DISK from {revision} — this is what would run")
+
+    for path in _working_tree_is_dirty(WRITE_PATH + ["redthread/checks.py"]):
+        problems.append(f"{path} has uncommitted changes")
 
     old, new = (_source_at(revision, "redthread/checks.py"),
-                _source_at("HEAD", "redthread/checks.py"))
+                _source_on_disk("redthread/checks.py"))
     if not old or not new:
         problems.append("could not read checks.py at one of the revisions")
     else:
@@ -117,8 +160,9 @@ def main(argv: list[str]) -> int:
         print("\nAny comparison spanning these revisions differs by more than its switch.")
         return 1
 
-    print(f"The writer is unchanged since {revision}: write path identical, and every function "
-          f"reachable from checks.run_all is identical by AST.")
+    print(f"The writer is unchanged since {revision}: write path identical on disk and in git, "
+          f"no uncommitted changes, and every function reachable from checks.run_all is "
+          f"identical by AST.")
     return 0
 
 
