@@ -135,12 +135,20 @@ floor from the n=2 half; here is an n=4 floor it has never seen.
 
 ## Phase 9 — Reliability  *(instrumentation first; the fix is designed from its data)*
 
-**31. Instrument the repair ladder.** The change PLAN.md deliberately deferred: `pipeline.py`
-records, per scene, which repair kinds were attempted, which converged, and at which rung the
-scene committed or halted. Backfill what the corpus can give (the `attempts` distribution over
-1,299 scenes — already on disk); everything rung-level starts accruing from the first
-instrumented run. Zero experiments, zero claims — observability only, and the write-path change
-that ends the frozen era, which is why phase 8 precedes it.
+**31. Instrument the repair ladder.** ◐ **Backfill done (zero GPU); the code change waits for
+phase 8.** Full analysis in [evidence/repair-backfill.md](evidence/repair-backfill.md).
+
+*The backfill produced a sharper specification than the step had.* `attempts` is the only repair
+field on disk and it is **a sum of two unrelated quantities** — `candidates_drafted + repairs` —
+of which only the sum is persisted, so repairs cannot be recovered exactly from any run ever
+written. Subtracting the default candidate count gives the control anyway: across the four floor
+runs, **72.5% of scenes commit with no repair, 20.4% take one, 7.1% take two or more** (n=284).
+
+So `pipeline.py` must record, per scene: (1) **`candidates_drafted` and `repairs` separately** —
+the smallest change with the largest return, and the one that makes every future run
+interpretable; (2) which repair kinds were attempted and which converged; (3) the terminal state,
+committed or halted-on-what-after-how-many. Observability only, zero claims — and the write-path
+change that ends the frozen era, which is why phase 8 precedes it.
 
 **32. Fix repair convergence, as an experiment.** Designed *after* 31's first table exists —
 committing to a mechanism before seeing which rung fails is how the gesture criterion nearly
@@ -163,9 +171,15 @@ deleted a working mechanism. The candidate space, each traced to evidence:
 Design constraints:
 
 - **Statistic, pre-registered now:** attempts-to-commit distribution per scene (Mann–Whitney,
-  new runs vs the four floor runs' backfilled distribution) as primary — attempts are per-scene
-  and independent, so a distribution over scenes is the right instrument, stated per rule VII.
-  Halt rate as secondary only (binomial; at a 3-in-10 base rate, n=4 cannot make it primary).
+  new runs vs the four floor runs' backfilled distribution, n=284) as primary — attempts are
+  per-scene and independent, so a distribution over scenes is the right instrument, stated per
+  rule VII. Halt rate as secondary only (binomial; at a 3-in-10 base rate, n=4 cannot make it
+  primary).
+- **Its resolution is the tail, and that is now on the record before any result exists.** 72.5%
+  of the control sits on one value, so the test is powered by the ~27% of scenes that repair at
+  all. An intervention halving repairs moves 78 of 284 scenes and is detectable; one that only
+  speeds up already-clean scenes is invisible to it. **A null result here means "no effect on the
+  repairing quarter", not "no effect"** — written down now so it cannot be softened later.
 - **Control caveat, stated before anyone runs it:** the floor runs predate the instrumentation,
   so the comparison is valid only on fields the backfill actually has (`attempts`); rung-level
   claims get no control until a post-31 baseline set exists. Two comparisons, two eras, never
@@ -242,7 +256,7 @@ has validated.
 |---|---|---:|---|---|
 | 7 — instrument, from the shelf | 26–27 ✅✅ | 0 h | none | done: 3 of 13 portable; n=2 screens may kill, never confirm |
 | 8 — the last two switches | 28–30 | ~6 h | before any write-path change | at least one of the two mechanisms comes out |
-| 9 — reliability | 31–32 | ~5 h | after phase 8 | the ladder's real convergence rates, then one targeted fix — or the finding that halts are correct |
+| 9 — reliability | 31 ◐ –32 | ~5 h | after phase 8 | 31's backfill done: 72.5% of scenes commit with no repair; the ladder is exercised on one scene in four |
 | 10 — reader | 33–35 | ~2 h + Tue | **step 33 is the gate** | the panel becomes either validated or explicitly regression-only |
 
 **Sequencing:** 26, 27 anytime. 28–30 next and before 31. 33 whenever Tue has twenty minutes —
