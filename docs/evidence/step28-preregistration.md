@@ -1,7 +1,8 @@
 # Step 28, pre-registered before the ablated runs existed
 
-*2 September 2026, 00:2x. The `--no-model-refrains` runs are in flight and roughly a quarter
-written; no measurement of them has been taken. Everything below is committed before any result
+*2 September 2026, 00:19. The `--no-model-refrains` runs are in flight: **run 1 at 10 of 71
+scenes, run 2 at 0** — 10 of 142, verified at commit time, not estimated. No measurement of them
+has been taken. Everything below is committed before any result
 exists, which is the only thing that makes the added statistic a test rather than a story. Same
 discipline as step 6's accumulation statistic, and for the same reason.*
 
