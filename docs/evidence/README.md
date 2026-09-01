@@ -3,6 +3,11 @@
 The raw material behind the claims in [../MODELS.md](../MODELS.md), kept so they can be checked
 rather than taken on trust.
 
+**Two files here supersede figures in the others.** `replicate-noise-floor.md` says what each
+measure does between two runs that differ in nothing, and retracts three claims made before it
+existed. `fresh-premise-panel.md` then says that floor is **one novel's**, so no figure here
+transfers to another book without being re-measured.
+
 **Start with `replicate-noise-floor.md`.** It measures what each figure in these files does
 between two runs that differ in nothing, and it retracts three claims made in the others. A
 difference smaller than the floor is a coin, and several here are.
@@ -23,13 +28,19 @@ difference smaller than the floor is a coin, and several here are.
 | `replicate-noise-floor.md` | **Read this before any other file here.** Two runs, identical code, nothing changed: what every measure does when nothing does |
 | `tension-on-embeddings.md` | Three ways of measuring tension and what each turned out to measure — 51%, 54%, and r = +0.337, all against their own controls |
 | `want-obstacle-cost.md` | A second quality axis, measured and then not built: two prose measures that vary, a plan-side lever that scores r = 0.130 against a 0.4 bar, and the audit that found both measures 56% contaminated |
-| `sentences/sentences.md` | A hundred sentences, half from each era, shuffled and unlabelled — the one thing here that needs a person rather than a measurement |
+| `phase1-ablations.md` | **The first time a mechanism here was tested against its own absence.** Ten runs, one plan, one switch. Both mechanisms kept — and one failed the statistic its kill criterion named before a second one, written down first, saved it at p = 0.010 |
+| `fresh-premise-panel.md` | The panel run on a book it was not tuned on. Three of eleven measures put a fresh premise outside the old floor with nothing ablated, so the floor is one novel's and not the system's |
+| `sentences/sentences.md` | A hundred sentences, half from each era, shuffled and unlabelled — the one thing here that needs a person rather than a measurement. **Still blank; still the open step** |
 | `sentences/sentences-key.md` | Its key, deliberately a separate file. Do not open it before the sheet is filled in |
+| `sentences/sentences-claude.md` | The same sheet filled in by Claude, blind, into a separate file so the blank one stays blind. A dry run of the analysis, not the step |
+| `sentences/machine-rating.md` | What that dry run says: the eras separate at 2.12 against 1.67, and **zero of seven** per-sentence signals correlate — the one that appeared to was a perfect era marker. Both are predictions to check the human rating against |
 
-The last three postdate the rest and answer a different kind of question. The first two files
-here ask *how does this prose score*; `want-obstacle-cost.md` asks *is the plan a lever for this*
-and concludes no; `sentences/` asks *would you read it again*, which no measurement in this
-project can reach.
+The `sentences/` files and `want-obstacle-cost.md` postdate the rest and answer a different kind
+of question. The first files here ask *how does this prose score*; `want-obstacle-cost.md` asks
+*is the plan a lever for this* and concludes no; `sentences/` asks *would you read it again*,
+which no measurement in this project can reach — and the machine dry run does not reach it either,
+because an LLM rating LLM prose may be measuring fluency-under-a-language-model rather than
+whether a person turns the page.
 
 Generated 2026-08-27 on an RTX 3080 10GB via Ollama, one draft per model, temperature 1.0, from
 `examples/build_inherited_glitch.py` scene 1 (900-word target).

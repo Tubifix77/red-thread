@@ -4,10 +4,16 @@ Every threshold in this project is set from a corpus rather than from taste, whi
 candidate measures get built, tested and thrown away. This file is the record of both halves.
 The refuted list is the more useful one: it is what stops the same afternoon being spent twice.
 
-Corpus as of 31 August 2026: **17 completed books, 562 scenes, 507,215 words**, `qwen3:8b` in
-every role, zero API calls. Plus four halted runs contributing 33 more committed scenes — a run
-stops rather than write later scenes against an incomplete ledger, so a halt leaves a short book
-rather than a broken one. Reference band is three cold single scenes from `gemma3:12b`, `phi4:14b`
+Corpus as of 1 September 2026: **33 runs with committed scenes across 11 distinct premises,
+1,299 scenes, 1,138,559 words**, `qwen3:8b` in every role, zero API calls. Eighteen of those runs
+are *The Debt of Years* rewritten to test code changes, which is what makes a difference
+attributable. One run is short — a halt stops rather than write later scenes against an incomplete
+ledger, so it leaves a short book rather than a broken one, and it resumes.
+
+**Every floor figure below is one novel's.** Step 25 ran the panel on a fresh premise with nothing
+ablated and three of eleven measures landed outside the four-run floor, so no number here
+transfers to another book without being re-measured
+([record](evidence/fresh-premise-panel.md)). Reference band is three cold single scenes from `gemma3:12b`, `phi4:14b`
 and `qwen3:8b` with no orchestration, in `docs/evidence`.
 
 **The corpus has two eras, and most figures below mix them.** Ten books predate the prose work of

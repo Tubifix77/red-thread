@@ -213,7 +213,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`sample.py`](redthread/sample.py) | Sentences with no context and no scores; the blind rating sheet | — |
 | [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` `replicate` `measures` `forecast` `depends` `sample` `rate` | — |
 
-**847 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**862 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
 
@@ -227,7 +227,10 @@ floor is never reported as a result, which the first floor table failed on four 
 That principle has since found its own limit. Run every check over all 562 committed scenes and
 **20 of 48 violation kinds have never fired once**, and the reasons divide: blocking kinds are
 absent from committed prose by construction, six checks test properties the scheduler or the
-brief already guarantees, and two are simply untested by any run. A check quiet because the gate
+brief already guarantees, and two were untested by any run — of which **one, `cohesion_cut`, has
+since fired 23 times at 1,299 scenes**, all `minor`, and on the same scene in every run of a plan,
+because the plan puts a full cast cut there. So it reports on the plan rather than the prose.
+`missed_deadline` is still at zero. A check quiet because the gate
 upstream works is doing its job; a check quiet because nothing has ever tested it is an unknown
 wearing the same colour. Both are catalogued in [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md).
 
@@ -372,13 +375,17 @@ accumulates and survives reload, threads reach their final states, the seam is f
 verbatim, a mid-run rejection halts cleanly with nothing from the failed scene in dynamic memory,
 and a re-run resumes from the gap. Every check catches its defect.
 
-**Proven by running it to completion, all local, zero API calls:** **eight distinct books across
-17 completed runs** — 562 scenes and 507,215 words drafted on `qwen3:8b`. The gap between those
-two numbers is the method: five runs are one premise rewritten to test code changes, which is the
-only way anything here gets attributed to a change rather than to luck.
+**Proven by running it to completion, all local, zero API calls:** **eleven distinct premises
+across 33 runs with committed scenes** — 1,299 scenes and 1,138,559 words drafted on `qwen3:8b`.
+The gap between those two numbers is the method: eighteen of the runs are *The Debt of Years*
+rewritten to test code changes, which is the only way anything here gets attributed to a change
+rather than to luck.
 
-**Four consecutive 71-scene runs have gone start to finish with no halt and no intervention**, the
-longest at **71 scenes and 62,229 words**
+**There is now a completion rate rather than a streak.** Ten 71-scene runs written under one code
+revision from one plan, for the phase 1 ablations: **seven reached scene 71 unattended.** All three
+halts were resumable and two were resumed to the end, because `write_all` stops rather than write
+later scenes against an incomplete ledger — so a halt costs a resume, not a book. What it is not
+yet is unattended: something has to notice. The longest run is **71 scenes and 62,229 words**
 ([record](docs/evidence/sixty-thousand-word-run.md)). *The Keeper's Fourth Book* was the first
 written from a premise the system had never seen with **no intervention after the plan gate**:
 nine scenes, 8,359 words, 8m35s, every scene committed, every thread terminal
@@ -386,11 +393,13 @@ nine scenes, 8,359 words, 8m35s, every scene committed, every thread terminal
 *The Book of Safe Days*, *The List* and *The Night Baker's Schedule* were regression runs against
 fresh premises, and each cost between one and three code fixes.
 
-That last figure was the real measure of how unattended this is, and the honest update is that it
-reached zero for one book and has not been retested since. Nor should it be trusted much: the
-project had no error bars until 31 August, and the first replicate — two runs of one plan with no
-change between them — retracted three claims made the day before it
-([record](docs/evidence/replicate-noise-floor.md)).
+That last figure was the real measure of how unattended this is, and it reached zero for one book.
+The phase 1 set is the better answer, because it is ten runs at one revision rather than a
+selection: **seven of ten finished unattended**, and the three that did not resumed. Nor should
+any of it be trusted far: the project had no error bars until 31 August, the first replicate
+retracted three claims made the day before it
+([record](docs/evidence/replicate-noise-floor.md)), and step 25 then found the floor those error
+bars rest on is one novel's ([record](docs/evidence/fresh-premise-panel.md)).
 
 *The Inherited Glitch* — 10 scenes, 12,169 words, from the hand-authored reference plan, generated
 end to end on `qwen3:8b` in every role on a 10GB card. Every thread walked its state machine to its
@@ -451,13 +460,30 @@ rather than as a habit.
 The full plan — 25 steps, six phases, ordered by what blocks what — is in
 **[docs/PLAN.md](docs/PLAN.md)**, kept up to date as each step lands. Where it stands:
 
-**The instruments are built.** `redthread replicate` writes N books from one plan with nothing
-varying but the sampling; `redthread measures --against` puts every difference through
-`checks.clears_noise`, which **raises** rather than guessing on a measure whose noise floor nobody
-has measured. All four mechanisms that shipped without an off switch now have one. The four-run
-floor is generating.
+**The instruments are built and the plan is 24 of 25.** `redthread replicate` writes N books from
+one plan with nothing varying but the sampling; `redthread measures --against` puts every
+difference through `checks.clears_noise`, which **raises** rather than guessing on a measure whose
+noise floor nobody has measured. All four mechanisms that shipped without an off switch now have
+one, and the four-run floor is measured.
 
-**Two phases have concluded, and one of them concluded no.** Phase 4 went looking for a second
+**Phase 1 tested two of those mechanisms against their own absence, and kept both — one of them
+narrowly.** The refrain feedback was confirmed on the statistic its criterion named. The gesture
+feedback **failed** its criterion, twice, and was saved by a second statistic: the mechanism only
+names a movement after four recurrences, so its effect accumulates across a book and a per-scene
+mean averages that away. Six feedback-on runs fall 32% from first quarter to last, four
+feedback-off runs rise 5%, p = 0.010 — and the hypothesis was written down and committed *before*
+the confirming runs existed, which is the only thing separating that from moving the goalposts.
+That near miss is now **rule VII**: a kill criterion is only as good as the measure it names, and
+an accumulating mechanism needs a measure that accumulates.
+([record](docs/evidence/phase1-ablations.md))
+
+**And the floor turned out to be one book's.** Step 25 ran the whole panel on a premise never
+written before with nothing ablated, and three of eleven measures landed outside it. Every figure
+in `checks.NOISE_FLOOR` is the noise of one novel at 71 scenes, so a comparison has to live inside
+one plan — which is what the harness was built for, and what phase 1 did.
+([record](docs/evidence/fresh-premise-panel.md))
+
+**Two other phases concluded, and one of them concluded no.** Phase 4 went looking for a second
 quality axis, found two prose measures that vary properly — `refusal_rate` and `refusal_per_ask`
 — and then failed its own correlation bar at r = 0.130 against 0.4. So `want`/`obstacle`/`cost`
 were **not** added to the scene spec. The controls are clean and the method reproduces the one
@@ -475,14 +501,19 @@ headline claim and halved the correlation.
 code can locate; the plan may be shaped by anything, including a model's reading. A bad plan costs
 one re-ask, a bad gate costs a book that never finishes at three in the morning.
 
-**What is left needs the GPU, or a person.** Phase 1 has to confirm or delete the refrain
-feedback, the gesture feedback and the re-people pass — each has machinery and none has evidence
-that clears the floor, and at least one of them should probably come out.
-
-And one step needs Tue for twenty minutes. A hundred sentences, half from each era, shuffled and
+**What is left needs a person.** One step of twenty-five, and no amount of GPU can do it. A hundred sentences, half from each era, shuffled and
 unlabelled, rated by hand once —
 [docs/evidence/sentences/sentences.md](docs/evidence/sentences/sentences.md). It is the only
 thing on the list that can say whether two days of measurable improvement produced prose anyone
 prefers, and if the answer is no, most of the instrument panel needs rethinking rather than
 extending. Building the sheet already found a confound nobody had noticed: the two sides come
 back 12% and 42% spoken, so the key records the flag and `redthread rate` splits on it.
+
+A machine has filled in a *separate copy* of the sheet as a dry run of the analysis, leaving the
+blank one blind ([record](docs/evidence/sentences/machine-rating.md)). It produces two predictions
+to check the human rating against: the eras separate (2.12 against 1.67, surviving the dialogue
+control), and **zero of seven per-sentence signals correlate**. The one that appeared to —
+`past_perfect` at r = −0.282 — is a perfect era marker, because `summary_distance` feeds candidate
+selection; inside the only era where it varies it does nothing. That is rule II firing on the
+project's own analysis output. None of it is evidence about human readers: an LLM rating LLM prose
+may be measuring fluency-under-a-language-model rather than whether a person turns the page.

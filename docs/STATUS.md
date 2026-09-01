@@ -1,13 +1,16 @@
 # Where this stands
 
-*Measured 30 August 2026, instruments rebuilt 31 August. All figures from `runs/` and
+*Measured 1 September 2026, after phase 1 and step 25. All figures from `runs/` and
 `docs/evidence`; nothing here is an estimate — but read "What a day of measuring changed" below
-before trusting any single one.*
+before trusting any single one, and read the one-line warning under question 2 before carrying
+any of them to another book.*
 
 A percentage would be a lie, because three separate things are being built and they are at very
 different places. This document is the honest read on each.
 
-Illustrated version: <https://claude.ai/code/artifact/9ef610d1-1ca6-4a0f-a937-1529ad68978c>
+Illustrated version, **a 30 August snapshot and not current**:
+<https://claude.ai/code/artifact/9ef610d1-1ca6-4a0f-a937-1529ad68978c>. The plan, illustrated and
+current to 1 September: <https://claude.ai/code/artifact/79ab4f28-db0c-4e86-80ce-c74d837b4c53>
 
 What to do next, in order, with kill criteria: **[PLAN.md](PLAN.md)**.
 
@@ -17,42 +20,55 @@ What to do next, in order, with kill criteria: **[PLAN.md](PLAN.md)**.
 
 | | Question | State |
 |---|---|---|
-| 1 | Can it get to the end of a book without help? | **usually — 6 of 8 measured runs** |
-| 2 | Is the prose free of the obvious machine tells? | **per scene, yes** |
-| 3 | Is the finished book worth reading? | **one of five axes started** |
+| 1 | Can it get to the end of a book without help? | **usually — 7 of 10 unattended; halts are resumable, and two of three were resumed to the end** |
+| 2 | Is the prose free of the obvious machine tells? | **per scene, yes — but the floor those figures rest on is one novel's** |
+| 3 | Is the finished book worth reading? | **one of five axes started, and no measure yet matches a reading** |
 
-**1 — Yes, at novel length.** **Nine distinct books** across **17 completed runs** — 562 scenes,
-507,215 words, zero API calls. The gap between those two numbers is deliberate: five runs are one
-premise rewritten to test code changes, which is how anything here gets attributed to a change
-rather than to luck.
+**1 — Yes, at novel length.** **Eleven distinct premises** across **33 runs with committed
+scenes** — 1,299 scenes, 1,138,559 words, zero API calls. The gap between those numbers is
+deliberate: eighteen of the runs are *The Debt of Years* rewritten to test code changes, which is
+how anything here gets attributed to a change rather than to luck.
 
-**And there is now a rate rather than a run of luck.** Eight 71-scene runs written back to back
-under one code revision, for the phase 1 ablations: **six reached the end, two did not.**
+**And there is now a rate rather than a run of luck.** Ten 71-scene runs written under one code
+revision for the phase 1 ablations — one plan, one switch, nothing else varying:
 
     control, nothing ablated      4 of 4 reached 71
     refrain feedback off          2 of 2
-    gesture feedback off          0 of 2   — halted at 66 and 48
+    gesture feedback off          1 of 4   — halted at 66, 48 and 33
 
-That is a better answer than the previous one, which was "four consecutive runs finished" — true,
-and selected from the runs that finished. A halt is not a crash: `write_all` stops rather than
-write later scenes against a ledger missing a scene's facts, so it leaves a short book and not a
-broken one. But an unattended writer that stops a quarter of the time is not finished.
+**Seven of ten reached scene 71 unattended.** That is a real rate rather than "four consecutive
+runs finished", which was true and selected from the runs that finished.
+
+**The more useful fact is that all three halts were resumable, and two were resumed to 71.** A
+halt is not a crash: `write_all` stops rather than write later scenes against a ledger missing a
+scene's facts, so it leaves a short book and not a broken one, and re-running picks up at the
+scene that failed. So the cost of a halt is a resume, not a book. What it is not yet is
+*unattended* — something has to notice and press the button.
+
+*Only `current-nogesture4` is still short, at 33 of 71, halted on a genuine
+`continuity_contradiction` after four repair attempts.*
 
 The causes are worth naming, because none is the same:
 
     scene 66   somatic_emotion + thematic_gloss, five repair attempts, no convergence
     scene 48   continuity_contradiction — "a watch with a cracked face" at scene 10
                against "a watch with age spots" at scene 48
+    scene 33   continuity_contradiction, four attempts
 
-The second is the system working. A writer with no memory contradicted itself forty scenes later,
-the ledger caught it, and the gate refused. The first is a repair that could not fix a true
-positive, which is the open problem: **the halt rate is a repair-convergence problem, not a
-detection one.**
+**Two of the three are the system working.** A writer with no memory contradicted itself forty
+scenes later, the ledger caught it, and the gate refused. The first is a repair that could not fix
+a true positive, which is the open problem: **the halt rate is mostly a repair-convergence
+problem, not a detection one.**
+
+*Two of these three halts report as `length` in `replicate`'s own log, which is not what either
+scene record says: `SceneResult.violations` and `Scene.violations` are separate lists and the halt
+report read the wrong one. A log that disagrees with the file on disk is worse than no log — this
+one nearly bought a false story about the ablation causing length failures.*
 
 *An earlier set, before `check_thematic_gloss` stopped reading dialogue as narration, lost two of
 four. That one check was firing on lines like* "This isn't just about punishment" *— a character
 speaking — and its remedy is to delete the offending clause, which cannot be done to a line of
-dialogue. Fixing it took the rate from 2-of-4 to 6-of-8.*
+dialogue. Fixing it took the rate from 2-of-4 to 7-of-10.*
 
 The scale test this document listed as its largest gap is done: *The Debt of Years* at
 **71 scenes and 61,733 words**, twice the longest previous run, all four threads terminal. It halted four times. Three of those were one bug — the ledger calling
@@ -78,10 +94,34 @@ the reference band: duplication .002, recap .047, and none of the three prose te
 373 scenes written since the sampler fix. What does not hold is the book: duplication across a
 whole manuscript is .066 against .002 within any scene of it, and that gap widens with length.
 
-**3 — One of five axes started.** Dialogue stopped being unmeasurable and moved — .077 to .223,
-scenes where the plan put people in a room and the prose left them silent from 23 of 71 to zero.
-The other four are untouched, and the instrument built for one of them (forecastability) was
-calibrated and found to report noise.
+**Read this before carrying any figure here to another book.** Step 25 ran the whole panel on a
+premise never written before, with *nothing ablated*, and **three of eleven measures landed outside
+the four-run floor** — `gesture_rate` 2.81 against 1.88, `recap_grammar` .064 against .035,
+`dialogue_share` .169 against .202. So every number in `checks.NOISE_FLOOR` is the noise of **one
+novel at 71 scenes**, not the noise of this system. It does not mean the measures are wrong — a
+book with more physical description has a higher gesture rate, and that is the measure working —
+but it means a comparison has to live inside one plan. Which is what the replicate harness was
+built for, and what both phase 1 verdicts did.
+([record](evidence/fresh-premise-panel.md))
+
+**3 — One of five axes started, and the panel now has a reason to distrust itself here.**
+Dialogue stopped being unmeasurable and moved — .077 to .223, scenes where the plan put people in
+a room and the prose left them silent from 23 of 71 to zero. The other four are untouched, the
+instrument built for one of them (forecastability) was calibrated and found to report noise, and a
+second (`want`/`obstacle`/`cost`) was stopped by its own kill criterion at r = 0.130 against a 0.4
+bar.
+
+**The open question is whether any of it corresponds to what a reader notices, and it is still
+open.** [The hundred-sentence sheet](evidence/sentences/sentences.md) is built and blank and needs
+a person for twenty minutes; it is the last item in the plan. A machine has filled in a separate
+copy as a dry run of the analysis
+([record](evidence/sentences/machine-rating.md)), and it says two things worth treating as
+predictions rather than results: the two eras separate under a blind rating (2.12 against 1.67,
+surviving the dialogue control), and **zero of seven per-sentence signals correlate with the
+rating**. The one that appeared to — past perfect, r = −0.282 — turned out to be a perfect era
+marker, because that measure feeds candidate selection. An LLM rating LLM prose may be measuring
+fluency-under-a-language-model rather than whether a person turns the page, so none of that is
+evidence about readers.
 
 ---
 
@@ -330,11 +370,12 @@ difference.
 
 | | |
 |---:|---|
-| **17** | distinct books finished |
-| **507,215** | words drafted locally |
-| **562** | scenes committed |
+| **11** | distinct premises written |
+| **33** | runs with committed scenes |
+| **1,138,559** | words drafted locally |
+| **1,299** | scenes committed |
 | **0** | API calls |
-| **847** | tests passing |
+| **862** | tests passing |
 
 The longest is now 61,733 words, and running it found exactly what was predicted: defects that
 do not exist below about forty scenes. What it also found is the one measure that gets *worse*
@@ -374,13 +415,21 @@ to the measure panel and asserted in both directions, so a number cannot be repo
 one. `checks.clears_noise` is the gate a difference has to pass through, and it **raises** on a
 measure nobody has measured a floor for — because *"I have not measured this"* and *"this is not
 different"* are different sentences, and confusing them is what three retracted claims were made
-of. A four-run floor is generating.
+of. **The four-run floor is measured and in `checks.NOISE_FLOOR`** — and step 25 then established
+that it describes one novel at 71 scenes rather than this system, which is a limit on every
+comparison above rather than a reason to distrust the mechanism.
 
 **And every mechanism can now be switched off.** Four shipped in two days with no way to ablate
 them, which made each unfalsifiable: the only available comparison was against a run from before
 the code existed, with other changes in it. `--no-refrain-feedback`, `--no-gesture-feedback`,
-`--no-model-refrains`, `--no-repeople`. Whether any of the four earns its place is the next
-question, and it is now askable.
+`--no-model-refrains`, `--no-repeople`.
+
+**Two of the four have now been asked and both were kept.** The refrain feedback cleared the
+statistic its kill criterion named; the gesture feedback *failed* its criterion and was kept on a
+second statistic written down before the confirming runs existed, at p = 0.010 — which is now
+**rule VII**: an accumulating mechanism needs a measure that accumulates, and a per-scene mean
+cannot see one however carefully its floor is measured
+([record](evidence/phase1-ablations.md)).
 
 ## What changed on 31 August
 

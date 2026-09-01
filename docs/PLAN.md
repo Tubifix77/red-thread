@@ -66,7 +66,7 @@ python -m redthread rate docs/evidence/sentences/sentences.md --key docs/evidenc
 
 ---
 
-## Six rules this plan obeys
+## Seven rules this plan obeys
 
 Each was learned by breaking it. Most of the steps below exist because of one of them, and the
 seventh was learned by this plan's own step 6.
