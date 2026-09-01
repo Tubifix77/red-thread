@@ -12,7 +12,7 @@ Illustrated version, **a 30 August snapshot and not current**:
 <https://claude.ai/code/artifact/9ef610d1-1ca6-4a0f-a937-1529ad68978c>. The plan, illustrated and
 current to 1 September: <https://claude.ai/code/artifact/79ab4f28-db0c-4e86-80ce-c74d837b4c53>
 
-What to do next, in order, with kill criteria: **[PLAN.md](PLAN.md)**.
+What to do next, in order, with kill criteria: **[PLAN2.md](PLAN2.md)** (PLAN.md is complete except step 21, which PLAN2 inherits as its gate).
 
 ---
 

@@ -423,3 +423,64 @@ The rule that follows — *two runs of one plan, or no claim* — costs an hour 
 and would have prevented every one of them. The corollary is narrower and more useful: **maxima
 are the least trustworthy statistic here and were the ones quoted most often.** Full floor in
 [evidence/replicate-noise-floor.md](evidence/replicate-noise-floor.md).
+
+---
+
+# Sources fetched 1 September 2026 — the PLAN2 pass
+
+*Same contract, same ledger. These trace the design choices in [PLAN2.md](PLAN2.md).*
+
+## 9. Self-correction works on external feedback, and only there
+
+The critical survey of LLM self-correction (Kamoi, Zhang, Zhang, Han, Sasano — TACL 2024) finds
+self-correction succeeds when **reliable external feedback** exists (code with interpreters, QA
+with search), with large-scale fine-tuning (~100K+ instances), or on decomposable tasks — and
+that "no prior work demonstrates successful self-correction with feedback from prompted LLMs,
+except for studies in tasks that are exceptionally suited for self-correction." Its diagnosis:
+"the bottleneck is in feedback generation."
+([arXiv 2406.01297v3](https://arxiv.org/html/2406.01297v3))
+
+**Design consequence.** PLAN2 step 32 improves the repair ladder by injecting the check's own
+located evidence span — strengthening the external-feedback channel the literature says works —
+and explicitly bans adding an LLM self-critique rung, which is the channel it says does not.
+
+## 10. Zero-shot LLM judges are a measured ceiling; trained preference models beat it
+
+LitBench (arXiv 2507.00769, EACL 2026): 2,480 held-out debiased human-labeled story comparisons
+plus a 43,827-pair training corpus. The strongest off-the-shelf judge (Claude-3.7-Sonnet) reaches
+**73%** agreement with human preference; trained Bradley–Terry and generative reward models reach
+**78%**, beating every zero-shot judge, and an online human study confirms the trained rankings
+generalize to new LLM-generated stories.
+([arXiv 2507.00769](https://arxiv.org/abs/2507.00769))
+
+At book length, LongStoryEval (Yang & Jin, arXiv 2512.12839) builds 600 books averaging 121K
+tokens with reader reviews organized by aspect, finds aggregation- and summary-based evaluation
+beat incremental judging, and shows an 8B summary-based judge (NovelCritique) outperforming
+GPT-4o in aligning with human evaluations.
+([arXiv 2512.12839](https://arxiv.org/abs/2512.12839))
+
+**Design consequence.** PLAN2 phase 10 is gated on the human sheet, and any machine judging that
+follows it is a *trained* judge used advisory-only (rule VI), never a zero-shot one — the 73%
+ceiling is why "ask a big model what it thinks" is not on the plan. Anthropic's eval guidance
+adds the separation rule: "use a different model to evaluate than the model used to generate"
+([define success](https://platform.claude.com/docs/en/test-and-evaluate/define-success)) — the
+writer must never be its own judge.
+
+## 11. Ollama exposes no logprobs — token-level sampler work is out of reach locally
+
+Verified against three primary sources: the official OpenAI-compatibility docs list `Logprobs`
+(and `Logit_bias`) as unsupported on `/v1/chat/completions` and `/v1/completions`; the word
+"logprobs" does not appear in the native `docs/api.md` at all; and the feature request is closed
+as not planned.
+([docs.ollama.com](https://docs.ollama.com/api/openai-compatibility),
+[api.md](https://github.com/ollama/ollama/blob/main/docs/api.md),
+[ollama#16117](https://github.com/ollama/ollama/issues/16117))
+
+A search-result summary claiming v0.12.11 added logprobs was **contradicted by every primary
+source** and is recorded in the ledger as such — the zero-assumption contract catching a
+plausible falsehood mid-design.
+
+**Design consequence.** The Antislop sampler's backtracking and FTPO's logit adjustment
+(ledger row, arXiv 2510.15061) cannot be ported to this stack. Anti-repetition work stays at the
+string level: the model-refrain list (its ablation is PLAN2 step 28), the refrain feedback, and
+brief-side machinery.

@@ -66,6 +66,10 @@ python -m redthread rate docs/evidence/sentences/sentences.md --key docs/evidenc
 
 ---
 
+**This plan is complete except step 21. What comes next is [PLAN2.md](PLAN2.md)** — designed
+1 September at this milestone, gated the same way: step 21 remains open here and is PLAN2's
+phase 10 gate.
+
 ## Seven rules this plan obeys
 
 Each was learned by breaking it. Most of the steps below exist because of one of them, and the
