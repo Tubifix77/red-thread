@@ -76,13 +76,16 @@ the refusal pair phase 4 was stopped over is the most premise-stable part of the
 [evidence/portable-measures.md](evidence/portable-measures.md) — kept because a pre-registration
 that quietly vanishes when partly wrong is worse than none.*
 
-**27. Price the two-run screen.** A four-run floor costs ~5 GPU-h before an experiment starts
-([phase1.sh](../scripts/phase1.sh)); if an n=2 floor predicts the n=4 verdict often enough, cheap
-screening becomes honest. From the two existing four-run sets (floor, gesture-at-n=4): bootstrap
-every 2-subsample floor, count how often the 2-run floor would have flipped a phase 1 verdict.
-Deliverable: a stated error rate and a written protocol — *screen at n=2, confirm at n=4, never
-publish from a screen* — or, if the error rate is bad, a sentence in MEASUREMENTS.md saying n=2
-screening is dead and why.
+**27. Price the two-run screen.** ✅ **Done, same day — a 2-run floor is half the 4-run floor,
+and every one of its errors is a false claim.** Across 72 verdict tests (both phase 1 comparisons
+× every live measure × all 6 two-run control floors): 15 flips, **all 15 false positives, 0 false
+negatives** — step 6's 12.6% difference would have been called a real effect by 3 of the 6
+possible n=2 floors. The protocol the numbers wrote: **an n=2 screen may kill and may never
+confirm** — a difference inside a 2-run floor may be dropped (~2.5 GPU-h instead of ~5, exception
+rate 0 in 72), a difference outside one decides only where the next GPU-hours go, and nothing
+publishable ever comes from a screen. Full table and limits in
+[evidence/two-run-screen.md](evidence/two-run-screen.md); re-run against the premise-B n=4 floor
+after step 30 before trusting it off *The Debt of Years*.
 
 ---
 
@@ -233,7 +236,7 @@ has validated.
 
 | phase | steps | GPU | gate | most likely outcome |
 |---|---|---:|---|---|
-| 7 — instrument, from the shelf | 26 ✅ –27 | 0 h | none | 26: portable subset exists and it is small — 3 of 13 |
+| 7 — instrument, from the shelf | 26–27 ✅✅ | 0 h | none | done: 3 of 13 portable; n=2 screens may kill, never confirm |
 | 8 — the last two switches | 28–30 | ~6 h | before any write-path change | at least one of the two mechanisms comes out |
 | 9 — reliability | 31–32 | ~5 h | after phase 8 | the ladder's real convergence rates, then one targeted fix — or the finding that halts are correct |
 | 10 — reader | 33–35 | ~2 h + Tue | **step 33 is the gate** | the panel becomes either validated or explicitly regression-only |

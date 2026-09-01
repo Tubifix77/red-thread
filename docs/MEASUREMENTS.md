@@ -624,6 +624,16 @@ Two designed expectations failed on contact: `recap_block_share` is vacuous rath
 class — fails outright, its 13% second-book spread exceeding its own 11% floor. And the pair
 phase 4 was stopped over, the refusal measures, are the most premise-stable numbers in the panel.
 
+## A two-run floor is half a four-run floor, and errs only toward claiming
+
+*PLAN2 step 27, zero GPU. Full table in [evidence/two-run-screen.md](evidence/two-run-screen.md).*
+
+Every 2-run subsample of the control set, against the published n=4 verdicts: median 2-run floor
+= 0.47–0.79 of the 4-run floor (mostly ~0.50); 72 verdict tests, 15 flips, **all false positives,
+zero false negatives**. Step 6's 12.6% gesture difference clears 3 of the 6 possible n=2 floors —
+an n=2 screen would have claimed the effect the n=4 floor refuses. Protocol: **screen at n=2 only
+to kill; confirm at n=4; publish from a screen never.**
+
 ## The strongest signal in the panel was a confound
 
 *Step 21's analysis, run with a machine standing in for the reader. Full write-up in
