@@ -28,7 +28,7 @@ makes a claim — the claim has been through `checks.clears_noise`.
 | phase | done | state |
 |---|---|---|
 | 0 — trustworthy instruments | **4 of 4** | the floor is n=4 at 71 scenes |
-| 1 — confirm what exists | 3.5 of 4 | refrain **confirmed**; gesture killed on its criterion, **deletion suspended** pending n=4 |
+| 1 — confirm what exists | **4 of 4** | **both mechanisms kept** — gesture failed its criterion and was saved by a better one |
 | 2 — tension on embeddings | 5 of 5 | **three attempts, three controls, three failures** |
 | 3 — dependency graph | 3 of 3 | step 16 **suggestive, not established** — 67% on 18, after its confound |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
@@ -271,7 +271,17 @@ phrase was selected for being the most entrenched thing in its book at that mome
 reading is **no evidence of suppression**, not "the feedback backfires". Either way, step 5 now
 rests entirely on the ablation, with nothing banked in advance.*
 
-**6. Ablate the gesture feedback.** ⛔⏳ **Kill criterion fired; deletion suspended.**
+**6. Ablate the gesture feedback.** ✅ **Criterion failed; mechanism kept.** At n=4 the
+accumulation statistic — written down and committed *before* the confirming runs existed — gives
+**p = 0.010** by exact rank test: the four feedback-off runs rank 6th, 8th, 9th and 10th of ten
+on gesture-rate decline across a book. Dropping the run that halted at 32 scenes leaves p = 0.024.
+Resuming the two earlier halts completed them at 71 scenes, so the length confound is gone too.
+
+*The pre-registered statistic still says nothing at n=4: whole-book `gesture_rate` 1.88 against
+2.13, inside the floor. Both facts stand. **Had the plan named that statistic and stopped, a
+working mechanism would have been deleted with a clean conscience and a documented criterion.***
+
+*(The figures below are the n=2 state, kept as they were recorded.)*
 `gesture_rate` 1.88 → 2.00, a 6% difference inside the 22% floor — no measurable return on the
 statistic the plan named.
 

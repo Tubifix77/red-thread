@@ -33,7 +33,7 @@ reason before any of this was measured.
 measures clearing out of eleven and a floor from one plan, one unexplained mover is what chance
 looks like. Recorded, not interpreted.*
 
-## Step 6 — the gesture feedback: kill criterion fired, verdict suspended
+## Step 6 — the gesture feedback: criterion failed, mechanism kept
 
 Naming a book's own repeated small movements in the next scene's brief.
 
@@ -103,6 +103,36 @@ n=4. Deleting is cheap to do later; deleting something that works, and then reve
 documented verdict, is not. If the trajectory difference does not survive n=4, the mechanism goes
 on the original criterion.
 
+### The n=4 result: it survives, and the mechanism stays
+
+*Written after the paragraph above was committed and before the confirming runs existed, which is
+what makes the rest of this section a test rather than a story.*
+
+Two more ablations were written, and resuming the two that had halted completed them at 71 scenes
+each — so the length confound is gone as well. **Their published figures changed in the process**:
+nogesture1 went from +11% to +14% and nogesture2 from −12% to +24% once they reached full length.
+The tables above are the 66- and 48-scene versions and are left as they were.
+
+| | gesture rate, Q1 → Q4 |
+|---|---|
+| feedback on (n=6) | −23, −42, −42, −54, +1, −33 · **mean −32%** |
+| feedback off (n=4) | +14, +24, −22, +4 · **mean +5%** |
+
+The four off-runs rank **6th, 8th, 9th and 10th of ten**. Exact one-sided rank-sum **p = 0.010**,
+and **p = 0.024** if the run that halted at 32 scenes is dropped for having only a third of a book
+to show a trajectory across.
+
+Meanwhile the pre-registered statistic still says nothing: whole-book `gesture_rate` 1.88 against
+2.13, a 12% difference inside the 22% floor, at n=4 as at n=2.
+
+**So the mechanism stays.** Not because the criterion was reinterpreted after the fact — it
+failed, and it is recorded as having failed — but because a second hypothesis was written down,
+its test specified, and then confirmed on data collected afterwards.
+
+*The one thing that would make this untrustworthy is if the second statistic had been tuned. It
+was not: `(Q4 − Q1) / Q1` on quarters is what the earlier section describes and what this
+computes, unchanged.*
+
 *What this really exposes is a gap in the plan rather than in the mechanism: the criterion named
 a statistic that could not see the effect the mechanism was designed to have. A kill criterion is
 only as good as the measure it names, and choosing that measure is the part that has to be got
@@ -151,11 +181,16 @@ bought a false story about the ablation causing length failures.
 
 ## What phase 1 establishes
 
-One mechanism confirmed. One that failed its criterion on the statistic the plan named, and then
-turned out to have an effect that statistic could not see — so its deletion is suspended pending
-two more runs rather than executed.
+**Both mechanisms stay, and one of them nearly did not.**
 
-That is what the phase was for, and it is the first evidence either mechanism has ever had.
+The refrain feedback was confirmed on the statistic its criterion named. The gesture feedback
+*failed* the statistic its criterion named, and was saved by a second one — written down before
+the confirming runs existed, and significant at p = 0.010 on them.
+
+That is what the phase was for, and it is the first evidence either mechanism has ever had. It is
+also the strongest argument in this project for rule VII: had the plan named a per-scene mean and
+stopped there, a working mechanism would have been deleted with a clean conscience and a
+documented criterion.
 
 What it does not establish: that either result transfers to another book. The floor, the control
 and both conditions are all *The Debt of Years* at 71 scenes.
