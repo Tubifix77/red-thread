@@ -602,6 +602,48 @@ no dialogue. Detail above.
 
 ---
 
+## The strongest signal in the panel was a confound
+
+*Step 21's analysis, run with a machine standing in for the reader. Full write-up in
+[evidence/sentences/machine-rating.md](evidence/sentences/machine-rating.md); the human rating is
+still outstanding and this does not replace it.*
+
+A hundred sentences, fifty from before the prose work and fifty from after, shuffled and rated
+blind on a three-point scale. Seven per-sentence signals were then correlated against the ratings.
+Nothing reached r = 0.3, and the closest was the confound:
+
+| signal | r | |
+|---|---:|---|
+| `past_perfect` | −0.282 | **0 of 50 current-era, 28 of 50 pre-prose-work** |
+| `gesture` | +0.185 | |
+| `spoken` | +0.173 | |
+| `words` | +0.100 | |
+| `gloss` | −0.080 | |
+| `somatic` | +0.018 | |
+| `slop` | +0.018 | |
+
+`summary_distance` feeds candidate selection — the pipeline prefers the draft that is happening
+over the draft that is recapping — so the current era suppresses past perfect *structurally*. The
+measure is a perfect era marker, and its correlation with the ratings is the era difference
+arriving through a different door. Inside the only era where it varies, past-perfect sentences
+score 1.57 [1.32, 1.82] against 1.73 [1.50, 1.95] — fully overlapping, nothing.
+
+**So the count is zero of seven, not one of seven.** Rule II again, and this time it fired on the
+project's own analysis output rather than on a measure: the tool reported an r, correctly labelled
+it "nothing", and the reason it was worth checking anyway is that it was the *largest* number in
+the column. A ranking is an invitation to look at the top of it.
+
+Two things the same run establishes, both about the design rather than the result:
+
+- The **speech control built into `rate` earned its place.** The two eras differ from .077 to .223
+  in dialogue share, so a rater who merely likes dialogue reproduces the era gap for free. The
+  split exists because that was flagged when the sheet was built, before any rating existed, and
+  the gap survives it (2.14 against 1.59 on narrated sentences only).
+- The **sheet cannot test most of this project's work.** Duplication, refrains, cross-scene
+  gesture repeats and repetition concentration are manuscript properties and cannot be asked of
+  one sentence. The r < 0.3 finding applies to seven per-sentence signals and nothing else — and
+  every mechanism phase 1 kept lives outside that seven.
+
 ## A cap that was read as a quota
 
 The extraction prompt said *"AT MOST 15 FACTS. A hard limit, not a guideline."* Across every book

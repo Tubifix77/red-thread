@@ -32,7 +32,7 @@ makes a claim — the claim has been through `checks.clears_noise`.
 | 2 — tension on embeddings | 5 of 5 | **three attempts, three controls, three failures** |
 | 3 — dependency graph | 3 of 3 | step 16 **suggestive, not established** — 67% on 18, after its confound |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
-| 5 — the sentence | 2 of 3 | **the only step left in the plan** — step 21 needs Tue for twenty minutes |
+| 5 — the sentence | 2 of 3 | **the only step left in the plan** — step 21 needs Tue for twenty minutes; a [machine dry run](evidence/sentences/machine-rating.md) has exercised the analysis |
 | 6 — write the rule down | **3 of 3** | the panel does not transfer between books |
 
 ### Picking this up
@@ -57,7 +57,12 @@ python -m redthread measures runs/current-floor1 runs/current-floor2 runs/curren
 
 The one thing none of this can do is [step 21](#phase-5--the-sentence). The sheet is at
 [evidence/sentences/sentences.md](evidence/sentences/sentences.md) and takes about twenty
-minutes.
+minutes. It is untouched and stays that way; the machine's ratings went to a separate file so the
+blind is intact. To score it once it is filled in:
+
+```bash
+python -m redthread rate docs/evidence/sentences/sentences.md --key docs/evidence/sentences/sentences-key.md
+```
 
 ---
 
@@ -665,8 +670,21 @@ beside the sheet is not a blind and the person who has to resist reading it is t
 the prose.*
 
 **21. Rate a hundred sentences by hand, once.** ⏳ **The sheet is built and waiting for a
-person.** Fifty from before the prose work, fifty from after, shuffled and unlabelled. Would you
-read it again. This is the only ground truth this project will ever have on the question.
+person. A machine has now filled in a copy of it, which is a dry run and not the step.** Fifty
+from before the prose work, fifty from after, shuffled and unlabelled. Would you read it again.
+This is the only ground truth this project will ever have on the question.
+
+*The dry run is written up in
+[machine-rating.md](evidence/sentences/machine-rating.md), with the ratings themselves in
+[sentences-claude.md](evidence/sentences/sentences-claude.md). Claude rated the sheet blind and it
+says two things, both of which are **predictions to check the human rating against, not results**:
+the eras separate (2.12 against 1.67, non-overlapping, and it survives both the dialogue control
+and the one triplicated sentence), and **zero of seven per-sentence signals correlate** — the
+closest, `past_perfect` at r = −.282, turns out to be a perfect era marker, because
+`summary_distance` feeds candidate selection and the current era suppresses past perfect
+structurally. Within the era where it varies it does nothing. Rule II, found in the project's own
+analysis output. The caveat is the whole caveat: an LLM rating LLM prose may be measuring
+fluency-under-a-language-model rather than whether a person turns the page.*
 
 *[docs/evidence/sentences/sentences.md](evidence/sentences/sentences.md) — 100 sentences, one
 digit per line, about twenty minutes. Both sides are* The Debt of Years*, so the premise is held
