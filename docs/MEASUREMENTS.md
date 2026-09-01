@@ -608,6 +608,22 @@ no dialogue. Detail above.
 
 ---
 
+## Three measures survive the crossing between books
+
+*PLAN2 step 26, zero GPU. Full derivation in
+[evidence/portable-measures.md](evidence/portable-measures.md).*
+
+`checks.PORTABLE` = `refusal_rate`, `refusal_per_ask`, `somatic_share` — the only measures whose
+floor transfers between the two same-writer replicate groups that exist (*Debt of Years* n=4,
+*Ink of the Drowned* n=2). Enforced, not advised: `clears_noise(..., cross_book=True)` raises on
+everything else, and `redthread measures` detects differing titles itself and prints non-portable
+rows without a verdict.
+
+Two designed expectations failed on contact: `recap_block_share` is vacuous rather than portable
+(zero everywhere has no floor to transfer), and `dialogue_share` — a share, the predicted-portable
+class — fails outright, its 13% second-book spread exceeding its own 11% floor. And the pair
+phase 4 was stopped over, the refusal measures, are the most premise-stable numbers in the panel.
+
 ## The strongest signal in the panel was a confound
 
 *Step 21's analysis, run with a machine standing in for the reader. Full write-up in

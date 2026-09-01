@@ -1798,7 +1798,30 @@ def floor_is_established(measure: str) -> bool:
     return measure not in DEGENERATE_FLOOR
 
 
-def clears_noise(measure: str, a: float, b: float) -> bool:
+# Which measures hold their values across *books*, not merely across runs of one plan.
+#
+# Step 25 established that the floor is one novel's: three of eleven measures put a fresh premise
+# outside it with nothing ablated. This is the enforceable consequence (PLAN2 step 26). A measure
+# is portable iff, on the two same-writer replicate groups that exist — *The Debt of Years* at
+# n=4 and *The Ink of the Drowned* at n=2 — (1) its floor is established and informative, (2) it
+# is not length-sensitive, (3) the second book's internal spread fits inside the floor, and
+# (4) the gap between the two books' group means fits inside the floor.
+#
+# Three of thirteen pass: the two refusal measures and somatic_share. The refusal pair is the
+# irony worth keeping — the measures phase 4 was stopped over are the most premise-stable numbers
+# in the panel. Two pre-registered expectations failed: `recap_block_share` is vacuous rather
+# than portable (zero everywhere has no floor to transfer), and `dialogue_share` fails both
+# conditions (its 13% spread on the second book exceeds its own 11% floor).
+#
+# PROVISIONAL: the second book is n=2 and the between-book estimate is one premise pair. Step 30
+# takes that side to n=4; until then this set errs toward refusing. Derivation:
+# docs/evidence/portable-measures.md.
+PORTABLE: frozenset[str] = frozenset({
+    "refusal_rate", "refusal_per_ask", "somatic_share",
+})
+
+
+def clears_noise(measure: str, a: float, b: float, cross_book: bool = False) -> bool:
     """Is the difference between `a` and `b` larger than this measure moves on its own?
 
     False does not mean the two are the same. It means this instrument cannot tell them apart,
@@ -1807,7 +1830,17 @@ def clears_noise(measure: str, a: float, b: float) -> bool:
 
     Raises KeyError for a measure with no measured floor. That is deliberate: a function that
     returned True for anything unmeasured would be worse than no function at all.
+
+    `cross_book=True` says the two values come from different books. That raises ValueError for
+    any measure outside `PORTABLE`, because the floor was measured on one novel and step 25
+    showed it does not transfer: a verdict would be judged against noise from the wrong book.
     """
+    if cross_book and measure not in PORTABLE:
+        raise ValueError(
+            f"{measure!r} is not portable across books: its floor is one novel's "
+            f"(docs/evidence/portable-measures.md). Cross-book comparisons are only "
+            f"answerable on: {', '.join(sorted(PORTABLE))}."
+        )
     floor = noise_floor(measure)
     mean = (abs(a) + abs(b)) / 2
     if mean == 0:

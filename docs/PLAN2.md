@@ -57,25 +57,24 @@ step (33) are unaffected.
 
 ## Phase 7 — Instrument, from the shelf  *(0 GPU-h)*
 
-**26. Mine the cross-book floor out of the corpus that already exists.** Four premises in `runs/`
-have true replicates (*Debt of Years* ×18, *Four-Minute Tide* ×4, *Keeper's Fourth Book* ×2,
-*Ink of the Drowned* ×2). For every measure in the panel: within-premise spread vs between-premise
-spread, from disk. The deliverable is a **portable subset** — the measures whose between-premise
-movement stays inside their within-premise floor — published as `checks.PORTABLE`, with
-`clears_noise` refusing cross-book comparisons on any measure outside it.
+**26. Mine the cross-book floor out of the corpus that already exists.** ✅ **Done, same day —
+3 of 13 measures are portable: `refusal_rate`, `refusal_per_ask`, `somatic_share`.** Published as
+`checks.PORTABLE` and enforced: `clears_noise(..., cross_book=True)` raises on everything else,
+and `redthread measures` detects differing titles itself. Full table in
+[evidence/portable-measures.md](evidence/portable-measures.md).
 
-*Pre-registered expectation, written before the analysis runs: step 25 already puts
-`gesture_rate`, `recap_grammar` and `dialogue_share` outside; the candidates it left standing are
-shares and zero-anchored counts (`recap_block_share` at zero everywhere). If fewer than three
-measures are portable, that is the finding — cross-book claims become impossible in code, not
-merely discouraged.*
+*The step was designed believing four premises had replicates; measurement corrected it before
+anything was computed. The Four-Minute Tide ×4 are four different plans, and `keeper`/`keeper2`
+differ in both plan and story — so the real groups are two, Debt n=4 and Ink n=2, and the
+between-premise estimate is one premise pair until step 30. Of the pre-registered expectations,
+the three step-25 failures failed again as predicted; `recap_block_share` turned out vacuous
+rather than portable (zero everywhere has no floor to transfer); and `dialogue_share` — a share,
+the predicted class — fails its own floor on the second book. The unpredicted finding:
+the refusal pair phase 4 was stopped over is the most premise-stable part of the panel.*
 
-**Kill criterion:** none — this is calibration, and both outcomes are deliverables.
-
-*One honesty constraint carried from PLAN.md: the 18 Debt runs span several code eras
-([MEASUREMENTS.md](MEASUREMENTS.md) names the split), so within-premise spread is computed only
-over same-era replicates, never pooled across eras — pooling would inflate the within-premise
-floor and launder unportable measures into the subset.*
+*The pre-registered expectation and its scoring are preserved verbatim in
+[evidence/portable-measures.md](evidence/portable-measures.md) — kept because a pre-registration
+that quietly vanishes when partly wrong is worse than none.*
 
 **27. Price the two-run screen.** A four-run floor costs ~5 GPU-h before an experiment starts
 ([phase1.sh](../scripts/phase1.sh)); if an n=2 floor predicts the n=4 verdict often enough, cheap
@@ -99,17 +98,26 @@ book's refrains are the model's own constructions, found in all seven books then
 - **Kill criterion:** both inside the floor → the list is prompt weight with no measurable return;
   it comes out of the brief (the data file stays, as measurement).
 
-**29. Ablate the re-people pass** (`--no-repeople`). Two runs, off, same design. This pass was 90%
-broken behind a green suite until step 7 rebuilt it; it has never been tested against its absence.
+**29. Test the re-people pass — corrected design, because the switch is not where the draft
+said.** `--no-repeople` lives on the `plan` command, not on `replicate`
+([cli.py](../redthread/cli.py)): the pass is plan-time, so "two runs with the switch off" would
+regenerate the plan and differ from its control by far more than the switch. The design that
+holds everything else fixed uses the standalone `repeople` command as a **transform**:
 
-- **Statistic, two-stage:** first the deterministic one — solo-scene count in the written book's
-  plan (the pass acts on the plan, so its first-order effect is countable before a word of prose
-  is judged); then `dialogue_share` (floor 11%, a share — rule VII typed) for the prose-level
-  claim.
-- **Kill criterion:** if solo-scene count does not move, the pass does nothing and comes out
-  regardless of prose measures. If it moves but `dialogue_share` stays inside the floor, the pass
-  is doing plan work with no prose consequence — it stays, restated as a plan-repair tool rather
-  than a quality mechanism.
+- **Stage 1, deterministic, 0 GPU:** apply the pass to the twelve stored solo plans
+  (`runs/solo-a1..a6`, `solo-b1..b6`) and count solo scenes before and after. The pass's
+  first-order effect is countable without writing a word.
+- **Stage 2, prose, only if stage 1 moves:** take the solo-heaviest plan, write n=2 from it and
+  n=2 from `repeople(plan)` — one plan, one deterministic transform, nothing else differs.
+  **Statistic:** `dialogue_share` (floor 11%, a share — rule VII typed). Caveat inherited from
+  step 26: `dialogue_share` is *not* portable across books, so this comparison stays within the
+  one premise, which stage 2's design already guarantees.
+- **Kill criterion:** stage 1 unmoved → the pass does nothing and comes out, no GPU spent. Stage
+  1 moves but `dialogue_share` stays inside the floor → the pass stays as a plan-repair tool and
+  the quality claim is dropped.
+- **Note the prose claim is now weaker than drafted:** `dialogue_share` on a fresh premise sits
+  outside its own floor (step 26), so even a within-premise verdict here describes this premise,
+  not the writer.
 
 **30. Extend the premise-B floor to n=4** (+2 runs of the 24-scene `solo-b2` plan, ~1.5 GPU-h,
 sharing the frozen writer with the two step 25 runs). This is the first full floor on a second
@@ -225,7 +233,7 @@ has validated.
 
 | phase | steps | GPU | gate | most likely outcome |
 |---|---|---:|---|---|
-| 7 — instrument, from the shelf | 26–27 | 0 h | none | a portable subset exists and it is small |
+| 7 — instrument, from the shelf | 26 ✅ –27 | 0 h | none | 26: portable subset exists and it is small — 3 of 13 |
 | 8 — the last two switches | 28–30 | ~6 h | before any write-path change | at least one of the two mechanisms comes out |
 | 9 — reliability | 31–32 | ~5 h | after phase 8 | the ladder's real convergence rates, then one targeted fix — or the finding that halts are correct |
 | 10 — reader | 33–35 | ~2 h + Tue | **step 33 is the gate** | the panel becomes either validated or explicitly regression-only |

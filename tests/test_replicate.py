@@ -85,6 +85,42 @@ class TestSomaticBeats(unittest.TestCase):
                          checks.somatic_beats(text)[0])
 
 
+class TestPortable(unittest.TestCase):
+    """The subset of the panel that may be compared across books at all.
+
+    Derived in docs/evidence/portable-measures.md from the two same-writer replicate groups that
+    exist. These tests pin the *contract*, not the derivation: membership must stay consistent
+    with the floor rules, and the cross-book gate must refuse everything outside it.
+    """
+
+    def test_portable_is_a_subset_of_the_floored_panel(self):
+        self.assertTrue(checks.PORTABLE <= set(checks.NOISE_FLOOR))
+
+    def test_nothing_length_sensitive_is_portable(self):
+        # A length-sensitive measure compares two books' lengths, never their prose.
+        self.assertFalse(checks.PORTABLE & checks.LENGTH_SENSITIVE)
+
+    def test_every_portable_floor_is_established_and_informative(self):
+        for name in checks.PORTABLE:
+            self.assertTrue(checks.floor_is_established(name), name)
+            self.assertTrue(checks.floor_is_informative(name), name)
+
+    def test_cross_book_refuses_a_non_portable_measure(self):
+        # gesture_rate is the measure step 25 caught: 2.81 on a fresh premise against 1.88,
+        # with nothing ablated. A cross-book verdict on it would judge one book's prose
+        # against another book's noise.
+        with self.assertRaises(ValueError):
+            checks.clears_noise("gesture_rate", 1.88, 2.81, cross_book=True)
+
+    def test_cross_book_answers_a_portable_measure(self):
+        self.assertIsInstance(
+            checks.clears_noise("somatic_share", 0.373, 0.312, cross_book=True), bool)
+
+    def test_within_book_behaviour_is_unchanged_by_the_gate(self):
+        self.assertEqual(checks.clears_noise("gesture_rate", 1.0, 4.0),
+                         checks.clears_noise("gesture_rate", 1.0, 4.0, cross_book=False))
+
+
 class TestClearsNoise(unittest.TestCase):
     """The function that has to be passed through before a difference may be called one."""
 

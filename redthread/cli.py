@@ -8,6 +8,7 @@ read as a complete, unambiguous instruction to a writer who has amnesia, no mode
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -609,8 +610,30 @@ def cmd_measures(args) -> int:
         raise SystemExit("no committed scenes in any --against run")
     other_means = print_group(args.against_label or "Group B", other)
 
+    # Two groups from different books get a different contract. The floor was measured on one
+    # novel and does not transfer (step 25; docs/evidence/portable-measures.md), so across books
+    # only the portable subset is judged — everything else is shown without a verdict. Detected
+    # from the runs themselves rather than trusted to a flag, because the person invoking this
+    # at midnight is the one the guard exists for.
+    def _titles(paths) -> set[str]:
+        out = set()
+        for p in paths:
+            story = Path(p) / "story.json"
+            if story.is_file():
+                try:
+                    out.add(json.loads(story.read_text(encoding="utf-8")).get("title", "?"))
+                except (OSError, json.JSONDecodeError):
+                    out.add("?")
+        return out
+
+    cross_book = len(_titles(args.runs) | _titles(args.against)) > 1
+
     print(f"\nDifference, against a floor from {checks.NOISE_FLOOR_N} identical runs "
           f"({checks.NOISE_FLOOR_SOURCE})")
+    if cross_book:
+        print("  ⚠ These groups are different books. The floor is one novel's, so a verdict is "
+              f"only\n    answerable on the portable subset: {', '.join(sorted(checks.PORTABLE))}."
+              f"\n    Every other row is shown as numbers, not as a comparison.")
 
     # Comparing two books of different lengths on a manuscript-wide measure compares their
     # lengths. Said before the table rather than after it, because the table is what gets quoted.
@@ -624,18 +647,23 @@ def cmd_measures(args) -> int:
               f"\n    those grow with the length of the book, so the difference is the length.")
     survived = []
     for name in checks.NOISE_FLOOR:
+        if cross_book and name not in checks.PORTABLE:
+            print(f"  {name:<26} {means[name]:>10.3f} {other_means[name]:>10.3f}  "
+                  f"not portable across books — no verdict")
+            continue
         line = checks.describe_difference(name, means[name], other_means[name])
         if mismatched and name in checks.LENGTH_SENSITIVE:
             line += "   [length]"
         print("  " + line)
-        if checks.clears_noise(name, means[name], other_means[name]):
+        if checks.clears_noise(name, means[name], other_means[name], cross_book=cross_book):
             if mismatched and name in checks.LENGTH_SENSITIVE:
                 continue
             survived.append(name)
     # Split three ways, because "did not clear the floor" means three different things. A
     # measure whose spread exceeds its own mean was never tested; one whose floor is zero because
     # nothing ever moved has no floor to clear; the rest are a real comparison.
-    exhausted = [n for n in checks.NOISE_FLOOR if not checks.floor_is_informative(n)]
+    exhausted = [n for n in checks.NOISE_FLOOR if not checks.floor_is_informative(n)
+                 and (not cross_book or n in checks.PORTABLE)]
     survived = [n for n in survived if checks.floor_is_informative(n)]
     unestablished = [n for n in survived if not checks.floor_is_established(n)]
     survived = [n for n in survived if checks.floor_is_established(n)]
