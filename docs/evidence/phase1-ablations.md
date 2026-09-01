@@ -108,6 +108,27 @@ a statistic that could not see the effect the mechanism was designed to have. A 
 only as good as the measure it names, and choosing that measure is the part that has to be got
 right before the GPU hours are spent, not after.*
 
+## Why one criterion saw its effect and the other could not
+
+The two mechanisms are built the same way: each names a thing in the next brief only *after* it
+has recurred a few times. So both should produce an effect that grows across a book. One criterion
+saw that and the other did not, and the difference is not the mechanism.
+
+    step 5   repetition_concentration   a manuscript-level measure — it aggregates across
+                                        every scene, so accumulation is already in the number
+    step 6   gesture_rate               a mean of per-scene rates — which averages the
+                                        accumulation away by construction
+
+Checking the refrain feedback through the same accumulation lens confirms it, weakly: concentration
+rises 7% from first quarter to last with the feedback on and 34% with it off, across the same eight
+runs. Directionally right, far too noisy to rest anything on, and it does not need to be — **the
+pre-registered whole-book comparison already cleared the floor.** That is what a well-chosen
+statistic buys.
+
+**The generalisation:** a mechanism that acts by accumulation needs a measure that accumulates. A
+per-scene mean is the wrong instrument for it however carefully the floor is measured, and no
+amount of replication fixes a statistic that cannot see the effect. This is now rule VII.
+
 ## The halts, and a log that lied
 
 Two of eight post-fix runs halted, both in the gesture condition — 0 of 4 control, 0 of 2 refrain,

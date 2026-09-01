@@ -63,7 +63,8 @@ minutes.
 
 ## Six rules this plan obeys
 
-Each was learned by breaking it. Most of the steps below exist because of one of them.
+Each was learned by breaking it. Most of the steps below exist because of one of them, and the
+seventh was learned by this plan's own step 6.
 
 | | |
 |---|---|
@@ -73,6 +74,7 @@ Each was learned by breaking it. Most of the steps below exist because of one of
 | **IV** | **A check over a scheduler-guaranteed field only confirms the scheduler.** Four checks are quiet for this reason and read as coverage. |
 | **V** | **Test every new plan check against the hand-authored reference plan first.** Four have been reverted for firing on it, each matching vocabulary rather than the property. |
 | **VI** | **Quality is addressed at the plan, never at the gate.** Gating on a model's reading of a story is the rule this project exists to keep; the plan is the lever that rule leaves open. |
+| **VII** | **A kill criterion is only as good as the measure it names, and an accumulating mechanism needs a measure that accumulates.** Step 5's criterion used a manuscript-level statistic and saw its effect; step 6's used a per-scene mean and could not. Both mechanisms work the same way — naming a thing only after it recurs — so the difference in verdict was the difference in statistic. Choose it before the GPU hours, not after. |
 
 ---
 
