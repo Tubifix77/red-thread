@@ -209,9 +209,24 @@ direction, and no per-sentence signal reaches r = 0.3. Every branch is actionabl
 says zero-shot judging is a ceiling (73%) and *trained* preference models beat it (78%,
 [LitBench](https://arxiv.org/abs/2507.00769)); at book length, an 8B summary-based judge
 (NovelCritique) outperforms GPT-4o in aligning with human evaluations
-([LongStoryEval](https://arxiv.org/abs/2512.12839)). Both are open releases; whether either runs
-under Ollama on a 10GB card is **unverified until tried** — the feasibility check is the first
-half of this step and its only committed part. If feasible: pre-registered pairwise test, judge
+([LongStoryEval](https://arxiv.org/abs/2512.12839)). **The feasibility half is now done, from the sources rather than from assumption, and it is
+worse than "both are open releases" suggested:**
+
+- **LitBench's reward models are not released.** Its HuggingFace collection holds three
+  *datasets* — Train, Rationales, Test — and the paper. The Bradley–Terry and generative models
+  that scored 78% are not there
+  ([collection](https://huggingface.co/collections/SAA-Lab/litbench-68267b5da3aafe58f9e43461)).
+  Reproducing them means training from the 43,827-pair corpus, which is a project, not a step.
+- **NovelCritique's weights are released, with two catches.** It is Llama-3.1-8B-Instruct
+  fine-tuned — a size the card can hold at Q4 — but the checkpoint is hosted on a *personal
+  university SharePoint link*, and the README states **no licence**
+  ([repo](https://github.com/DingyiYang/LongStoryEval)). Unlicensed weights from a personal link
+  are not something to pull into this project, and it would additionally need GGUF conversion
+  before Ollama could serve it.
+
+**So the step as drafted has no cheap path, and that is the finding.** Both remaining options are
+expensive: train a reward model from LitBench's released corpus, or ask the NovelCritique authors
+for a licence. Neither is justified before step 33 says the direction is real. If feasible: pre-registered pairwise test, judge
 prefers current-era over pre-prose-work *Debt* chapters in ≥ k of n pairs (k set by binomial
 power before the runs, not after). **Rule VI stands: nothing model-judged ever gates a commit.**
 Advisory scoring only, and only if step 33 confirmed the eras separate for a person — a trained
