@@ -32,8 +32,8 @@ makes a claim — the claim has been through `checks.clears_noise`.
 | 2 — tension on embeddings | 5 of 5 | **three attempts, three controls, three failures** |
 | 3 — dependency graph | 3 of 3 | step 16 **suggestive, not established** — 67% on 18, after its confound |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
-| 5 — the sentence | 2 of 3 | **step 21 needs Tue for twenty minutes** — the sheet is built |
-| 6 — write the rule down | 2 of 3 | step 25 is the final panel; needs phase 1 |
+| 5 — the sentence | 2 of 3 | **the only step left in the plan** — step 21 needs Tue for twenty minutes |
+| 6 — write the rule down | **3 of 3** | the panel does not transfer between books |
 
 ### Picking this up
 
@@ -728,8 +728,21 @@ result, so a clean audit can never again read as coverage it does not provide. A
 every named kind is one the codebase can still emit, so a rename cannot leave the disclaimer
 pointing at nothing.*
 
-**25. Re-run the whole panel on a fresh premise and publish the numbers.** ⏳ *(scripted, waiting
-on phase 1)* Two runs, every measure with its floor. Whatever it says then is the state of the
+**25. Re-run the whole panel on a fresh premise and publish the numbers.** ✅ **Done, and the
+answer is uncomfortable: the floor does not transfer between books.**
+
+*Three of eleven measures put the new book outside the floor built on* The Debt of Years —
+`gesture_rate` 2.81 against 1.88, `recap_grammar` .064 against .035, `dialogue_share` .169 against
+.202. **Nothing was ablated between them.** Two novels by the same code at the same revision differ
+by more than the noise of four identical runs, on a third of the panel.*
+
+*So every figure in `NOISE_FLOOR` is the noise of one novel at 71 scenes rather than of this
+system. That was flagged as a caveat before the runs were written; it is now a measurement, and it
+limits every comparison the panel has made. **It does not invalidate the phase 1 verdicts** —
+those held the plan fixed and flipped one switch, which is exactly the design this result argues
+for — but it means neither can be assumed to hold for another book.*
+
+*Full write-up: [evidence/fresh-premise-panel.md](evidence/fresh-premise-panel.md).* Two runs, every measure with its floor. Whatever it says then is the state of the
 project — and the first time that sentence will be true.
 
 *`scripts/step25.sh`. The premise is fresh to the prose: `solo-b2` is a plan of the night-nurse

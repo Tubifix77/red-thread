@@ -468,6 +468,22 @@ all three are the first things anyone would reach for.
 scenes with no ask from `refusal_per_ask` took it from 77% to 53%. That is not a smoothing
 technique — it is not averaging in cases where the question does not arise.*
 
+### The floor is one book's, not the system's
+
+Measured, not assumed. Two runs of a premise never written before, against the four-run floor
+built on *The Debt of Years*, with nothing ablated between them: **three of eleven measures put
+the new book outside that floor.** `gesture_rate` 2.81 against 1.88, `recap_grammar` .064 against
+.035, `dialogue_share` .169 against .202.
+
+Two novels, same code, same revision, differing by more than the noise of four identical runs on a
+third of the panel. So every figure in `NOISE_FLOOR` describes one novel at 71 scenes.
+
+The consequence is a constraint on method rather than a fault in the measures: **a comparison has
+to live inside one plan.** That is what the replicate harness was built for and what both phase 1
+ablations did, which is why they survive this. A cross-book statement needs a measure that
+survives the crossing — a share rather than a rate, or something like `recap_block_share` that is
+zero everywhere. Detail in [evidence/fresh-premise-panel.md](evidence/fresh-premise-panel.md).
+
 ### The statistic saturates, and it hides the best result in the project
 
 `clears_noise` compares `|a - b|` against the mean of the two, which is right for a measure
