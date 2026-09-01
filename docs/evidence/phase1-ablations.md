@@ -58,9 +58,10 @@ intended, and in the direction of finding nothing.**
 gesture feedback explains and which the length difference could easily produce. It is not evidence
 for the mechanism and it is not evidence against it.
 
-The honest verdict: on the evidence available the gesture feedback earns nothing, and the evidence
-available is thinner than the design called for. It comes out, and the note above is why a later
-re-test would be worth running rather than pointless.
+On this statistic the mechanism earns nothing, and that was the criterion. What happened next is
+in the section below: the caveat turned out to be real, and the whole-book mean cannot see the
+effect the mechanism was designed to have. **The kill stands on its own criterion; the deletion
+is suspended.**
 
 ## Step 6 again: the verdict is suspended, and why that is not moving the goalposts
 
