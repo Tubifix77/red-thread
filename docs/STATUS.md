@@ -431,6 +431,20 @@ second statistic written down before the confirming runs existed, at p = 0.010 �
 cannot see one however carefully its floor is measured
 ([record](evidence/phase1-ablations.md)).
 
+**Of the other two, one is inert on everything measured.** An off switch made all four look
+equally testable; they are not. The re-people pass is *gated* — below a 15% solo-scene share it
+returns without doing anything — and the plan every floor run, every ablation and both step 25
+panels were written from sits at **10 solo of 71 = 14.08%**. One scene under. So ablating it here
+would compare a condition against itself and report "no difference" with error bars attached.
+Auditing all six mechanisms the same way finds `drop_unavoidable_bans` in the same state, while
+the model-refrain list is unconditional and the two feedback mechanisms fire in 62–96% of scenes
+([record](evidence/mechanism-coverage.md), and `scripts/mechanism_coverage.py` to re-run it).
+
+*The generalisation is rule IV aimed one level up, at mechanisms rather than checks: **a gated
+mechanism has two failure modes, not one — it can do nothing when it runs, and it can never run.**
+The second is far cheaper to test and had never been tested. Before designing an ablation, ask
+what fraction of the target corpus the mechanism acts on.*
+
 ## What changed on 31 August
 
 The instruments, and two answers.
