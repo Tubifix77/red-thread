@@ -44,7 +44,9 @@ fi
 for pair in "norefrain:refrain feedback off:step 5" "nogesture:gesture feedback off:step 6"; do
     label="${pair%%:*}"; rest="${pair#*:}"; name="${rest%%:*}"; step="${rest##*:}"
     runs=""
-    for i in 1 2; do have "runs/current-$label$i" && runs="$runs runs/current-$label$i"; done
+    # 1..4, not 1..2: step 6's re-test takes the gesture side to n=4, and a report that only
+    # looked for the first two would silently ignore the runs it was written to read.
+    for i in 1 2 3 4; do have "runs/current-$label$i" && runs="$runs runs/current-$label$i"; done
     if [ -z "$runs" ]; then
         echo
         echo "=== $step — not run yet ($label) ==="

@@ -26,7 +26,13 @@ python scripts/same_code.py "$FLOOR_COMMIT" || {
     exit 1
 }
 
-echo "[$(date +%H:%M)] step 6 re-test — two more gesture ablations (n=2 -> n=4)"
+# `--runs 4` resumes the two that exist rather than rewriting them, which is deliberate and has
+# a consequence worth stating: both halted, at 66 and 48 of 71, and resuming retries the scene
+# each stopped on. If those now commit, the runs become complete and **the numbers already
+# published for them change** — which is an improvement, because it removes the length confound
+# that weakened the first comparison, but it does mean the write-up has to be re-read against the
+# new figures rather than assumed still true.
+echo "[$(date +%H:%M)] step 6 re-test — gesture ablations to n=4, resuming the two that halted"
 python -u -m redthread replicate runs/current --runs 4 --label nogesture \
     --no-gesture-feedback --local qwen3:8b --quiet >> logs/phase1-nogesture.log 2>&1
 
