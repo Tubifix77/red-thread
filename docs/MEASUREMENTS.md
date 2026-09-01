@@ -626,6 +626,30 @@ This does not retire the freeze: all four runs are current-era, and the boundary
 them moved the same panel by orders of magnitude. It does mildly reassure that phase 1's verdicts
 were not fragile to the exact revision they were pinned at.
 
+## Two of six mechanisms are inert on the corpus every verdict rests on
+
+*Zero GPU. Full audit in [evidence/mechanism-coverage.md](evidence/mechanism-coverage.md).*
+
+This file has long carried an audit of which *checks* fire. The same audit had never been run on
+the *mechanisms*:
+
+| mechanism | fires on the corpus plan? | fires anywhere? |
+|---|---|---|
+| refrain feedback | yes — 77–96% of scenes | yes |
+| gesture feedback | yes — 62–83%, first fire scene 13–28 | yes |
+| model-refrain list | yes — unconditional, every brief | yes |
+| `drop_story_shaped_samples` | yes — 1 of 3 samples | 37% of stories |
+| **re-people pass** | **no** — gated at 15%, plan at 14.08% | 29% of plans |
+| **`drop_unavoidable_bans`** | **no** — 0 of 3 phrases | 11% of stories |
+
+Neither inert mechanism is dead code; both fire elsewhere. But an ablation of either on this
+corpus compares a condition against itself, and would report "no difference" with error bars and
+a kill criterion attached.
+
+**The cheap check this earns:** before designing an ablation, ask what fraction of the target
+corpus the mechanism acts on. It is arithmetic over files on disk, and it saved ~3 GPU-hours the
+night it was first run.
+
 ## A mechanism that never ran, and nobody noticed for two weeks
 
 *PLAN2 step 29 stage 1, zero GPU. Full derivation in

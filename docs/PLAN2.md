@@ -39,7 +39,7 @@ mean is never again asked to see an accumulating effect.
 | W2 | The noise floor is one novel's: 3 of 11 measures land outside it on a fresh premise with nothing ablated | [fresh-premise-panel.md](evidence/fresh-premise-panel.md) |
 | W3 | No measure in the panel is known to correspond to a reading; the dry run predicts none does | [machine-rating.md](evidence/sentences/machine-rating.md); step 21 blank |
 | W4 | Manuscript-level duplication grows with length: .066 across a book vs .002 within any scene | [STATUS.md](STATUS.md) |
-| W5 | Two of four mechanism switches have never been ablated — and one of them, `--no-repeople`, turns out to be **inert on every book measured**: its 15% gate never opened on the corpus plan (10 solo of 71 = 14.08%) | [evidence/repeople-never-fired.md](evidence/repeople-never-fired.md); [cli.py](../redthread/cli.py) |
+| W5 | **Two of six mechanisms are inert on the measured corpus** — the re-people pass (gated at 15%, plan at 14.08%) and `drop_unavoidable_bans` (0 of 3 phrases). Ablating either compares a condition against itself | [evidence/mechanism-coverage.md](evidence/mechanism-coverage.md) |
 | W6 | 18 of 33 runs are one premise; every strong verdict is *The Debt of Years* at 71 scenes | corpus count, [MEASUREMENTS.md](MEASUREMENTS.md) |
 
 ---
