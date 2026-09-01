@@ -608,6 +608,24 @@ no dialogue. Detail above.
 
 ---
 
+## Code drift, measured: the freeze protects variance more than means
+
+*Zero GPU. Full table in [evidence/code-drift-floor.md](evidence/code-drift-floor.md).*
+
+`current`, `replicate`, `ledgerfix` and `tally6` hold the *same plan* as the four floor runs and
+were written at four *different* code revisions. Comparing the two groups measures what code drift
+does to the panel — the assumption every guard in this project rests on and nobody had checked.
+
+**No measure's era gap clears its own sampling floor.** At the mean, four revisions of drift look
+like four draws of one revision. But `somatic_share`'s *spread* is 5× wider across revisions than
+within one (95% against 19%), with `gesture_rate` at 1.4× and `worst_refrain` at 1.5× — so the
+freeze protects the width of the floor, not just its centre, and a check that compared only means
+would have missed it.
+
+This does not retire the freeze: all four runs are current-era, and the boundary to the era before
+them moved the same panel by orders of magnitude. It does mildly reassure that phase 1's verdicts
+were not fragile to the exact revision they were pinned at.
+
 ## A mechanism that never ran, and nobody noticed for two weeks
 
 *PLAN2 step 29 stage 1, zero GPU. Full derivation in
