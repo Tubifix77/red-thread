@@ -66,6 +66,25 @@ the pair that shipped 56% contaminated and was rebuilt — are the most premise-
 the panel** (internal spreads of 3% and 7% on the second book). An instrument that failed as a
 quality lever turns out to be the panel's best-behaved cross-book descriptor.
 
+## `somatic_share` is portable across premises and *not* across code revisions
+
+Found the same night, by a different analysis
+([code-drift-floor.md](code-drift-floor.md)), and it qualifies this table rather than overturning
+it. On four runs of **the same plan** written at four **different code revisions**:
+
+    current 0.423    replicate 0.211    ledgerfix 0.592    tally6 0.380
+    spread 95% of mean — against 19% within one revision, and 13% on the second book
+
+Both groups in the portability table above were written at a single revision each, so the table
+measures **premise-portability with the code held fixed** — which is what it claims and all it
+claims. For `somatic_share` the code axis is far worse than the premise axis: 0.211 to 0.592 is
+nearly threefold, on identical scene specs.
+
+**Practical consequence:** a `somatic_share` figure quoted from an older evidence file must not be
+compared against a current run. Of the three portable measures it is the one to distrust across
+time, and the other two are the reverse — `refusal_rate` and `refusal_per_ask` spread only 21% and
+12% across those same four revisions.
+
 ## Limits, stated before anyone quotes this
 
 - The Ink side is **n=2**, which systematically understates spread — the same reason the floor
@@ -74,7 +93,12 @@ quality lever turns out to be the panel's best-behaved cross-book descriptor.
 - Between-premise spread is estimated from **one pair of premises**. A third premise group is the
   cheapest upgrade with real information in it.
 - Both books are the same writer, same code, same genre register. Portability here means
-  *across these two premises*, not across fiction.
+  *across these two premises*, not across fiction — and, per the section above, not across code
+  revisions either.
+- **A `PORTABLE` comment in `checks.py` is owed and deliberately not yet written.** Phase 8 was on
+  the GPU when this was found, and the night's own headline finding was a guard that read a
+  different artefact than the one under test. Editing `checks.py` mid-experiment is exactly the
+  thing this project has spent the night learning not to do, so it waits for the chain.
 
 PLAN2 step 30 (+2 runs of `solo-b2`, ~1.5 GPU-h) upgrades the weakest of these three limits and
 re-runs this table at n=4/n=4. `PORTABLE` errs toward refusing until then.
