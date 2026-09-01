@@ -608,6 +608,28 @@ no dialogue. Detail above.
 
 ---
 
+## A mechanism that never ran, and nobody noticed for two weeks
+
+*PLAN2 step 29 stage 1, zero GPU. Full derivation in
+[evidence/repeople-never-fired.md](evidence/repeople-never-fired.md).*
+
+`repeople_solo_scenes` is **gated**: below a 15% solo-scene share it returns 0 without a model
+call. The plan every phase 1 run, the four-run floor and both step 25 panels were written from
+holds **10 solo scenes of 71 = 14.08%** — one scene under the gate. `solo-b2`, step 25's fresh
+premise, is at 0%.
+
+So the re-people pass has **never run on a single book this project has measured**, and an
+ablation of it would have reported "no difference" for a reason unrelated to whether it works.
+The gate does open on 16 of the 56 stored plans (29%), so it is not dead code — just absent from
+everything measured. PLAN.md step 8 had already recorded that the solo count is bimodal across
+six plans of one premise (5, 5, 22, 24, 10, 28); the corpus was written from the *10*, by draw
+rather than by design, and nothing noticed that this put it on the quiet side of a gate.
+
+**The generalisation is rule IV's shape aimed at a mechanism instead of a check: a gated
+mechanism has two failure modes, not one — it can do nothing when it runs, and it can never run.
+The second is far cheaper to test, and was never tested.** A gate is invisible in the artefact it
+gates: a plan the pass rewrote and a plan it declined to touch are both just plans on disk.
+
 ## Three measures survive the crossing between books
 
 *PLAN2 step 26, zero GPU. Full derivation in

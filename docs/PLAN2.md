@@ -39,7 +39,7 @@ mean is never again asked to see an accumulating effect.
 | W2 | The noise floor is one novel's: 3 of 11 measures land outside it on a fresh premise with nothing ablated | [fresh-premise-panel.md](evidence/fresh-premise-panel.md) |
 | W3 | No measure in the panel is known to correspond to a reading; the dry run predicts none does | [machine-rating.md](evidence/sentences/machine-rating.md); step 21 blank |
 | W4 | Manuscript-level duplication grows with length: .066 across a book vs .002 within any scene | [STATUS.md](STATUS.md) |
-| W5 | Two of four mechanism switches have never been ablated: `--no-repeople`, `--no-model-refrains` | [cli.py](../redthread/cli.py); phase 1 tested the other two ([phase1-ablations.md](evidence/phase1-ablations.md)) |
+| W5 | Two of four mechanism switches have never been ablated — and one of them, `--no-repeople`, turns out to be **inert on every book measured**: its 15% gate never opened on the corpus plan (10 solo of 71 = 14.08%) | [evidence/repeople-never-fired.md](evidence/repeople-never-fired.md); [cli.py](../redthread/cli.py) |
 | W6 | 18 of 33 runs are one premise; every strong verdict is *The Debt of Years* at 71 scenes | corpus count, [MEASUREMENTS.md](MEASUREMENTS.md) |
 
 ---
@@ -101,26 +101,30 @@ book's refrains are the model's own constructions, found in all seven books then
 - **Kill criterion:** both inside the floor → the list is prompt weight with no measurable return;
   it comes out of the brief (the data file stays, as measurement).
 
-**29. Test the re-people pass — corrected design, because the switch is not where the draft
-said.** `--no-repeople` lives on the `plan` command, not on `replicate`
-([cli.py](../redthread/cli.py)): the pass is plan-time, so "two runs with the switch off" would
-regenerate the plan and differ from its control by far more than the switch. The design that
-holds everything else fixed uses the standalone `repeople` command as a **transform**:
+**29. Test the re-people pass.** ⚠️ **Stage 1 done, zero GPU — and it killed two designs. The
+pass has never run on any book this project has measured.** It is gated: below a 15% solo share
+it returns 0 immediately. The plan every phase 1 run, the four-run floor and both step 25 panels
+were written from sits at **10 solo of 71 = 14.08%**, one scene under the gate. Full derivation
+in [evidence/repeople-never-fired.md](evidence/repeople-never-fired.md).
 
-- **Stage 1, deterministic, 0 GPU:** apply the pass to the twelve stored solo plans
-  (`runs/solo-a1..a6`, `solo-b1..b6`) and count solo scenes before and after. The pass's
-  first-order effect is countable without writing a word.
-- **Stage 2, prose, only if stage 1 moves:** take the solo-heaviest plan, write n=2 from it and
-  n=2 from `repeople(plan)` — one plan, one deterministic transform, nothing else differs.
-  **Statistic:** `dialogue_share` (floor 11%, a share — rule VII typed). Caveat inherited from
-  step 26: `dialogue_share` is *not* portable across books, so this comparison stays within the
-  one premise, which stage 2's design already guarantees.
-- **Kill criterion:** stage 1 unmoved → the pass does nothing and comes out, no GPU spent. Stage
-  1 moves but `dialogue_share` stays inside the floor → the pass stays as a plan-repair tool and
-  the quality claim is dropped.
-- **Note the prose claim is now weaker than drafted:** `dialogue_share` on a fresh premise sits
-  outside its own floor (step 26), so even a within-premise verdict here describes this premise,
-  not the writer.
+*So W5 understates this: the pass is not merely un-ablated, it is **inert on the entire measured
+corpus**, and an ablation on the* Debt *plan would have returned "no difference" for a reason
+having nothing to do with whether the mechanism works. Both earlier designs are dead — the
+original (an ablation flag on `replicate`, which does not exist) and its first correction (a
+transform of the* Debt *plan, which the gate declines).*
+
+**Stage 2, the only design the gate permits (~3 GPU-h, deferred):** use a plan where the gate
+opens — `solo-a1` at 9 of 24 (38%) is the strongest, `solo-a3` at 25% the nearest the boundary.
+Produce a re-peopled twin with `redthread repeople --write` (one model call over a fixed plan,
+not a regenerated plan), write n=2 from each.
+
+- **Statistic:** `dialogue_share` (floor 11%, a share — rule VII typed), within one premise,
+  because step 26 established `dialogue_share` is *not* portable across books.
+- **Kill criterion:** inside the floor → the pass stays as a plan-repair tool and the prose-quality
+  claim is dropped.
+- **Prerequisite, and the reason this is deferred:** the floor for a 24-scene premise-B plan does
+  not exist yet at n=4, and `solo-a1` is a *third* premise with no floor at all. This runs after
+  step 30, or it has nothing to be judged against.
 
 **30. Extend the premise-B floor to n=4** (+2 runs of the 24-scene `solo-b2` plan, ~1.5 GPU-h,
 sharing the frozen writer with the two step 25 runs). This is the first full floor on a second

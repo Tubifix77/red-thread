@@ -32,6 +32,7 @@ difference smaller than the floor is a coin, and several here are.
 | `fresh-premise-panel.md` | The panel run on a book it was not tuned on. Three of eleven measures put a fresh premise outside the old floor with nothing ablated, so the floor is one novel's and not the system's |
 | `portable-measures.md` | PLAN2 step 26: which measures hold their values across books. 3 of 13 do, now enforced as `checks.PORTABLE`; two pre-registered expectations failed on contact |
 | `two-run-screen.md` | PLAN2 step 27: a 2-run floor is half a 4-run floor and all its errors are false claims — so n=2 may kill, never confirm |
+| `repeople-never-fired.md` | PLAN2 step 29 stage 1: the re-people pass is gated at 15% solo scenes and the corpus plan sits at 14.08% — so it has never run on any measured book, and two experiment designs died before any GPU was spent |
 | `sentences/sentences.md` | A hundred sentences, half from each era, shuffled and unlabelled — the one thing here that needs a person rather than a measurement. **Still blank; still the open step** |
 | `sentences/sentences-key.md` | Its key, deliberately a separate file. Do not open it before the sheet is filled in |
 | `sentences/sentences-claude.md` | The same sheet filled in by Claude, blind, into a separate file so the blank one stays blind. A dry run of the analysis, not the step |
