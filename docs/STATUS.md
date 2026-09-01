@@ -17,7 +17,7 @@ What to do next, in order, with kill criteria: **[PLAN.md](PLAN.md)**.
 
 | | Question | State |
 |---|---|---|
-| 1 | Can it get to the end of a book without help? | **yes, at novel length** |
+| 1 | Can it get to the end of a book without help? | **usually — 6 of 8 measured runs** |
 | 2 | Is the prose free of the obvious machine tells? | **per scene, yes** |
 | 3 | Is the finished book worth reading? | **one of five axes started** |
 
@@ -26,8 +26,33 @@ What to do next, in order, with kill criteria: **[PLAN.md](PLAN.md)**.
 premise rewritten to test code changes, which is how anything here gets attributed to a change
 rather than to luck.
 
-**Four consecutive 71-scene runs have gone start to finish with no halt and no intervention**, the
-last three from an identical plan.
+**And there is now a rate rather than a run of luck.** Eight 71-scene runs written back to back
+under one code revision, for the phase 1 ablations: **six reached the end, two did not.**
+
+    control, nothing ablated      4 of 4 reached 71
+    refrain feedback off          2 of 2
+    gesture feedback off          0 of 2   — halted at 66 and 48
+
+That is a better answer than the previous one, which was "four consecutive runs finished" — true,
+and selected from the runs that finished. A halt is not a crash: `write_all` stops rather than
+write later scenes against a ledger missing a scene's facts, so it leaves a short book and not a
+broken one. But an unattended writer that stops a quarter of the time is not finished.
+
+The causes are worth naming, because none is the same:
+
+    scene 66   somatic_emotion + thematic_gloss, five repair attempts, no convergence
+    scene 48   continuity_contradiction — "a watch with a cracked face" at scene 10
+               against "a watch with age spots" at scene 48
+
+The second is the system working. A writer with no memory contradicted itself forty scenes later,
+the ledger caught it, and the gate refused. The first is a repair that could not fix a true
+positive, which is the open problem: **the halt rate is a repair-convergence problem, not a
+detection one.**
+
+*An earlier set, before `check_thematic_gloss` stopped reading dialogue as narration, lost two of
+four. That one check was firing on lines like* "This isn't just about punishment" *— a character
+speaking — and its remedy is to delete the offending clause, which cannot be done to a line of
+dialogue. Fixing it took the rate from 2-of-4 to 6-of-8.*
 
 The scale test this document listed as its largest gap is done: *The Debt of Years* at
 **71 scenes and 61,733 words**, twice the longest previous run, all four threads terminal. It halted four times. Three of those were one bug — the ledger calling
