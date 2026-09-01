@@ -709,6 +709,17 @@ class TestSaturation(unittest.TestCase):
         self.assertNotIn("saturated", line)
         self.assertNotIn("x —", line)
 
+    def test_the_halt_report_reads_the_persisted_violations(self):
+        # SceneResult.violations and Scene.violations are separate lists, and it is the scene's
+        # that Project.save writes. The first version read the result's, and reported `length`
+        # for two halts whose records on disk show somatic_emotion, thematic_gloss and a
+        # continuity_contradiction. A log that disagrees with the file sends you to the wrong
+        # place.
+        import inspect
+        from redthread import cli
+        source = inspect.getsource(cli.cmd_replicate)
+        self.assertIn("first.scene.violations", source)
+
 
 if __name__ == "__main__":
     unittest.main()

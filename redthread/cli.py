@@ -501,8 +501,15 @@ def cmd_replicate(args) -> int:
             held = [r for r in results if not r.committed]
             if held:
                 first = held[0]
-                kinds = sorted({v.kind for v in first.violations
-                                if v.severity is not Severity.MINOR})
+                # `SceneResult.violations` and `Scene.violations` are separate lists, and it is
+                # the scene's that `Project.save` persists. Reporting the result's named `length`
+                # for two halts whose scene records show `somatic_emotion`, `thematic_gloss` and
+                # a `continuity_contradiction` — a log that disagrees with the file on disk is
+                # worse than no log, because it sends you looking in the wrong place.
+                kinds = sorted({v.kind for v in first.scene.violations
+                                if v.severity is not Severity.MINOR}
+                               or {v.kind for v in first.violations
+                                   if v.severity is not Severity.MINOR})
                 print(f"    HALTED at scene {first.scene.index} after "
                       f"{first.scene.attempts} attempts on: "
                       f"{', '.join(kinds) or 'no blocking violation recorded'}")
@@ -625,12 +632,18 @@ def cmd_measures(args) -> int:
             if mismatched and name in checks.LENGTH_SENSITIVE:
                 continue
             survived.append(name)
+    # Split three ways, because "did not clear the floor" means three different things. A
+    # measure whose spread exceeds its own mean was never tested; one whose floor is zero because
+    # nothing ever moved has no floor to clear; the rest are a real comparison.
+    exhausted = [n for n in checks.NOISE_FLOOR if not checks.floor_is_informative(n)]
+    survived = [n for n in survived if checks.floor_is_informative(n)]
     unestablished = [n for n in survived if not checks.floor_is_established(n)]
     survived = [n for n in survived if checks.floor_is_established(n)]
     if survived:
         print(f"\n  Clears the floor: {', '.join(survived)}")
-        print("  A floor measured from two runs understates the true spread, so read these as "
-              "\n  the most generous reading of the evidence rather than as settled.")
+        print(f"  The floor is from {checks.NOISE_FLOOR_N} runs of one plan, which is few, and "
+              f"of one plan,\n  which is one book. Read these as the most generous reading of "
+              f"the evidence.")
     if unestablished:
         print(f"\n  Differs, with no floor to clear: {', '.join(unestablished)}")
         print("  Both replicates were identically zero on these, so nothing is known about how "

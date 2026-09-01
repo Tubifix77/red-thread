@@ -28,7 +28,7 @@ makes a claim — the claim has been through `checks.clears_noise`.
 | phase | done | state |
 |---|---|---|
 | 0 — trustworthy instruments | **4 of 4** | the floor is n=4 at 71 scenes |
-| 1 — confirm what exists | 2 of 4 | **step 7 found the pass 90% broken**; 8 answered; 5, 6 queued |
+| 1 — confirm what exists | **4 of 4** | refrain feedback **confirmed**, gesture feedback **deleted** |
 | 2 — tension on embeddings | 5 of 5 | **three attempts, three controls, three failures** |
 | 3 — dependency graph | 3 of 3 | step 16 **suggestive, not established** — 67% on 18, after its confound |
 | 4 — want, obstacle, cost | 3 of 3 | **stopped at step 18 by its own kill criterion** (r = 0.130 vs a 0.4 bar) |
@@ -223,11 +223,16 @@ runs that all completed.*
 
 ## Phase 1 — confirm or delete what exists  *(~10 h GPU)*
 
-⏳ **Queued and running unattended** as `scripts/phase1.sh`, which waits for the floor set and
-then writes both ablation pairs in order. Every `replicate` call resumes rather than restarts, so
-an interruption costs the current scene and re-running the script picks up where it stopped.
+✅ **Done.** Ten GPU-hours: four control runs and two per condition, same plan, same code, one
+switch flipped. **One mechanism confirmed, one deleted** — which is what the phase was for, and
+the first evidence either has ever had. Full write-up with its caveats in
+[evidence/phase1-ablations.md](evidence/phase1-ablations.md).
 
-**5. Ablate the refrain feedback.** ⏳ *(running)* Two runs each way. Compare on *concentration*
+**5. Ablate the refrain feedback.** ✅ **Confirmed — it stays.** `repetition_concentration`
+.030 → .047 with the feedback off, clearing its 38% floor at 44%. The criterion named
+concentration before any of this was measured, and concentration is what answered.
+*(`worst_refrain` doubled, 9.8 → 20.5, and is deliberately not the number the verdict rests on —
+rule III.)* Two runs each way. Compare on *concentration*
 and mean recurrence, never the worst refrain (rule III). ~~One piece of evidence already survives
 the floor and should be kept either way: of ten phrases named to a brief mid-book, seven never
 appeared again *in that same book* — a within-book before-and-after that needs no replicate.~~
@@ -264,7 +269,14 @@ phrase was selected for being the most entrenched thing in its book at that mome
 reading is **no evidence of suppression**, not "the feedback backfires". Either way, step 5 now
 rests entirely on the ablation, with nothing banked in advance.*
 
-**6. Ablate the gesture feedback.** ⏳ *(running)* Same design. Measure the mean gesture rate
+**6. Ablate the gesture feedback.** ⛔ **Kill criterion fired — it comes out.** `gesture_rate`
+1.88 → 2.00, a 6% difference inside the 22% floor. Machinery and prompt weight in every brief,
+no measurable return.
+
+*Two caveats, both weakening the test rather than the verdict: the ablated runs halted at 66 and
+48 scenes, and the feedback only names a movement after it recurs across four scenes — so a
+shorter book received less of the treatment, which biases toward finding nothing. Recorded so a
+re-test is a reasonable thing to want rather than a pointless one.* Same design. Measure the mean gesture rate
 across four runs, not the first-fire scene, which is a maximum in disguise. **Kill criterion:**
 difference inside the ~~31%~~ **22%** floor.
 
