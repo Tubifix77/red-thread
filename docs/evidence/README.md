@@ -35,6 +35,7 @@ difference smaller than the floor is a coin, and several here are.
 | `mechanism-coverage.md` | Which of the six mechanisms actually fire. Two of six are inert on the corpus every published verdict rests on |
 | `repeople-never-fired.md` | PLAN2 step 29 stage 1: the re-people pass is gated at 15% solo scenes and the corpus plan sits at 14.08% — so it has never run on any measured book, and two experiment designs died before any GPU was spent |
 | `repair-backfill.md` | PLAN2 step 31's backfill: 72.5% of scenes commit with no repair, and the one repair field on disk is a sum of two quantities only one of which is interesting |
+| `step28-model-refrains.md` | Step 28's result: the criterion fired, and the miss was 0.34 phrase occurrences across two books, on a design that could not have confirmed |
 | `step28-preregistration.md` | A targeted statistic for step 28, its control measured and its reading decided, committed while the ablated runs were a quarter written |
 | `code-drift-floor.md` | Four books sharing one plan across four code revisions: no mean moves beyond the sampling floor, but somatic_share's spread widens 5x |
 | `sentences/sentences.md` | A hundred sentences, half from each era, shuffled and unlabelled — the one thing here that needs a person rather than a measurement. **Still blank; still the open step** |

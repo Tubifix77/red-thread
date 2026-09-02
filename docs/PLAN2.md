@@ -106,6 +106,15 @@ book's refrains are the model's own constructions, found in all seven books then
 - **Kill criterion:** both inside the floor → the list is prompt weight with no measurable return;
   it comes out of the brief (the data file stays, as measurement).
 
+⚠️ **Criterion fired; deletion suspended pending n=4.** Both measures inside (11% against 19%,
+21% against 38%), and the pre-registered targeted statistic **also** inside — but at **24.61%
+against a 25.00% floor**, a miss of **0.34 phrase occurrences across 121,536 words**. And with 4
+control runs against 2 ablated, a rank test's smallest achievable p is 0.067, so the design could
+not have confirmed even on perfect separation, which is what it got. That is step 27's protocol
+arriving too late for its own plan: this was an n=2 screen, and a screen may kill and may never
+confirm. Two more runs, ~2 GPU-h; what n=4 decides is written down in
+[evidence/step28-model-refrains.md](evidence/step28-model-refrains.md) before those runs exist.
+
 **29. Test the re-people pass.** ⚠️ **Stage 1 done, zero GPU — and it killed two designs. The
 pass has never run on any book this project has measured.** It is gated: below a 15% solo share
 it returns 0 immediately. The plan every phase 1 run, the four-run floor and both step 25 panels
