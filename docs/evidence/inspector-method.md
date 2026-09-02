@@ -188,3 +188,52 @@ three-point scales and lose power. **Both machine data points now sit on the rec
 sheet to break the tie — which is the only adjudication that was ever going to count.** The
 prediction carried forward for step 33 is correspondingly weakened: direction, firmly; separation,
 now genuinely uncertain.
+
+---
+
+# Round 2: the re-validation, designed before it ran
+
+*Committed with the trials built and validated but **no inspector called**. The thresholds from
+the top of this file are unchanged and are the last word — the pre-registration said "no third
+chance after that", so this run adopts or rejects.*
+
+## The two fixes, both aimed at the false alarms rather than at detection
+
+Detection was never the problem (9 of 9 valid seeds, exact fact and quote). Both false alarms were
+transient `state` facts read as binding on a later scene, so:
+
+1. **Sheets carry durable facts only.** The filler pool is restricted to `kind: detail` and
+   `kind: knowledge`; bare `state` facts — a scene-1 satchel, a scene-7 ledger-holder — are
+   excluded entirely. 73 distinct filler lines across the ten sheets.
+2. **The instructions name the failure.** One line added: *"A fact that describes a passing
+   moment in an earlier scene may simply have moved on; report a contradiction only about durable
+   properties."* Four of round 1's agents reasoned this way unprompted and two did not, which is
+   what a silent task definition produces.
+
+A third fix addresses **my** error rather than the inspector's:
+
+3. **Every mutation is validated against the scene text before the trial exists.** Round 1's P1
+   turned "Vay smells burnt wood" (perceives) into "smells *of* citrus" (emits) and contradicted
+   nothing. `build2.py` now asserts the scene literally contains the phrase the mutation
+   contradicts, and refuses to build the trial otherwise.
+
+## The ten fresh pairs
+
+Fresh scenes (5, 6, 8, 26, 27, 29, 32, 35, 40, 42 — none used in round 1) and fresh objects, each
+a concrete durable physical attribute the scene verifiably asserts:
+
+| id | scene | fact as the book has it | mutated to |
+|---|---:|---|---|
+| Q1 | 5 | The speaker wears a threadbare coat, sleeves rolled up | The speaker wears a heavy fur-lined coat, its sleeves buttoned tight at the wrists |
+| Q2 | 6 | The map is brittle and covered in symbols and markings | The map is blank on both sides, bearing no symbols or markings at all |
+| Q3 | 8 | A clay lamp hangs near the ceiling of the room | The room has no lamp of any kind; its only light is a bare electric bulb |
+| Q4 | 26 | Vay keeps vials among the stacks in the archive | Every vial was destroyed years ago; none remain anywhere in the archive |
+| Q5 | 27 | The vial glows | The vial is dark and gives off no light whatsoever |
+| Q6 | 35 | The iron ring is etched with markings | The ring is smooth gold, entirely unmarked |
+| Q7 | 40 | The old ledger's parchment is brittle and crinkles when moved | The ledger's pages are supple modern vellum, silent when turned |
+| Q8 | 42 | Kai has a scar running along his temple | Kai's face and temple are unmarked; he has no scar there |
+| Q9 | 32 | The worn map rests on a low wooden stool | The map is pinned to the wall and never rests on furniture |
+| Q10 | 29 | The official's collar hangs loose, frayed threads near the seam | The official's collar is starched stiff and immaculate, without a loose thread |
+
+Same design otherwise: 20 trials, one fresh Fable-class subagent each, no agent sees more than one
+trial, strict scoring (a hit must name the mutated fact).
