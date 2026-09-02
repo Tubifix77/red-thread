@@ -68,6 +68,30 @@ revision"*, not *"the reservation"*.
 longer describes this writer, so no panel measure from these runs may be compared against
 `checks.NOISE_FLOOR`. This test uses only the binary outcome, which needs no floor.
 
+## Clarification added mid-run: which revision these runs actually test
+
+*Added 3 September 00:05, before any result was measured. **No threshold above is touched** —
+this records a fact about the runs that would be worthless discovered afterwards.*
+
+The runs do **not** test HEAD. Verified from process and commit timestamps rather than assumed:
+
+    writer process started        2026-09-02 23:56:49
+    ledger.py as loaded by it     61c6d21  (19:12) -- kind/specificity ranking + mark reservation
+    a later ledger.py change      3925896  (00:00:46) -- contentless-detail demotion
+
+Python imports at process start, so the running writer holds `ledger.py` as of **61c6d21** and
+never saw the demotion commit that landed four minutes into the resumed run. `markfix1` was
+written entirely under that same revision.
+
+**So both runs share one writer and remain comparable to each other**, which is what the binary
+test needs — but the result speaks for 61c6d21, not for HEAD. A later change to the slice needs
+its own runs.
+
+*This is the on-disk-versus-running distinction that
+[the guard hole](../MEASUREMENTS.md) was about, arriving from the other direction: there it meant
+an uncommitted edit silently reached the writer, here it means a committed one silently did not.
+Either way the only trustworthy question is what the process loaded.*
+
 ---
 
 *Result appended below after the runs. Nothing above changes.*
