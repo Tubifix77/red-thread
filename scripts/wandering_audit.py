@@ -3,12 +3,17 @@
 `checks.wandering_details` answers this for one ledger and `redthread audit` prints it for one
 run. This runs it across every run in `runs/` and splits the rate by book length, because that
 split is the finding: **15 of 19 books at 60+ scenes carry a mark in two or more body regions,
-against 1 of 19 shorter ones.**
+against 1 of 20 shorter ones.**
 
-A defect that does not exist below about forty scenes, which puts it in the same category as the
-ledger bug the scale test found. The cause was traced rather than inferred: a `detail` fixing the
-mark's location lost its slice slot to a `state` about the same mark that named no location, so
-the writer was told there was a scar and not where it was
+**Do not call that a length defect.** Every 60+ scene book in `runs/` is *The Debt of Years* --
+19 of 19 -- and the longest book of any other premise is 24 scenes, so this rate cannot separate
+"appears at length" from "appears in this premise". An earlier version of this docstring said
+length, which is exactly the drift this script exists to prevent, one level up. Settling it needs
+one 71-scene run of a different premise.
+
+The cause of the drift itself was traced rather than inferred: a `detail` fixing the mark's
+location lost its slice slot to a `state` about the same mark that named no location, so the
+writer was told there was a scar and not where it was
 (`docs/MEASUREMENTS.md`, "Tracing the mechanism").
 
 Kept as a script for the same reason `portability.py` is: the number is a claim, and a claim
