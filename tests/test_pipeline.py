@@ -436,6 +436,108 @@ class TestRepair(PipelineCase):
         self.assertLessEqual(backend.count("repair"), 2)
 
 
+class TestStep31Instrumentation(PipelineCase):
+    """PLAN2 step 31: the repair ladder observed, not inferred.
+
+    Before this, the one repair field on disk was `attempts = candidates_drafted + repairs`,
+    persisted only as the sum — so 1,631 scene records could not say whether a scene repaired at
+    all without assuming the candidate count (docs/evidence/repair-backfill.md). These tests pin
+    the three things the spec demands: the terms persisted separately, the ladder's events
+    recorded per scene, and a halt leaving a record on disk instead of only in a log.
+    """
+
+    def test_the_terms_of_attempts_are_persisted_separately(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose())
+        write_scene(self.project, self.project.spec_at(1), models, Config(candidates=1))
+        self.project.save()  # write_scene leaves persistence to write_all
+
+        reloaded = Project.load(self.project.root)
+        scene = reloaded.scene(reloaded.spec_at(1).id)
+        self.assertEqual(scene.candidates_drafted, 1)
+        self.assertEqual(scene.repairs, 0)
+        # The old field is unchanged, and the invariant that lets the backfill's two eras be
+        # compared on the sum still holds.
+        self.assertEqual(scene.attempts, scene.candidates_drafted + scene.repairs)
+
+    def test_a_response_pass_repair_is_logged_and_persisted(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose())
+        backend.queue("threads", fakes.threads_one_missed(0), fakes.threads_all_met())
+        backend.queue("repair", fakes.clean_prose(905))
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=2))
+
+        self.assertTrue(result.committed)
+        accepted = [e for e in result.repair_log if e["outcome"] == "accepted"]
+        self.assertEqual(len(accepted), 1, result.repair_log)
+        self.assertEqual(accepted[0]["phase"], "response")
+        self.assertIn("thread_obligation", accepted[0]["targets"])
+
+        self.project.save()
+        reloaded = Project.load(self.project.root)
+        scene = reloaded.scene(reloaded.spec_at(1).id)
+        self.assertEqual(scene.repairs, 1)
+        self.assertEqual(scene.repair_log, result.repair_log)
+
+    def test_a_discarded_ladder_action_is_logged_with_its_outcome(self):
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(500))          # length major
+        backend.queue("draft", fakes.prose_with_heading(900))   # the "expansion": strictly worse
+
+        result = write_scene(self.project, self.project.spec_at(1), models,
+                             Config(candidates=1, max_repairs=1))
+
+        discarded = [e for e in result.repair_log
+                     if e["outcome"] in ("no-improvement", "introduced")]
+        self.assertTrue(discarded, result.repair_log)
+        self.assertEqual(discarded[0]["phase"], "ladder")
+        self.assertIn("length", discarded[0]["targets"])
+        # Nothing was kept, so the log records work done and the scene records none of its text.
+        for event in result.repair_log:
+            self.assertIn("action", event)
+            self.assertIn("round", event)
+
+    def test_an_old_record_without_the_fields_loads_with_defaults(self):
+        """1,631 records predate step 31. Absent fields mean 'not recorded', and loading one
+        must neither crash nor invent data."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose())
+        write_scene(self.project, self.project.spec_at(1), models, Config(candidates=1))
+        self.project.save()
+
+        # Rewrite the record as the pre-31 era wrote it.
+        stem = self.project._scene_stem(self.project.spec_at(1))
+        meta = json.loads(stem.with_suffix(".json").read_text(encoding="utf-8"))
+        for key in ("candidates_drafted", "repairs", "repair_log"):
+            meta.pop(key, None)
+        stem.with_suffix(".json").write_text(json.dumps(meta), encoding="utf-8")
+
+        reloaded = Project.load(self.project.root)
+        scene = reloaded.scene(reloaded.spec_at(1).id)
+        self.assertEqual(scene.candidates_drafted, 0)
+        self.assertEqual(scene.repairs, 0)
+        self.assertEqual(scene.repair_log, [])
+
+    def test_a_halt_writes_a_record_on_disk(self):
+        """A halted scene is never persisted in scenes/, so before this record a halt's cause
+        lived only in stdout — and the one report that read it read the wrong violations list."""
+        models, backend = fakes.scripted_models()
+        backend.queue("draft", fakes.clean_prose(), fakes.prose_with_heading())
+
+        results = write_all(self.project, models, Config(candidates=1, max_repairs=0))
+
+        self.assertFalse(results[1].committed)
+        halts_file = self.project.root / "halts.json"
+        self.assertTrue(halts_file.exists(), "a halt must leave a record on disk")
+        halts = json.loads(halts_file.read_text(encoding="utf-8"))
+        self.assertEqual(len(halts), 1)
+        self.assertEqual(halts[0]["scene"], 2)
+        self.assertIn("format", halts[0]["kinds"])
+        self.assertEqual(halts[0]["whole_scene_attempts"], 2)
+
+
 class TestOrdering(PipelineCase):
     def test_writing_out_of_order_is_refused(self):
         models, backend = fakes.scripted_models()

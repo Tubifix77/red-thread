@@ -343,6 +343,17 @@ class Scene(JsonMixin):
     facts: list[Fact] = field(default_factory=list)
     violations: list[Violation] = field(default_factory=list)
     attempts: int = 0
+    # PLAN2 step 31. `attempts` is candidates + repairs and only the sum was kept, so every run
+    # ever written is one subtraction short of saying anything about repair
+    # (docs/evidence/repair-backfill.md). These record the terms separately, and the ladder's
+    # own events, so the next convergence question is answered from disk instead of re-run.
+    candidates_drafted: int = 0
+    repairs: int = 0
+    repair_log: list[dict] = field(default_factory=list)
+    """One dict per repair-ladder event: {"phase", "action", "round", "targets", "outcome"}.
+    Phases: "ladder" (deterministic-check repairs, phase A) and "response" (post-verify judge
+    responses, phase C). Outcomes: accepted / no-improvement / introduced / unusable /
+    exhausted / rejected."""
 
     def word_count(self) -> int:
         return len(self.text.split())

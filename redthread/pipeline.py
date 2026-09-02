@@ -21,6 +21,9 @@ we use a state machine with a store, because the whole point is that state survi
 
 from __future__ import annotations
 
+import datetime
+import json
+
 from dataclasses import dataclass, field
 
 from . import checks, verify
@@ -624,6 +627,8 @@ class SceneResult:
     candidates_drafted: int = 0
     repairs: int = 0
     notes: list[str] = field(default_factory=list)
+    repair_log: list[dict] = field(default_factory=list)
+    """Step 31's rung-level record; copied onto the Scene at the commit gate and persisted."""
 
     def blockers(self) -> list[Violation]:
         return [v for v in self.violations if v.severity is Severity.BLOCKER]
@@ -837,6 +842,18 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     failure_streak: dict[str, int] = {}
     redrafted = False
 
+    def log_repair(action: str, targets: list[Violation] | list[str], outcome: str,
+                   phase: str = "ladder") -> None:
+        """Step 31: one event per ladder decision, persisted with the scene.
+
+        Observability only — this function must never influence a branch. The event's `round` is
+        the repair counter at the moment of logging, so events sort into the order the reader of
+        a halt actually wants: what was tried, in sequence, and what came of each.
+        """
+        kinds = sorted({t.kind if isinstance(t, Violation) else t for t in targets})
+        result.repair_log.append({"phase": phase, "action": action, "round": result.repairs,
+                                  "targets": kinds, "outcome": outcome})
+
     def try_redraft(why: str) -> bool:
         """Draft the scene once more. Returns True when the new draft replaced the old one.
 
@@ -851,6 +868,9 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
         if redrafted or result.repairs >= config.max_repairs:
             return False
         redrafted = True
+        # Captured before the draft replaces det_violations: an accepted redraft's log entry
+        # must name what it was drafted against, not what the fresh draft carries.
+        targeted = list(det_violations)
         try:
             reply = models.writer.complete(
                 brief, system=WRITER_SYSTEM,
@@ -858,6 +878,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                 temperature=min(1.2, config.temperature + 0.2))
         except LLMError as exc:
             result.notes.append(f"redraft failed: {exc}")
+            log_repair("redraft", targeted, "unusable")
             return False
         result.repairs += 1
         result.candidates_drafted += 1
@@ -874,10 +895,12 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                                 f"better and replaces it")
             progress.stage("redraft", f"{fresh.word_count()}w · "
                                       f"{blocked}B/{majored}M/{minored}m")
+            log_repair("redraft", targeted, "accepted")
             return True
         result.notes.append(f"{why}, so the scene was drafted again; the new draft was no "
                             f"better and was discarded")
         progress.stage("redraft", f"no better · {blocked}B/{majored}M/{minored}m")
+        log_repair("redraft", targeted, "no-improvement")
         return False
 
     def attempt_fix(fixable: list[Violation]) -> str | None:
@@ -966,6 +989,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
 
         repaired, action = attempt_fix(fixable)
         if action == "exhausted":
+            log_repair("exhausted", fixable, "exhausted")
             if try_redraft("every repair had failed twice"):
                 continue
             result.notes.append("every repair action for these violations has been tried twice "
@@ -984,6 +1008,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                                     f"failures; other repairs get the remaining rounds")
             result.notes.append(f"{action} attempt {result.repairs} unusable; retrying")
             progress.stage(f"{action} {result.repairs}", "call failed or unusable · retrying")
+            log_repair(action, fixable, "unusable")
             continue
         result.repairs += 1
 
@@ -1047,6 +1072,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                                 f"{', '.join(sorted(introduced))}; discarded")
             progress.stage(f"{action} {result.repairs}",
                            f"introduced {', '.join(sorted(introduced))} · discarded")
+            log_repair(action, fixable, "introduced")
             continue
         if not (improved or fixed_length or (closer and no_new_blockers)):
             failure_streak[action] = failure_streak.get(action, 0) + 1
@@ -1054,7 +1080,9 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                 sidelined.add(action)
             result.notes.append(f"{action} attempt {result.repairs} did not improve; discarded")
             progress.stage(f"{action} {result.repairs}", "no improvement · discarded")
+            log_repair(action, fixable, "no-improvement")
             continue
+        log_repair(action, fixable, "accepted")
         cleared |= ({v.kind for v in det_violations if v.severity is Severity.MAJOR}
                     - {v.kind for v in new_det if v.severity is Severity.MAJOR})
         failure_streak[action] = 0
@@ -1127,6 +1155,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
             if repaired is None:
                 result.notes.append(f"{action} call failed; keeping previous draft")
                 progress.stage(f"{action} {result.repairs + 1}", "call failed or unusable")
+                log_repair(action, serious, "unusable", phase="response")
             if repaired is not None:
                 result.repairs += 1
                 candidate, new_det = run_deterministic(repaired)
@@ -1166,11 +1195,13 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                                 f"{action} {result.repairs}",
                                 f"{candidate.word_count()}w · "
                                 f"{blockers}B/{majors}M/{minors}m")
+                            log_repair(action, serious, "accepted", phase="response")
                         else:
                             result.notes.append(
                                 f"{action} response to the verify did not improve; discarded")
                             progress.stage(f"{action} {result.repairs}",
                                            "no improvement · discarded")
+                            log_repair(action, serious, "no-improvement", phase="response")
                             # Nothing landed, so a second pass would ask the same question of
                             # the same text and get the same answer.
                             break
@@ -1178,6 +1209,7 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
                     # The repair bought a BLOCKER in. It is not kept, and there is nothing to
                     # ask the judge about.
                     result.notes.append(f"{action} response introduced a blocker; discarded")
+                    log_repair(action, serious, "introduced", phase="response")
                     break
             else:
                 break
@@ -1187,6 +1219,9 @@ def write_scene(project: Project, spec: SceneSpec, models: Models,
     # ---------------------------------------------------------------- commit gate
     scene.violations = result.violations
     scene.attempts = result.candidates_drafted + result.repairs
+    scene.candidates_drafted = result.candidates_drafted
+    scene.repairs = result.repairs
+    scene.repair_log = result.repair_log
     result.attempts = scene.attempts
 
     if result.blockers():
@@ -1657,6 +1692,30 @@ def write_all(project: Project, models: Models, config: Config | None = None,
         if on_result:
             on_result(result)
         if not result.committed:
+            # Step 31's third field: the terminal state. A halted scene is never persisted in
+            # scenes/ — only committed ones are — so before this record existed, a halt's cause
+            # survived only in whatever log happened to capture stdout, and the one report that
+            # read it read the wrong violations list (docs/evidence/phase1-ablations.md, "a log
+            # that lied"). This is written from the same `result` the halt decision used.
+            halts_file = project.root / "halts.json"
+            try:
+                halts = json.loads(halts_file.read_text(encoding="utf-8")) \
+                    if halts_file.exists() else []
+            except (OSError, json.JSONDecodeError):
+                halts = []
+            halts.append({
+                "scene": spec.index,
+                "kinds": sorted({v.kind for v in result.violations
+                                 if v.severity in (Severity.BLOCKER, Severity.MAJOR)}),
+                "attempts": result.attempts,
+                "candidates_drafted": result.candidates_drafted,
+                "repairs": result.repairs,
+                "repair_log": result.repair_log,
+                "whole_scene_attempts": 2,  # write_all always retries once before halting
+                "when": datetime.datetime.now().isoformat(timespec="seconds"),
+            })
+            halts_file.write_text(json.dumps(halts, indent=2, ensure_ascii=False),
+                                  encoding="utf-8")
             break
     project.write_manuscript()
     progress.summary(project.story)

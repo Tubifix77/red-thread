@@ -78,6 +78,9 @@ class Project:
                 "index": scene.index,
                 "committed": scene.committed,
                 "attempts": scene.attempts,
+                "candidates_drafted": scene.candidates_drafted,
+                "repairs": scene.repairs,
+                "repair_log": scene.repair_log,
                 "word_count": scene.word_count(),
                 "facts": [_to_jsonable(f) for f in scene.facts],
                 "violations": [_to_jsonable(v) for v in scene.violations],
@@ -115,6 +118,12 @@ class Project:
                 m = json.loads(meta.read_text(encoding="utf-8"))
                 scene.committed = m.get("committed", False)
                 scene.attempts = m.get("attempts", 0)
+                # Absent in every record written before step 31 (2 September 2026); the defaults
+                # mean "not recorded", never "zero repairs" — 1,631 records predate these fields
+                # and the backfill treats them by era, not by default value.
+                scene.candidates_drafted = m.get("candidates_drafted", 0)
+                scene.repairs = m.get("repairs", 0)
+                scene.repair_log = m.get("repair_log", [])
                 scene.facts = [_from_jsonable(Fact, d) for d in m.get("facts", [])]
                 scene.violations = [_from_jsonable(Violation, d)
                                     for d in m.get("violations", [])]

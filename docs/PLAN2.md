@@ -165,8 +165,14 @@ Both rounds in [evidence/portable-measures.md](evidence/portable-measures.md).*
 
 ## Phase 9 — Reliability  *(instrumentation first; the fix is designed from its data)*
 
-**31. Instrument the repair ladder.** ◐ **Backfill done (zero GPU); the code change waits for
-phase 8.** Full analysis in [evidence/repair-backfill.md](evidence/repair-backfill.md).
+**31. Instrument the repair ladder.** ✅ **Done — backfill 2 September morning, code the same
+evening, verified against live Ollama before committing.** Every scene record now carries
+`candidates_drafted` and `repairs` separately (the sum stays as `attempts`, so the two eras remain
+comparable), plus a `repair_log` of ladder events — `{phase, action, round, targets, outcome}` for
+both the deterministic ladder and the post-verify response passes — and a halt now writes
+`halts.json` in the run directory from the same `result` the halt decision used, closing the
+log-that-lied gap. Old records load with absent-means-not-recorded defaults. Five new tests; the
+live smoke's first scene committed at attempts 4 = 3 + 1 with its `fulfil` event on disk.** Full analysis in [evidence/repair-backfill.md](evidence/repair-backfill.md).
 
 *The backfill produced a sharper specification than the step had.* `attempts` is the only repair
 field on disk and it is **a sum of two unrelated quantities** — `candidates_drafted + repairs` —
@@ -301,7 +307,7 @@ has validated.
 |---|---|---:|---|
 | 7 — instrument, from the shelf | 26 ✅ 27 ✅ | 0 h | **closed.** 2 of 13 measures portable; a two-run *floor* may kill, never confirm |
 | 8 — the last two switches | 28 ✅ 29 ⚠️ 30 ✅ | ~7 h | **closed.** 28 killed at n=2, kept at n=4, claim reduced to a three-phrase filter; 29 unrunnable on this corpus; 30 removed `somatic_share` from `PORTABLE` |
-| 9 — reliability | 31 ◐ 32 ⬜ | 0 h so far | **31's backfill done, its code change is next.** 72.5% of scenes commit with no repair |
+| 9 — reliability | 31 ✅ 32 ⬜ | ~0 h | **31 done and live-verified.** Every future run pays rung-level data; 32 waits for the first instrumented book |
 | 10 — reader | 33 ⬜ 34 ◐ 35 ⬜ | — | **blocked on the human sheet.** 34's feasibility done: no cheap trained-judge path exists |
 
 ## Picking this up
@@ -310,9 +316,7 @@ has validated.
 era is closed, and `runs/.floor-commit` no longer constrains what may be edited. Step 31 is
 therefore the next thing to do and the first write-path change since 31 August:
 
-1. **Step 31** — persist `candidates_drafted` and `repairs` as separate fields in `pipeline.py`,
-   then rung-level attempts and the terminal state. The spec and the control distribution are in
-   [evidence/repair-backfill.md](evidence/repair-backfill.md). Observability only; no claims.
+1. ~~**Step 31**~~ ✅ done, live-verified 2 September evening.
 2. **Step 32** — design the convergence fix *from* 31's first table, not before it. An exploratory
    hypothesis is already on record with its falsifier: repair need looks like a property of the
    draft, not the scene.
