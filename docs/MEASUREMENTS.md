@@ -718,14 +718,42 @@ His watch is beneath his shirt (30), beneath his sleeve (40, 60, 61), and in his
 Scene 58 calls the theft *thirty years* in one line and *thirty days* a few paragraphs later.
 Scene 39 puts the same file in two people's hands.
 
-**The continuity checks are blind to all of it by construction.** They key on
-subject+predicate+object strings, so `scar on palm` and `scar on his temple` never collide as the
-same claim — the ledger holds both happily, and `check_threads` has nothing to compare. **A
-wandering attribute is undetectable to a string-keyed ledger check, however many scenes it spans.**
+### Correction: the checks are not blind, and the real gap is much larger
 
-That is a concrete gap with a concrete shape: the checks can catch a fact restated *differently*
-only when the strings collide. Closing it needs attribute-level grouping (all facts about "scar"
-regardless of predicate), which is a real design task and is not yet on any plan.
+**The first version of this section was wrong and is corrected here.** It claimed the continuity
+checks are "blind by construction" because they key on subject+predicate+object strings. They do
+not: `Ledger.conflict_candidates` keys on **(subject, predicate)** and pairs any two facts sharing
+it that disagree on the object. Tested directly, *"Kai has a scar along his palm"* and *"Kai has
+a scar on his temple"* **are** paired, and they survive every exclusion filter
+(`same_claim`, `is_moveable_pair`, `is_possession_pair`, `claim_class`). Published without
+checking; checked afterwards; wrong.
+
+What actually happened is worse, and it is measurable:
+
+**`verify.judge_conflicts` truncates the candidate list at `max_pairs = 25`, and across this book
+that silently discards 86% of it.**
+
+    70 scenes with candidates
+    median candidates per scene        70
+    maximum                          979
+    scenes exceeding the cap of 25    46 of 70  (66%)
+    total candidate pairs           9,560
+    actually sent to the judge      1,302
+    SILENTLY DROPPED                8,258  (86%)
+
+The cap exists for a good reason — one model call cannot judge 979 pairs — but it is applied by
+list order with no notice, no record, and no prioritisation. A book whose ledger grows past a few
+hundred facts is checking a shrinking fraction of what it generates, and nothing in the run says
+so.
+
+**And the scar pair was not one of the dropped ones.** In scene 42 it sat at positions 15 and 16
+of 205 candidates, comfortably inside the cap, so it *was* judged — and the judge did not call it
+a contradiction. So the wandering scar has two separate causes, both real: a judge that missed a
+pair it saw, and a cap that hides most pairs from the judge entirely.
+
+*Two concrete items follow, neither yet on a plan: order or prioritise candidates before
+truncating (nearest-scene first, or one pair per (subject, predicate) key), and record how many
+were dropped so a run can say what it did not check.*
 
 ## A judge with perfect detection, rejected for answering a bigger question
 

@@ -191,9 +191,14 @@ Independently verified against the prose, none previously known:
 
 **1. The wandering scar.** Kai's scar is on his **palm** (scenes 11, 14, 15, 16, 46, 47), his
 **arm** (31, 32), his **wrist** (53), and his **temple** (40, 42, 56, 57, 66, 68, 70).
-`check_threads` and the continuity checks are blind to this **by construction**: they key on
-subject+predicate+object strings, so *"scar on palm"* and *"scar on his temple"* never collide as
-the same claim. A wandering attribute is invisible to a string-keyed ledger check.
+
+*Corrected after publishing:* I first wrote that the continuity checks are blind to this by
+construction. **They are not.** `conflict_candidates` keys on (subject, predicate) and does pair
+the palm and temple scars, past every exclusion filter. The real causes are two, and the second
+is much larger: the pair reached the judge (positions 15–16 of 205, inside `max_pairs = 25`) and
+the judge did not call it a contradiction — and separately, that cap **silently drops 86% of all
+candidate pairs** in this book (9,560 generated, 1,302 judged, 66% of scenes over the cap, one
+scene at 979). Full numbers in [MEASUREMENTS.md](../MEASUREMENTS.md).
 
 **2. The watch.** Beneath his shirt (30), beneath his sleeve (40, 60, 61), in his coat pocket
 (57).

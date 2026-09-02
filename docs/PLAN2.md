@@ -329,8 +329,15 @@ a verdict, every fact carrying the sentence it was extracted from, recall as the
   defect class, inside the tool built to audit everything else, on its first run.**
 - **Four real defects in a committed book, none previously known** — the wandering scar (palm →
   arm → wrist → temple), the watch's three locations, thirty-years-vs-thirty-days inside one
-  scene, and one file in two people's hands. The continuity checks are blind to the first by
-  construction, which is a new gap on the board ([MEASUREMENTS.md](MEASUREMENTS.md)).
+  scene, and one file in two people's hands.
+- **A claim I published about those defects was wrong, and correcting it found a bigger gap.** I
+  wrote that the continuity checks are "blind by construction" to a wandering attribute. They are
+  not — `conflict_candidates` keys on (subject, predicate) and *does* pair the palm and temple
+  scars. The real defect is that **`judge_conflicts` truncates at `max_pairs = 25`, silently
+  dropping 86% of all candidate pairs** across this book (9,560 generated, 1,302 judged; 66% of
+  scenes exceed the cap; one scene produced 979). The scar pair was inside the cap and the judge
+  missed it anyway, so there are two independent causes
+  ([MEASUREMENTS.md](MEASUREMENTS.md)).
 
 ## What this plan refuses to do
 
