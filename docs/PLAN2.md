@@ -354,6 +354,14 @@ a verdict, every fact carrying the sentence it was extracted from, recall as the
   a detail fixed at scene 15 is far outside the recency window by scene 42, so nothing but the
   ledger remembers it. Calibrating the check cost four nouns: `bruise`, `burn`, `callus` and
   `mark` came out, because three bruises in four scenes is a man being knocked about.
+- **Traced to its cause and fixed at the brief, not the gate.** The slice was handing the writer
+  `[s15] Kai feels the scar still burns faintly` — a scar with no location — while dropping
+  `[detail] Kai has a scar along his palm` from the same scene. Old-band slots are now won by
+  kind, then specificity, then recency (5.0 → 15.9 details per slice), and permanent marks get a
+  reserved floor of `limit // 5` slots the way `knows` gets its own accessor (73% → 96% of scenes
+  carry a fixed mark; mean 1.5 → 6.7). **Scene 40's brief now shows the palm scar beside the arm
+  variants**, so the writer sees the conflict rather than inventing around it. Live-verified on
+  `qwen3:8b`; nine new tests.
 
 ## What this plan refuses to do
 
