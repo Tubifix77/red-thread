@@ -106,14 +106,23 @@ book's refrains are the model's own constructions, found in all seven books then
 - **Kill criterion:** both inside the floor → the list is prompt weight with no measurable return;
   it comes out of the brief (the data file stays, as measurement).
 
-⚠️ **Criterion fired; deletion suspended pending n=4.** Both measures inside (11% against 19%,
-21% against 38%), and the pre-registered targeted statistic **also** inside — but at **24.61%
-against a 25.00% floor**, a miss of **0.34 phrase occurrences across 121,536 words**. And with 4
-control runs against 2 ablated, a rank test's smallest achievable p is 0.067, so the design could
-not have confirmed even on perfect separation, which is what it got. That is step 27's protocol
-arriving too late for its own plan: this was an n=2 screen, and a screen may kill and may never
-confirm. Two more runs, ~2 GPU-h; what n=4 decides is written down in
-[evidence/step28-model-refrains.md](evidence/step28-model-refrains.md) before those runs exist.
+✅ **Killed at n=2, kept at n=4 — and the screen that killed it was wrong.** The primary
+criterion fires at both n: `duplication_manuscript` 12% against 19%, `repetition_concentration`
+14% against 38%. **The list does not move book-level repetition.** But the pre-registered
+*targeted* statistic reverses — 5.59 with the list on against **8.99** with it off, a **46.6%**
+difference against a 25% floor, perfect separation, exact rank-sum **p = 0.0143**.
+
+Per the reading committed before those runs existed: **the list stays, restated as a narrow
+three-phrase filter and not a repetition mechanism.** Its claim in this plan shrinks to exactly
+that. Full record: [evidence/step28-model-refrains.md](evidence/step28-model-refrains.md).
+
+*The methodological result is larger than the mechanism.* Step 27's protocol licensed a kill at
+n=2, and that kill was a **false negative** — the ablated mean moved 7.16 → 8.99 with two more
+runs, on a 60% spread. Step 27's analysis only ever varied the **control floor**, never the
+condition group, so its licence has been corrected at source: *a two-run **floor** may kill; a
+two-run **condition** may not be used for anything.* What prevented the deletion was step 6's
+precedent, not the protocol — the second time a documented kill has been suspended on that
+precedent and the second time the re-test reversed it.
 
 **29. Test the re-people pass.** ⚠️ **Stage 1 done, zero GPU — and it killed two designs. The
 pass has never run on any book this project has measured.** It is gated: below a 15% solo share

@@ -1,4 +1,4 @@
-# Step 28 — the model-refrain list: criterion fired, deletion suspended
+# Step 28 — the model-refrain list: killed at n=2, kept at n=4
 
 *2 September 2026, 02:35. Two ablated runs of the *Debt of Years* plan, 71 scenes each, no halts,
 against the four-run floor. Guard verified on disk and in git before launch. Pre-registration:
@@ -81,6 +81,68 @@ mechanism:
 No other statistic will be introduced. In particular the rank test is **not** promoted to primary:
 it is reported because perfect separation is worth seeing, and at n=4 vs n=4 its floor becomes
 1/C(8,4) = 0.014, which is the only reason a rank test is worth computing at all at that point.
+
+## The n=4 result: the list stays, and the screen was wrong
+
+*Written after the section above was committed and before these runs existed — which is what makes
+this a test rather than a story. Two more ablations, 71 scenes each, no halts, guard re-checked at
+their own start rather than inherited from the earlier chain.*
+
+**Primary criterion, unchanged in its verdict:** `duplication_manuscript` 12% against a 19% floor,
+`repetition_concentration` 14% against 38%. Both still inside. Nothing in the panel clears.
+**The list does not move book-level repetition, and that is now settled at n=4.**
+
+**Secondary, targeted — and it reverses:**
+
+| | per 10k words |
+|---|---|
+| list ON (n=4) | 5.61, 5.87, 4.74, 6.16 · **mean 5.59**, spread 25% |
+| list OFF (n=4) | 6.73, 7.59, **12.15**, **9.48** · **mean 8.99**, spread 60% |
+
+Difference **46.6%** against the 25% floor — **outside**. Perfect separation again, and now it
+means something: exact one-sided rank-sum **p = 0.0143**, where at n=2 the smallest achievable
+value had been 0.067.
+
+Per the reading committed in advance: *panel inside, targeted rate outside → the list stays,
+restated honestly as a narrow three-phrase filter and not a repetition mechanism.* **That is the
+verdict. The list stays, and PLAN2's claim for it shrinks to what was measured: it suppresses its
+own three constructions and does nothing detectable to how much the book repeats itself.**
+
+### The screen produced a false negative, and the protocol said it could not
+
+This is the uncomfortable part and it belongs at the top of the correction, not the bottom.
+
+[Step 27](two-run-screen.md) concluded *an n=2 screen may kill and may never confirm*, on 72
+verdict tests with **15 false positives and 0 false negatives**. Step 28 at n=2 killed. Step 28 at
+n=4 confirms. **That is a false negative from exactly the kind of screen the protocol licensed to
+kill.**
+
+The protocol is not wrong; **my application of it was**, and the flaw is visible in step 27's own
+method. That analysis varied the *control floor* — every 2-run subsample of the four control runs
+— while computing each condition's mean from its **full** group. It measured what a two-run
+**floor** does. It never varied the **condition** group size, and never could have: the
+conditions it had were the ones on disk.
+
+Step 28's n=2 was on the **condition** side. Its ablated mean was estimated from two books at 6.73
+and 7.59; the other two came back at 12.15 and 9.48. The mean moved 7.16 → 8.99 and the spread
+came out at 60%, well over twice the control's. A two-run estimate of a mean that unstable is not
+a screen at all.
+
+**So the protocol's scope is narrower than its wording:** *a two-run **floor** may be used to kill;
+a two-run **condition** may not be used for anything.* Step 27's sentence has been corrected
+there.
+
+### What saved it was precedent, not the protocol
+
+Acting on the protocol as written would have deleted a mechanism that demonstrably does the narrow
+thing it was built to do. What prevented that was step 6's precedent — *deleting is cheap later,
+reversing a published deletion is not* — applied because the margin was 0.34 phrase occurrences
+and the design could not have confirmed. **Both of those were reasons to distrust the design, not
+reasons to believe the mechanism**, and they were enough.
+
+That is now twice a documented kill has been suspended on that precedent and twice the re-test
+reversed it. A third instance would stop being a happy accident and start being evidence that
+kill criteria in this project are systematically underpowered at n=2.
 
 ## What is already settled, whatever n=4 says
 

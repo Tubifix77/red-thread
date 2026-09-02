@@ -52,13 +52,27 @@ four-run range, so a 2-run floor can exceed the 4-run floor only through mean sh
 worst case +1 point (`gesture_rate`, 23% vs 22%). A difference inside a floor that is *half* the
 true one is inside the true one with room to spare.
 
-## The protocol, which the numbers wrote
+## The protocol, which the numbers wrote — corrected the same night
 
-**An n=2 screen may kill and may never confirm.**
+> **CORRECTION, 07:05.** As first written, this protocol said *an n=2 screen may kill and may
+> never confirm*, and [step 28](step28-model-refrains.md) then killed at n=2 and **confirmed at
+> n=4** — a false negative from exactly the kind of screen this page licensed to kill.
+>
+> The flaw is in this page's scope, visible in its own method. The analysis below varies the
+> **control floor** — every two-run subsample of the four control runs — while taking each
+> condition's mean from its **full** group. It measures what a two-run *floor* does, and never
+> varied the *condition* group size at all.
+>
+> **So the licence applies to a two-run floor, not to a two-run condition:** *a two-run **floor**
+> may be used to kill; a two-run **condition** may not be used for anything.* Step 28's ablated
+> mean moved 7.16 → 8.99 and its spread came out at 60% once two more runs existed. A two-run
+> estimate of a mean that unstable is not a screen.
+
+**An n=2 floor may kill and may never confirm.**
 
 - A difference **inside** an n=2 floor may be treated as inside the n=4 floor — measured
   exception rate 0 in 72 — so a mechanism can be *dropped* after two runs, at ~2.5 GPU-h instead
-  of ~5.
+  of ~5. **Only when both groups' means come from four runs or more.**
 - A difference **outside** an n=2 floor means nothing: 21% of such clearances were noise against
   the real floor, 50% on the one that mattered. Confirmation stays at n=4, always.
 - Nothing publishable ever comes from a screen. The screen decides where the next GPU-hours go,

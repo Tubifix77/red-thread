@@ -701,6 +701,26 @@ and 13× for `refusal_per_ask`. Step 27 measured ~2× on the 71-scene *Debt* flo
 floor is half an n=4 floor"* is one book's figure and not a constant — on a 24-scene book it is
 nearer a quarter.
 
+## An n=2 screen killed a working mechanism, and the protocol said it could not
+
+*Step 28's re-test. Full record in [evidence/step28-model-refrains.md](evidence/step28-model-refrains.md).*
+
+The model-refrain list ablated at n=2: targeted rate 24.61% against a 25% floor — **inside**, kill
+criterion fires. At n=4: **46.6%**, perfect separation, exact rank-sum **p = 0.0143** — outside.
+The ablated mean moved 7.16 → 8.99 on a 60% spread once two more books existed.
+
+That is a **false negative** from the kind of screen the section below licensed to kill, and the
+error is one of scope. That analysis varied the **control floor** while taking each condition's
+mean from its full group; it never varied the condition group size. Corrected:
+
+> **A two-run *floor* may be used to kill. A two-run *condition* may not be used for anything.**
+
+The mechanism stays, with its claim reduced to what was measured: it suppresses its own three
+constructions and does nothing detectable to book-level repetition, which stayed inside its floors
+at both n. And what prevented the deletion was step 6's precedent — *deleting is cheap later,
+reversing a published deletion is not* — not the protocol. **Twice now a documented kill has been
+suspended on that precedent and twice the re-test reversed it.**
+
 ## A two-run floor is half a four-run floor, and errs only toward claiming
 
 *PLAN2 step 27, zero GPU. Full table in [evidence/two-run-screen.md](evidence/two-run-screen.md).*
