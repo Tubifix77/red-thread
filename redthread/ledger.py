@@ -23,6 +23,40 @@ _STOP = {
 }
 
 
+_SLICE_PRIORITY: dict[FactKind, int] = {
+    FactKind.DETAIL: 0,
+    FactKind.KNOWLEDGE: 1,
+    FactKind.STATE: 2,
+    FactKind.EVENT: 3,
+}
+"""Which kind wins a stratified slice slot when only one fact fits.
+
+`DETAIL` first, unlike `verify._FACT_PRIORITY` which puts `KNOWLEDGE` first — and the difference
+is deliberate. That list decides what to keep when *extraction* over-produces, where a character
+acting on what they do not know is the worst outcome. This one decides what an *old* fact band
+contributes to a brief, and knowledge already reaches back: `about` leaves `knows` uncapped by
+design. A detail is the only kind that cannot be re-established later, so it is the one that must
+not be dropped.
+"""
+
+
+def _slice_rank(fact: Fact) -> tuple:
+    """Sort key deciding which fact wins a stratified slice slot. Lower is better.
+
+    Three tiers, in order:
+
+    1. **Kind**, per `_SLICE_PRIORITY` — a detail cannot be re-established, a state can.
+    2. **Specificity**, and this tier is why the first version of the fix was not enough. The
+       ledger holds both `Kai | has | scar` and `Kai | has | a scar along his palm`. Preferring
+       details alone still let the bare one win a slot, and a brief saying a character has a scar
+       without saying where is precisely what invited a writer to put one on his temple. The more
+       specific assertion of the same thing is the one that prevents a contradiction, so content
+       tokens in the object break the tie.
+    3. **Recency**, last, so an older but more specific fact still beats a newer vague one.
+    """
+    return (_SLICE_PRIORITY.get(fact.kind, 9), -len(content_tokens(fact.object)), -fact.scene)
+
+
 def normalise(text: str) -> str:
     return re.sub(r"[^a-z0-9 ]+", " ", text.lower()).strip()
 
@@ -303,14 +337,32 @@ class Ledger:
         recent, older = hits[:recent_slots], hits[recent_slots:]
         spread_slots = limit - len(recent)
         if older and spread_slots > 0:
+            # Each slot takes a contiguous band of the older facts and keeps the most *durable*
+            # one in it, rather than whichever happened to land on the step boundary.
+            #
+            # Picking by index position is how a book loses a fixed particular. Scene 15 of a
+            # live novel established BOTH `[detail] Kai has a scar along his palm` and
+            # `[state] Kai feels the scar still burns faintly`. By scene 40 the slice carried the
+            # state — a scar with no location — and had dropped the detail. The writer was told
+            # Kai had a scar and not where it was, so it put one on his temple; from scene 40 on,
+            # "temple" was in the ledger and propagated to the end of the book. **15 of 19 books
+            # at 60+ scenes carry a wandering permanent mark, against 1 of 19 shorter ones.**
+            #
+            # A `detail` is defined in this codebase as "a concrete particular the prose has now
+            # fixed and cannot change" and a `state` as something that "stays true until
+            # something changes it". When one slot must carry one of them, the unchangeable one
+            # is the one a later scene can contradict without noticing. `verify._FACT_PRIORITY`
+            # already ranks kinds this way for the extraction cap; the slice was not using it.
             step = len(older) / spread_slots
-            spread = [older[min(len(older) - 1, int(i * step))] for i in range(spread_slots)]
-            seen_ids: set[int] = set()
-            picked = []
-            for f in spread:
-                if id(f) not in seen_ids:
-                    seen_ids.add(id(f))
-                    picked.append(f)
+            picked, seen_ids = [], set()
+            for i in range(spread_slots):
+                lo = min(len(older) - 1, int(i * step))
+                hi = min(len(older), max(lo + 1, int((i + 1) * step)))
+                band = older[lo:hi] or [older[lo]]
+                best = min(band, key=_slice_rank)
+                if id(best) not in seen_ids:
+                    seen_ids.add(id(best))
+                    picked.append(best)
             recent += picked
         return recent
 

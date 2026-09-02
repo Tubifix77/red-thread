@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import unittest
 
+import redthread.ledger as ledger_mod
 from redthread.ledger import Ledger, claim_class, jaccard, normalise
 from redthread.models import Fact, FactKind
 
@@ -484,3 +485,51 @@ class TestSupersededPlacementsAreRetired(unittest.TestCase):
         led = self._led(Fact("Kai", "has", "a scar on his wrist", 4, FactKind.DETAIL),
                         Fact("Kai", "is", "in the yard", 39, FactKind.STATE))
         self.assertEqual(len(led.about(["Kai"], 40)), 2)
+
+
+class TestSliceKeepsFixedParticulars(unittest.TestCase):
+    """What an old fact band contributes to a brief, and why the kind matters.
+
+    Scene 15 of a live novel established BOTH `[detail] Kai has a scar along his palm` and
+    `[state] Kai feels the scar still burns faintly`. The stratified spread picked whichever fact
+    landed on its step boundary, the state won, and by scene 40 the brief told the writer Kai had
+    a scar without saying where — so it put one on his temple, and "temple" then propagated to
+    the end of the book. Measured across the corpus, 15 of 19 books at 60+ scenes carry a
+    permanent mark in two or more body regions against 1 of 19 shorter ones.
+    """
+
+    def test_a_detail_beats_a_state_for_the_same_slot(self):
+        older = [f("Kai", "feels", "the scar still burns faintly", 15, FactKind.STATE),
+                 f("Kai", "has", "a scar along his palm", 15, FactKind.DETAIL)]
+        best = min(older, key=ledger_mod._slice_rank)
+        self.assertEqual(best.object, "a scar along his palm")
+
+    def test_the_more_specific_assertion_wins_within_a_kind(self):
+        """`Kai has scar` and `Kai has a scar along his palm` are both details.
+
+        Preferring details alone was not enough: the bare one still won slots, and a brief that
+        says a character has a scar without saying where is exactly what invited the temple.
+        """
+        older = [f("Kai", "has", "scar", 23, FactKind.DETAIL),
+                 f("Kai", "has", "a scar along his palm", 15, FactKind.DETAIL)]
+        best = min(older, key=ledger_mod._slice_rank)
+        self.assertEqual(best.object, "a scar along his palm",
+                         "specificity must outrank recency inside a kind")
+
+    def test_recency_still_decides_when_kind_and_specificity_tie(self):
+        older = [f("Kai", "has", "a folded paper map", 8, FactKind.DETAIL),
+                 f("Kai", "has", "a folded linen cloth", 30, FactKind.DETAIL)]
+        best = min(older, key=ledger_mod._slice_rank)
+        self.assertEqual(best.scene, 30)
+
+    def test_the_slice_carries_more_details_than_recency_alone_would(self):
+        """The measured effect: 5.0 details per slice became 15.9 on a 71-scene book."""
+        facts = []
+        for i in range(1, 60):
+            facts.append(f("Kai", "is", f"standing in room {i}", i, FactKind.STATE))
+            facts.append(f("Kai", "did", f"thing {i}", i, FactKind.EVENT))
+            facts.append(f("Kai", "has", f"a marked token number {i}", i, FactKind.DETAIL))
+        sl = Ledger(facts).about(["Kai"], scene=60, limit=40)
+        details = sum(1 for x in sl if x.kind is FactKind.DETAIL)
+        self.assertEqual(len(sl), 40)
+        self.assertGreater(details, 15, f"only {details} details in a 40-fact slice")

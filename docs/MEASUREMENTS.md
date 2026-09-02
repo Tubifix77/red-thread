@@ -832,6 +832,43 @@ is presumably the same: a detail asserted at scene 15 is far outside the recency
 palm-then-temple scar in `runs/current`, and the bruise sequence that caused the noun list to
 shrink — came out one real and one spurious. A flag is a line for a person to read.*
 
+### Tracing the mechanism, and one fix it earned
+
+The recency guess was wrong. The scene-40 brief's fact slice reaches back to scene 3 — it is
+stratified, not recency-capped. What it actually carried was this:
+
+    [s15] Kai | feels | the scar still burns faintly     <- a scar with NO location
+
+Scene 15 established **both** that and `[detail] Kai | has | a scar along his palm`. The
+stratified spread picked whichever fact landed on its step boundary, the location-free `state`
+won the slot, and the location-bearing `detail` was dropped. **The writer was told Kai had a scar
+and not where it was, so it put one on his temple** — and from scene 40 the ledger carried
+"temple", which the scene-42 brief then faithfully repeated.
+
+So the slice now ranks candidates for an old band's slot by **kind, then specificity, then
+recency** (`ledger._slice_rank`): a `detail` cannot be re-established while a `state` may change,
+and between two details the one with more content words is the one that prevents a contradiction.
+Measured over scenes 20–71 of that book, in the same 40 slots:
+
+| | details per slice | mean content tokens per object |
+|---|---:|---:|
+| before (position/recency) | 5.0 | 3.05 |
+| after | **15.9** | 3.29 |
+
+**Three times as many unchangeable particulars in every brief, at no cost in slots.** Live-verified
+on `qwen3:8b`: three scenes committed first-pass with zero repairs.
+
+**It does not fix the wandering scar, and that is stated rather than implied.** The palm fact
+still loses its slot — by scene 40 Kai has hundreds of facts and no general priority rule
+guarantees one specific old detail survives 40 slots. Fixing *that* needs permanent-mark details
+exempted from the cap the way `knows` is exempted via its own accessor, which is a real change and
+is not made here.
+
+*A claim nearly published in this section and withdrawn before it was: that `about` also silently
+caps character knowledge, since only 2 of 101 knowledge facts reach the scene-70 slice. It does
+not — `Ledger.knows` is a separate uncapped accessor and the brief's POV path delivers 79 of them.
+The docstring was accurate and the check was worth running.*
+
 ## A judge with perfect detection, rejected for answering a bigger question
 
 *PLAN2 step 36. Full record in [evidence/inspector-method.md](evidence/inspector-method.md).*
