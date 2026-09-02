@@ -357,8 +357,12 @@ a verdict, every fact carrying the sentence it was extracted from, recall as the
   three regions. Narrow on purpose (regions not parts, so palm-vs-hand is silent; spans excluded;
   `detail` only, since a `state` may change), because rule V's four reverted plan checks all died
   of matching vocabulary instead of meaning.
-- **Run over the whole corpus it turns out to be a length defect: 15 of 19 books at ≥60 scenes
-  carry one, against 1 of 19 shorter ones (79% vs 5%).** Same shape as the scale test's ledger
+- **Run over the whole corpus: 15 of 19 books at ≥60 scenes carry one, against 1 of 20 shorter
+  ones (79% vs 5%) — but "long" and "one premise" are the same set.** Every 60+ scene book in
+  `runs/` is *The Debt of Years*, and the longest book of any other premise is 24 scenes, so this
+  cannot separate a length defect from a premise defect. Calling it a length defect, as this line
+  first did, went past the evidence. Settling it costs one 71-scene run of another premise
+  (~1.5 GPU-h) and is not yet on this plan. Same shape as the scale test's ledger
   bug — a defect that does not exist below about forty scenes — and presumably the same mechanism:
   a detail fixed at scene 15 is far outside the recency window by scene 42, so nothing but the
   ledger remembers it. Calibrating the check cost four nouns: `bruise`, `burn`, `callus` and

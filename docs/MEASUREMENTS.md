@@ -823,10 +823,22 @@ Run over all 38 ledgers in `runs/`:
 | < 60 scenes | 1 of 19 — 5% |
 
 **Four of five long books contradict themselves about a permanent physical mark**, and the short
-ones almost never do. That is the same shape as the scale test's ledger bug — *"defects that do
-not exist below about forty scenes"* — and it puts a second entry in that category. The mechanism
-is presumably the same: a detail asserted at scene 15 is far outside the recency window by scene
-42, so the brief never restates it and nothing but the ledger remembers.
+ones almost never do.
+
+**Except that "long" and "one premise" are the same set here, and that has to be said before the
+number is quoted.** Every 60+ scene book in `runs/` is *The Debt of Years* — 19 of 19 — and the
+longest book of any other premise is 24 scenes. So this cannot distinguish *"a defect that appears
+at length"* from *"a defect that appears in this premise"*, and calling it a length defect, as an
+earlier version of this section did, was going beyond the evidence.
+
+Two things narrow it without settling it. The scar is **not** seeded: it appears nowhere in the
+premise, the style samples or the three character sheets, so the writer invents it unprompted.
+Kai's **watch**, whose location also drifts, *is* seeded — *"Kai constantly checks his watch"* is
+in his character sheet — so at least one of the two wandering objects is premise-driven.
+
+**The test that would settle it:** one 71-scene run of a different premise. If a wandering mark
+appears there too, it is length; if not, this is a fact about *The Debt of Years*. That is ~1.5
+GPU-hours and is not on any plan yet.
 
 *The 79% is a rate of **flags**, not of confirmed defects: the two audited by hand — Kai's
 palm-then-temple scar in `runs/current`, and the bruise sequence that caused the noun list to

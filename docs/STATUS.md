@@ -132,7 +132,8 @@ evidence about readers.
 [MEASUREMENTS.md](MEASUREMENTS.md) and [evidence/inconsistency-finder.md](evidence/inconsistency-finder.md).*
 
 **A permanent physical mark drifts across body regions in 15 of 19 runs of 60+ scenes, against 1
-of 19 shorter ones.** In the shipped *Debt of Years*, Kai's scar is on his palm (11–16, 46–47),
+of 20 shorter ones — though every 60+ scene book in the corpus is the same premise, so length and
+premise cannot be separated here.** In the shipped *Debt of Years*, Kai's scar is on his palm (11–16, 46–47),
 his arm (31–32), his wrist (53) and his temple (40, 42, 56, 57, 66, 68, 70). The extraction
 prompt's own example of a fixed detail is *"the scar is on the left hand"*.
 
