@@ -317,3 +317,48 @@ class TestNoModelIndexIsUsedUnchecked(unittest.TestCase):
         # the scan above is not read as banning every model-returned number.
         source = (SOURCE_DIR / "planner.py").read_text(encoding="utf-8")
         self.assertIn("by_index.get(int(row.get(\"index\", -1)))", source)
+
+
+class TestTruncationIsNeverSilent(unittest.TestCase):
+    """`judge_conflicts` caps its candidate list, and the cap must announce itself.
+
+    It used to bite in 46 of 70 scenes of one book and discard 86% of all candidate pairs by list
+    order, in silence — so the gate was far weaker than its design and no run could say so.
+    `Ledger._latest_only` removed most of that redundancy (9,560 candidates to 571 on the same
+    book), but one scene of 70 still reaches 33 against a cap of 25, so this MINOR is not a
+    vacuous check: it fires on real material. That check on a new check is rule VIII, applied to
+    the thing rule VIII was written about.
+    """
+
+    def _judge(self, older, newer, max_pairs):
+        import json
+        from redthread.ledger import Ledger
+        from redthread.verify import judge_conflicts
+        from tests import fakes
+        models, _b = fakes.scripted_models({"conflict": json.dumps({"judgements": []})})
+        return judge_conflicts(newer, Ledger(older), models, max_pairs=max_pairs)
+
+    def _pair(self, i):
+        from redthread.models import Fact, FactKind
+        return (Fact(subject=f"thing {i}", predicate="is", object="intact", scene=1,
+                     kind=FactKind.DETAIL),
+                Fact(subject=f"thing {i}", predicate="is", object="broken", scene=2,
+                     kind=FactKind.DETAIL))
+
+    def test_the_cap_biting_emits_a_minor_naming_the_count(self):
+        from redthread.models import Severity
+        pairs = [self._pair(i) for i in range(6)]
+        older = [o for o, _n in pairs]
+        newer = [n for _o, n in pairs]
+        found = self._judge(older, newer, max_pairs=2)
+        truncated = [v for v in found if v.kind == "conflict_check_truncated"]
+        self.assertEqual(len(truncated), 1, [v.kind for v in found])
+        self.assertIs(truncated[0].severity, Severity.MINOR,
+                      "it must not hold a scene; it must only be impossible to miss")
+        self.assertIn("6 candidate pairs", truncated[0].detail)
+        self.assertIn("4 were not", truncated[0].detail)
+
+    def test_nothing_is_said_when_the_cap_does_not_bite(self):
+        pairs = [self._pair(i) for i in range(2)]
+        found = self._judge([o for o, _n in pairs], [n for _o, n in pairs], max_pairs=25)
+        self.assertEqual([v for v in found if v.kind == "conflict_check_truncated"], [])
