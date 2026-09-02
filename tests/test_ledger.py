@@ -586,3 +586,36 @@ class TestFixedMarksAreReservedASlot(unittest.TestCase):
         """`checks.wandering_details` imports this list, so the two cannot drift apart."""
         from redthread import checks
         self.assertIs(checks._MARK_NOUNS, ledger_mod.FIXED_MARK_NOUNS)
+
+
+class TestContentlessDetailsAreDemoted(unittest.TestCase):
+    """A "detail" that fixes no particular is not a detail, and must not outrank a state.
+
+    The extractor's own prompt defines a detail as "a concrete particular the prose has now fixed
+    and cannot change (the scar is on the left hand)". 717 of 4,297 detail facts in the corpus —
+    **17%** — name a thing and no particular: *"Varen has a scar"*, *"Dain is wearing coat"*,
+    *"Vay Sorel has glasses"*. Promoting details above states without accounting for that spent
+    5.5 slice slots of 40 on facts carrying no constraint, and 10 in the worst scene.
+    """
+
+    def test_a_bare_detail_does_not_outrank_an_informative_state(self):
+        bare = f("Varen", "has", "a scar", 5, FactKind.DETAIL)
+        state = f("Kai", "is", "standing beside the welded hatch", 5, FactKind.STATE)
+        self.assertLess(ledger_mod._slice_rank(state), ledger_mod._slice_rank(bare),
+                        "a state that says something must beat a detail that says nothing")
+
+    def test_a_specific_detail_still_outranks_a_state(self):
+        specific = f("Kai", "has", "a scar along his palm", 5, FactKind.DETAIL)
+        state = f("Kai", "is", "standing beside the welded hatch", 5, FactKind.STATE)
+        self.assertLess(ledger_mod._slice_rank(specific), ledger_mod._slice_rank(state))
+
+    def test_the_mark_reservation_prefers_a_located_mark(self):
+        """A reserved slot spent on "has a scar" reproduces the failure it exists to prevent."""
+        facts = [f("Kai", "has", "a scar", 3, FactKind.DETAIL),
+                 f("Kai", "has", "a scar along his palm", 4, FactKind.DETAIL)]
+        for i in range(5, 70):
+            facts.append(f("Kai", "is", f"standing in room {i}", i, FactKind.STATE))
+        sl = Ledger(facts).about(["Kai"], scene=70, limit=10)
+        marks = [x.object for x in sl if ledger_mod.is_fixed_mark(x)]
+        self.assertIn("a scar along his palm", marks,
+                      "the located mark must take the reserved slot")

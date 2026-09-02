@@ -58,9 +58,11 @@ def is_fixed_mark(fact: Fact) -> bool:
 def _slice_rank(fact: Fact) -> tuple:
     """Sort key deciding which fact wins a stratified slice slot. Lower is better.
 
-    Three tiers, in order:
+    Three tiers plus one demotion, in order:
 
-    1. **Kind**, per `_SLICE_PRIORITY` — a detail cannot be re-established, a state can.
+    1. **Kind**, per `_SLICE_PRIORITY` — a detail cannot be re-established, a state can. With one
+       exception, applied below: a `detail` whose object carries no content word fixes no
+       particular and is judged at the state tier, because that is what it behaves like.
     2. **Specificity**, and this tier is why the first version of the fix was not enough. The
        ledger holds both `Kai | has | scar` and `Kai | has | a scar along his palm`. Preferring
        details alone still let the bare one win a slot, and a brief saying a character has a scar
@@ -69,7 +71,19 @@ def _slice_rank(fact: Fact) -> tuple:
        tokens in the object break the tie.
     3. **Recency**, last, so an older but more specific fact still beats a newer vague one.
     """
-    return (_SLICE_PRIORITY.get(fact.kind, 9), -len(content_tokens(fact.object)), -fact.scene)
+    tokens = len(content_tokens(fact.object))
+    tier = _SLICE_PRIORITY.get(fact.kind, 9)
+    # A "detail" that fixes no particular is not a detail by the extractor's own definition --
+    # the prompt says "a concrete particular the prose has now fixed and cannot change (the scar
+    # is on the left hand)". 717 of 4,297 detail facts in the corpus (17%) name a thing and no
+    # particular: "Varen has a scar", "Dain is wearing coat", "Vay Sorel has glasses".
+    #
+    # Promoting details above states without this cost 5.5 slice slots of 40 on average, and 10
+    # in the worst scene, to facts carrying no constraint -- displacing states that did. So a
+    # one-token detail is judged at the state tier instead, which is what it behaves like.
+    if fact.kind is FactKind.DETAIL and tokens <= 1:
+        tier = _SLICE_PRIORITY[FactKind.STATE]
+    return (tier, -tokens, -fact.scene)
 
 
 def normalise(text: str) -> str:
@@ -366,7 +380,12 @@ class Ledger:
         # details. A synthetic ledger of 39 scars fills 27 of 40 slots with them. Real books do
         # not have 39 scars — the measured mean on a 71-scene novel is 6.7 of 40 — and current
         # state still reaches every brief, which is the property the test pins.
-        marks = [x for x in hits if is_fixed_mark(x)][:max(1, limit // 5)]
+        # Sorted by specificity before the reservation is taken, because a reserved slot spent
+        # on "Varen has a scar" reproduces the exact failure it exists to prevent: a mark named
+        # without a location is what let a writer put one on a temple.
+        marks = sorted((x for x in hits if is_fixed_mark(x)),
+                       key=lambda x: (-len(content_tokens(x.object)), -x.scene)
+                       )[:max(1, limit // 5)]
         if marks:
             pinned_ids = {id(x) for x in marks}
             hits = marks + [x for x in hits if id(x) not in pinned_ids]

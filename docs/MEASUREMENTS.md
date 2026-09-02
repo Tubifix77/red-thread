@@ -892,6 +892,32 @@ where they rank high because they are specific details. A synthetic ledger of 39
 of 40 slots. Real books do not have 39 scars, and the property the test pins is the one that
 matters: current state is never squeezed out entirely.
 
+### 17% of "details" fix no particular, and promoting details exposed it
+
+Checking the side effect of the change above rather than assuming it was free: **5.5 slice slots
+of 40, and 10 in the worst scene, were going to details that constrain nothing.**
+
+The extractor's own prompt defines a detail as *"a concrete particular the prose has now fixed and
+cannot change (the scar is on the left hand)"*. **717 of 4,297 detail facts in the corpus — 17% —
+name a thing and no particular:** *"Varen has a scar"*, *"Dain is wearing coat"*, *"Vay Sorel has
+glasses"*. Ranking all details above all states therefore promoted a large block of facts that say
+nothing, displacing states that said something.
+
+Two consequences, both fixed:
+
+- **A detail with no content word is ranked at the state tier**, because that is what it behaves
+  like. Contentless details per slice: 5.5 → **2.3**.
+- **The mark reservation is sorted by specificity before it is taken**, since a reserved slot
+  spent on *"has a scar"* reproduces the exact failure it exists to prevent.
+
+Scene 40's brief now carries `[s15] Kai has a scar along his palm` — the original
+location-bearing fact — beside `[s31]`/`[s32] scar on arm`. The writer sees the whole history of
+the mark, including its own contradiction.
+
+*Worth naming as a pattern: this was a cost created by the previous fix in the same evening, found
+only because the fix's side effects were measured instead of assumed. Three of the four changes in
+this section were corrections to the one before it.*
+
 *A claim nearly published in this section and withdrawn before it was: that `about` also silently
 caps character knowledge, since only 2 of 101 knowledge facts reach the scene-70 slice. It does
 not — `Ledger.knows` is a separate uncapped accessor and the brief's POV path delivers 79 of them.
