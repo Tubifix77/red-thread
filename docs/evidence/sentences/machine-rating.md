@@ -96,6 +96,12 @@ Two specific ways this could be wrong rather than merely uncertain:
   but it is not a naive reader, and "which era is this" is a question it has reason to have an
   opinion about.
 
+*Update, 2 September: the "not a naive reader" caveat has since been tested — a context-free
+rater keeps the direction and loses the separation (2.16 against 2.04, overlapping), while the
+zero-of-seven signals finding holds on the second rater too
+([inspector-method.md](../inspector-method.md), experiment B). Both machine data points now stand
+for the human sheet to adjudicate.*
+
 The thing that resolves both is a person filling in the same sheet from the same shuffle. The
 strong prediction to check it against: **the human means will separate in the same direction, and
 none of the seven signals will reach r = 0.3.**

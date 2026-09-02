@@ -282,6 +282,26 @@ has validated.
 
 ---
 
+**36. The focused-inspector method** *(added 2 September at Tue's suggestion; pre-registered,
+run, and verdict applied the same evening — [evidence/inspector-method.md](evidence/inspector-method.md)).*
+A high-model subagent asked one narrow, falsifiable question with located evidence — never a
+quality judge, never gating (rule VI), never in the product loop, validated on seeded ground truth
+before touching anything live (rule II).
+
+- **Continuity inspector: PARKED by its own thresholds.** 9 of 9 valid seeded contradictions
+  caught with exact fact and evidence — and 2 false alarms against a ceiling of 1, both on
+  transient `state` facts my filler pool should never have admitted. The fix is mechanical
+  (durable-fact sheets + one instruction line about time-indexed states); re-validation required
+  before any use, same thresholds, no third chance.
+- **Naive-rater replication: the dry run's caveat is funded.** A context-free rater keeps the
+  era *direction* and loses the *separation* (2.16 vs 2.04, overlapping); the 0-of-7-signals
+  finding held on its second independent rater; inter-rater r = 0.518 with the compression all at
+  the bottom of the scale. Step 33's prediction is weakened accordingly: direction firm,
+  separation uncertain, human tiebreak unchanged as the only one that counts.
+- **The method's own validation caught three things before any live use:** a defective seed
+  (mine), a task-definition gap (time-indexed states), and inter-agent inconsistency exactly where
+  the definition was silent. That is what the pre-registration was for.
+
 ## What this plan refuses to do
 
 - **Swap the writer.** `qwen3:8b` in every role stays; orchestration is the product and its
@@ -308,7 +328,8 @@ has validated.
 | 7 — instrument, from the shelf | 26 ✅ 27 ✅ | 0 h | **closed.** 2 of 13 measures portable; a two-run *floor* may kill, never confirm |
 | 8 — the last two switches | 28 ✅ 29 ⚠️ 30 ✅ | ~7 h | **closed.** 28 killed at n=2, kept at n=4, claim reduced to a three-phrase filter; 29 unrunnable on this corpus; 30 removed `somatic_share` from `PORTABLE` |
 | 9 — reliability | 31 ✅ 32 ⬜ | ~0 h | **31 done and live-verified.** Every future run pays rung-level data; 32 waits for the first instrumented book |
-| 10 — reader | 33 ⬜ 34 ◐ 35 ⬜ | — | **blocked on the human sheet.** 34's feasibility done: no cheap trained-judge path exists |
+| 10 — reader | 33 ⬜ 34 ◐ 35 ⬜ | — | **blocked on the human sheet.** 34's feasibility done: no cheap trained-judge path; step 36's naive rater weakened the separation prediction |
+| 36 — inspectors | A parked, B run | 0 h | none | detection 9/9 exact, false alarms 2 — parked on its own thresholds; re-validate with durable-fact sheets |
 
 ## Picking this up
 

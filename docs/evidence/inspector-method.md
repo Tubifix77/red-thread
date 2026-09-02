@@ -94,3 +94,97 @@ models only.
 ---
 
 *Results follow below this line, appended after the trials ran. Nothing above it changes.*
+
+# Experiment A, results: 9 of 9 valid seeds caught exactly — and the verdict is still PARK
+
+*20 trials, 20 fresh Fable-class subagents, one trial each, ~30–90 seconds apiece, zero GPU.*
+
+## The raw tally
+
+| | outcome |
+|---|---|
+| valid mutated trials | **9 of 9 flagged, every one naming the exact mutated fact with correct scene evidence** |
+| invalid mutated trials | 1 — **my seed was defective**, see below |
+| control trials | 9 of 10 CLEAN; 1 false alarm |
+| false alarms total | **2** (one control, one on the invalid trial) |
+
+Detection is not the problem. On every trial where a genuine incompatibility existed, the
+inspector found it, named the right fact, and quoted the right span — attribute flips as quiet as
+leather→cloth binding, glass→ceramic vial, silver→iron ring, aged→fresh ink.
+
+## The two false alarms have one root cause, and it is mine
+
+Both flagged **transient `state` facts from early scenes** against later scenes: *"Mir holds
+ledger"* (scene 7) read as contradicted by Vay holding it in scene 20; *"Kai is holding a
+satchel"* (scene 1) read as contradicted by a folder in his hand in scene 20. Possession moves;
+neither is a genuine contradiction. The filler pool admitted `kind: state` facts, and the
+instructions never said how to treat time-indexed states — while four other agents *did* reason
+correctly about exactly this ("scene-state from earlier scenes is narrative progression, not
+incompatibility"), so the behaviour is inconsistent where the task definition is silent.
+
+## The invalid seed, named as the experimenter's error
+
+P1's mutation turned *"Vay smells burnt wood and cedar"* (Vay perceives a scent) into *"Vay smells
+of salt spray and citrus"* (Vay emits one). The scene's wind carrying a burnt-wood scent
+contradicts neither. The inspector correctly declined to flag the seed — and then false-alarmed on
+the satchel instead. The trial is excluded as invalid and not replaced tonight; the exclusion is
+recorded here rather than the trial quietly redrawn.
+
+## The verdict, per the thresholds fixed above
+
+Hits clear the bar (9 of 9 valid ≥ 8-of-10 equivalent). **False alarms do not: 2 against a
+ceiling of 1.** The pre-registered reading applies verbatim:
+
+> **Park:** hits ≥ 8 but false alarms ≥ 2 — it sees truth but cries wolf; unusable for triage.
+
+**PARKED.** Not adopted, not rejected. The fix is mechanical and named: sheets restricted to
+durable facts (`detail`/`knowledge`, never bare `state`), and one instruction line telling the
+inspector that early-scene states may have lapsed by the audited scene. Re-validation on fresh
+pairs is required before any live use — the same thresholds, no third chance after that.
+
+## What the night actually validated
+
+Not the inspector — **the method**. One pre-registered validation run caught, before the inspector
+touched a single live question: an experimenter's defective seed, a task-definition gap around
+time-indexed facts, and inter-agent inconsistency exactly where the definition was silent. Every
+one of those would otherwise have surfaced later as a mysterious wrong audit of real prose. The
+cost was twenty subagent calls and an evening; LitBench's lesson — measure the judge before
+believing it — held at every scale it was applied at.
+
+# Experiment B, results: the direction survives a naive rater; the separation does not
+
+*One fresh Fable-class subagent, zero project context, given only a key-stripped copy of the
+sheet's own instructions and sentences. Ratings preserved in
+[sentences/sentences-naive.md](sentences/sentences-naive.md); the blank sheet remains blank.*
+
+| | current era | pre-prose-work | separates? |
+|---|---:|---:|---|
+| informed dry run (had read the codebase) | 2.12 [1.94, 2.30] | 1.64 [1.46, 1.82] | **yes** |
+| naive rater (context-free) | 2.16 [2.00, 2.30] | 2.04 [1.96, 2.14] | **no — intervals overlap** |
+
+**Prediction 1 half-holds and its wording was ambiguous — both recorded.** The direction is
+preserved (current above pre, and again on the narrated-only split, 2.21 against 2.05). The
+*separation* is gone. The pre-registration said the rater "separates the eras in the same
+direction", which can be read as direction-only or as non-overlap; step 28's lesson about
+pre-registrations stated two ways recurred here within the same day, in a single sentence. Scored
+against the stricter reading: **failed**.
+
+**Prediction 2 holds, on the second rater in a row:** no panel signal reaches |r| ≥ 0.3 — the
+naive maximum is `words` at +0.12, and even `past_perfect`, the informed run's confounded
+front-runner, collapses to +0.06. The 0-of-7 finding now stands on two independent machine raters.
+
+**Prediction 3, the descriptive one:** inter-rater r = **0.518**, exact agreement 63/100. The
+disagreement is structured, not noise: the naive rater compresses the bottom of the scale —
+six 1s against the dry run's thirty (all six inside the dry run's thirty), 78 sentences parked at
+2. The informed separation was carried by the low end, and a context-free rater will not go there.
+
+## What this does to the dry run's caveat
+
+It funds it. *"The rater has read this codebase — it is not a naive reader"* was listed as a way
+the dry run could be wrong, and the first context-free replication moved the era gap from
+0.48 to 0.12 points. Two readings survive tonight, deliberately not adjudicated by a third machine
+run: project knowledge sharpened (or biased) the informed ratings, or naive raters simply compress
+three-point scales and lose power. **Both machine data points now sit on the record for the human
+sheet to break the tie — which is the only adjudication that was ever going to count.** The
+prediction carried forward for step 33 is correspondingly weakened: direction, firmly; separation,
+now genuinely uncertain.
