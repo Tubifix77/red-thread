@@ -701,6 +701,32 @@ and 13× for `refusal_per_ask`. Step 27 measured ~2× on the 71-scene *Debt* flo
 floor is half an n=4 floor"* is one book's figure and not a constant — on a 24-scene book it is
 nearer a quarter.
 
+## The wandering scar: a defect class the ledger checks cannot see
+
+*Found as a by-product of the inconsistency finder's validation
+([evidence/inconsistency-finder.md](evidence/inconsistency-finder.md)), then verified against the
+prose independently of any verdict.*
+
+In *The Debt of Years*, Kai's scar is on his:
+
+    palm     scenes 11, 14, 15, 16, 46, 47
+    arm      scenes 31, 32
+    wrist    scene 53
+    temple   scenes 40, 42, 56, 57, 66, 68, 70
+
+His watch is beneath his shirt (30), beneath his sleeve (40, 60, 61), and in his coat pocket (57).
+Scene 58 calls the theft *thirty years* in one line and *thirty days* a few paragraphs later.
+Scene 39 puts the same file in two people's hands.
+
+**The continuity checks are blind to all of it by construction.** They key on
+subject+predicate+object strings, so `scar on palm` and `scar on his temple` never collide as the
+same claim — the ledger holds both happily, and `check_threads` has nothing to compare. **A
+wandering attribute is undetectable to a string-keyed ledger check, however many scenes it spans.**
+
+That is a concrete gap with a concrete shape: the checks can catch a fact restated *differently*
+only when the strings collide. Closing it needs attribute-level grouping (all facts about "scar"
+regardless of predicate), which is a real design task and is not yet on any plan.
+
 ## A judge with perfect detection, rejected for answering a bigger question
 
 *PLAN2 step 36. Full record in [evidence/inspector-method.md](evidence/inspector-method.md).*

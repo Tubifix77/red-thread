@@ -38,6 +38,7 @@ difference smaller than the floor is a coin, and several here are.
 | `step28-model-refrains.md` | Step 28's result: the criterion fired, and the miss was 0.34 phrase occurrences across two books, on a design that could not have confirmed |
 | `step28-preregistration.md` | A targeted statistic for step 28, its control measured and its reading decided, committed while the ablated runs were a quarter written |
 | `code-drift-floor.md` | Four books sharing one plan across four code revisions: no mean moves beyond the sampling floor, but somatic_share's spread widens 5x |
+| `inconsistency-finder.md` | The rejected inspector's successor: recall passes, precision proves unmeasurable because 'clean' controls were not clean, and the run finds a substring bug in its own harness plus four real defects in a committed book |
 | `inspector-method.md` | The focused-inspector method: pre-registered thresholds, a continuity inspector that caught 9/9 seeded contradictions exactly and still got parked for crying wolf twice, and a naive rater that kept the eras' direction but lost their separation |
 | `sentences/sentences.md` | A hundred sentences, half from each era, shuffled and unlabelled — the one thing here that needs a person rather than a measurement. **Still blank; still the open step** |
 | `sentences/sentences-key.md` | Its key, deliberately a separate file. Do not open it before the sheet is filled in |

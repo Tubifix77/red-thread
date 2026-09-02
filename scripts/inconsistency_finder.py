@@ -90,10 +90,20 @@ def locate_source(fact: dict, scene_text: str) -> str | None:
     words = _content_words(f"{fact['predicate']} {fact['object']}")
     if not words:
         return None
+    # Word-boundary PREFIX match, and the boundary is the whole point. A plain substring test
+    # located the fact "Kai has scar" to a sentence about "discarded watches" -- because
+    # di-SCAR-ded contains it -- and three independent auditors reported the mismatch before
+    # anyone noticed the locator was at fault. That is this project's oldest defect class
+    # (the refusal regex that was 56% ordinary English) in a new place.
+    #
+    # A prefix rather than a full word match, because requiring both boundaries loses
+    # ordinary inflection: "mean" would stop matching "meant", "stiff" would stop matching
+    # "stiffened". Measured over 254 durable facts, the two disagree on 9.
+    patterns = [re.compile(r"\b" + re.escape(w)) for w in words]
     best, best_score = None, 0.0
     for sentence in checks.sentences(scene_text):
         low = sentence.lower()
-        score = sum(1 for w in words if w in low) / len(words)
+        score = sum(1 for pat in patterns if pat.search(low)) / len(patterns)
         if score > best_score:
             best, best_score = sentence, score
     return best if best_score >= MIN_SOURCE_COVERAGE else None

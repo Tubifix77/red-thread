@@ -310,6 +310,28 @@ before touching anything live (rule II).
   (mine), a task-definition gap (time-indexed states), and inter-agent inconsistency exactly where
   the definition was silent. That is what the pre-registration was for.
 
+**37. The inconsistency finder** *(built, pre-registered and run 2 September —
+[evidence/inconsistency-finder.md](evidence/inconsistency-finder.md); tool at
+`scripts/inconsistency_finder.py`).* The successor the rejection specified: categories instead of
+a verdict, every fact carrying the sentence it was extracted from, recall as the metric.
+
+- **Recall passes — 8 of 10 with correct category, 3 of 3 on the new `FACT_MISREADS_SOURCE`
+  class.** Both misses are my measurement design: the prompt asked for "the single most serious"
+  finding, and in both cases the finder found a **real defect that outranked my seed**.
+- **Precision was unmeasurable as pre-registered.** Nine of ten "clean" packets flagged, and
+  7 of those flags verify as real defects in the book or ledger. **A negative control cannot be
+  created by assuming a scene is clean** — real prose contains real defects at a rate that makes
+  a randomly drawn packet usually not negative. Adoption is therefore *not* claimed; the tool is
+  conditionally usable for triage lists a person reads, and nothing else.
+- **The run found a bug in its own harness.** Three independent agents reported a fact sourced to
+  a sentence containing no scar. They were right: `locate_source` used substring matching, and
+  *di·scar·ded* contains "scar". Fixed to a word-boundary prefix match. **This project's oldest
+  defect class, inside the tool built to audit everything else, on its first run.**
+- **Four real defects in a committed book, none previously known** — the wandering scar (palm →
+  arm → wrist → temple), the watch's three locations, thirty-years-vs-thirty-days inside one
+  scene, and one file in two people's hands. The continuity checks are blind to the first by
+  construction, which is a new gap on the board ([MEASUREMENTS.md](MEASUREMENTS.md)).
+
 ## What this plan refuses to do
 
 - **Swap the writer.** `qwen3:8b` in every role stays; orchestration is the product and its
@@ -337,6 +359,7 @@ before touching anything live (rule II).
 | 8 — the last two switches | 28 ✅ 29 ⚠️ 30 ✅ | ~7 h | **closed.** 28 killed at n=2, kept at n=4, claim reduced to a three-phrase filter; 29 unrunnable on this corpus; 30 removed `somatic_share` from `PORTABLE` |
 | 9 — reliability | 31 ✅ 32 ⬜ | ~0 h | **31 done and live-verified.** Every future run pays rung-level data; 32 waits for the first instrumented book |
 | 10 — reader | 33 ⬜ 34 ◐ 35 ⬜ | — | **blocked on the human sheet.** 34's feasibility done: no cheap trained-judge path; step 36's naive rater weakened the separation prediction |
+| 37 — inconsistency finder | built, run | 0 h | none | recall passes 8/10; precision unmeasurable (controls were not clean); found a substring bug in its own harness and four real defects in the book |
 | 36 — inspectors | A **rejected**, B run | 0 h | none | 19/19 detection across two rounds, exact every time; 2 false alarms both rounds against a ceiling of 1. Rejected as designed; successor must be an inconsistency finder, separately pre-registered |
 
 ## Picking this up

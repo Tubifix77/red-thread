@@ -94,3 +94,112 @@ about whether a checkable, recall-weighted instrument can be built at all.
 ---
 
 *Results follow below this line. Nothing above it changes.*
+
+# Results: recall passes, and the run found a bug in the instrument that was measuring it
+
+*20 packets, 20 fresh Fable-class subagents, one packet each, zero GPU.*
+
+## Recall: 8 of 10, which meets the bar
+
+| seeded category | found and correctly categorised |
+|---|---|
+| `SCENE_CONTRADICTS_FACT` (4) | 3 — A1, A2, A4 |
+| `FACT_MISREADS_SOURCE` (3) | **3** — B1, B2, B3 |
+| `SCENE_INTERNALLY_INCOHERENT` (3) | 2 — C2, C3 |
+| **total** | **8 of 10 — passes the ≥ 8 threshold** |
+
+Every one of the eight named the seeded item and assigned the right category. The new
+`FACT_MISREADS_SOURCE` category worked perfectly on the class it was invented for: all three
+seeds caught, each quoting the source sentence against the fact.
+
+**Both misses are my measurement design, not the finder's reading.** The prompt asks for *"the
+single most serious inconsistency"*, and in both misses the finder found a **genuine defect that
+outranked my seed**:
+
+- **A3** ignored a seeded vial mutation and flagged *"[scene 57] Kai has watch in coat pocket"*
+  against scene 61's *"the watch hidden beneath his sleeve"*.
+- **C1** ignored a seeded injected clause and flagged a one-palm scar appearing across both palms.
+
+Asking for one finding when the material contains several makes seed-recall unmeasurable whenever
+reality outranks the seed. The finder is penalised for prioritising correctly. **Fix for any
+future round: ask for all findings, not the most serious one.** That is the third
+experimenter-side error in this line of work — after round 1's invalid seed and round 2's
+mechanically-distorted seeds — and the first that is a *measurement* design error rather than a
+seed-validity one.
+
+## Precision: the controls were never clean, and that is the headline
+
+**Nine of ten "clean" packets flagged.** By the letter of the threshold — spurious ≤ 3 — this
+fails badly. By audit, almost none of it is spurious:
+
+| packet | finding | verified |
+|---|---|---|
+| N1 | fact *"Kai knows the world has changed"* whose source attributes the line to **Vay** | real |
+| N2 | Kai holds the vial from line one, yet Vay slides it across the table to him | real |
+| N3 | *"Kai is considering stealing years"* from a source merely calling it theft | real |
+| N4 | *"has a map in his shirt pocket"* from a source saying he **imagined** it there | real |
+| N5 | Kai retrieves a street-level parchment while still on the rooftop | real |
+| N7 | the theft is *thirty years* in one line and *thirty days* a few paragraphs later | real |
+| N10 | the file is in Kai's hands and in Vay's in the same scene | real |
+| N6, N8, N9 | *"Kai has scar"* cited to a sentence with no scar in it | **my bug — see below** |
+
+**A negative control cannot be created by assuming a scene is clean.** Real prose and a real
+ledger contain real defects at a rate high enough that a randomly drawn packet is usually *not* a
+negative control. The pre-registered threshold "spurious ≤ 3 of 10 clean packets" was therefore
+unmeasurable as written — not because the finder misbehaved, but because the word *clean* was
+doing work no one had earned.
+
+## The bug the instrument found in its own harness
+
+N6, N8 and N9 — three independent agents — reported that *"[scene 23] Kai has scar"* was sourced
+to a sentence about *"discarded watches, cracked and smudged"*, which contains no scar.
+
+They were right, and the fault was **mine**: `locate_source` tested `word in sentence`, and
+**di·scar·ded contains "scar"**. This project's oldest defect class — the refusal regex that was
+56% ordinary English, the vacuous model-index scan — reappearing in the tool built to audit
+everything else, on the very first run.
+
+Fixed to a word-boundary *prefix* match (`scar`), which blocks `discarded` while keeping
+ordinary inflection: a full `…` match would have lost "mean"→"meant" and "stiff"→
+"stiffened". Over 254 durable facts the two variants disagree on 9. After the fix,
+*"Kai has scar"* locates to *"His scar ran along his palm"*, and 193 of 254 durable facts (76%)
+have a locatable source.
+
+**Three subagents found a bug that three rounds of my own reading had not.** That is the single
+strongest argument in these two evenings for the instrument, and it arrived as a threshold failure.
+
+## Verdict
+
+**Recall passes: 8 of 10 with correct category, and 3 of 3 on the new category.** The precision
+threshold is **unmeasurable as pre-registered**, because its negative controls were not negative.
+
+Per the pre-registration's own terms — adopt iff recall ≥ 8/10 **and** spurious ≤ 3/10 — the
+second condition cannot be evaluated, so **adoption is not claimed.** The instrument is
+**conditionally usable for exactly one thing, stated narrowly:** producing a triage list a person
+reads, where the operating assumption is that most flags are real and none is authoritative. On
+tonight's evidence that assumption held — 7 of 10 clean-packet flags verified real, 3 traced to a
+tool bug now fixed, 0 hallucinated.
+
+**What must happen before any precision claim:** the blind adjudication this file promised, on a
+set where clean truly means clean — which now looks like it requires *hand-verified* clean packets
+rather than randomly drawn ones. That is a bigger job than one evening and is not smuggled into
+this verdict.
+
+## Real defects in a committed book, found as a by-product
+
+Independently verified against the prose, none previously known:
+
+**1. The wandering scar.** Kai's scar is on his **palm** (scenes 11, 14, 15, 16, 46, 47), his
+**arm** (31, 32), his **wrist** (53), and his **temple** (40, 42, 56, 57, 66, 68, 70).
+`check_threads` and the continuity checks are blind to this **by construction**: they key on
+subject+predicate+object strings, so *"scar on palm"* and *"scar on his temple"* never collide as
+the same claim. A wandering attribute is invisible to a string-keyed ledger check.
+
+**2. The watch.** Beneath his shirt (30), beneath his sleeve (40, 60, 61), in his coat pocket
+(57).
+
+**3. Thirty years vs thirty days** inside scene 58, and **the file in two pairs of hands** inside
+scene 39.
+
+These are the most valuable output of the whole inspector line, and none of them came from a
+verdict. They came from auditing flags instead of scoring them.
