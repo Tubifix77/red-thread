@@ -2000,6 +2000,14 @@ def wandering_details(facts: list) -> list[tuple[str, str, dict[str, list[int]]]
 
     Takes anything with `.subject`, `.predicate`, `.object`, `.scene` and a `.kind` whose value
     is `"detail"`, so it works on `Fact` objects and on raw ledger dicts alike.
+
+    **A known limit, measured rather than assumed:** subjects are grouped by their raw string, so
+    a mark tracked under two name forms — the ledger holds both `Vay` and `Vay Sorel` — lands in
+    two groups and could in principle wander invisibly, hand-only under one name and head-only
+    under the other. Re-run with subjects grouped by shared name tokens across all 38 ledgers in
+    `runs/`: **it reveals no additional wandering mark anywhere.** The looser grouping is
+    therefore not worth its false-positive risk today, and this note is here so the next person
+    does not have to re-derive that.
     """
     grouped: dict[tuple[str, str], dict[str, list[int]]] = {}
     for fact in facts:
