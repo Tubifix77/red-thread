@@ -40,6 +40,21 @@ not be dropped.
 """
 
 
+FIXED_MARK_NOUNS = ("scar", "scars", "tattoo", "tattoos", "birthmark", "birthmarks", "brand")
+"""Permanent identifying marks — the details a later scene most easily contradicts.
+
+Defined here rather than imported from `checks`, deliberately: the ledger must not depend on the
+check module, and `checks.wandering_details` imports this name instead so the two cannot drift.
+"""
+
+
+def is_fixed_mark(fact: Fact) -> bool:
+    """A `detail` naming a permanent identifying mark."""
+    if fact.kind is not FactKind.DETAIL:
+        return False
+    return any(w in FIXED_MARK_NOUNS for w in re.findall(r"[a-z]+", fact.object.lower()))
+
+
 def _slice_rank(fact: Fact) -> tuple:
     """Sort key deciding which fact wins a stratified slice slot. Lower is better.
 
@@ -333,6 +348,29 @@ class Ledger:
         #
         # `knows` is deliberately left uncapped and is unaffected; character knowledge was
         # already the one thing that reached back.
+        # Reserve slots for permanent identifying marks before anything else is chosen.
+        #
+        # Ranking by kind and specificity tripled the details in a slice and still did not save
+        # the fact this exists for: by scene 40 Kai had hundreds of facts, and no general
+        # priority rule guarantees that one old `scar on his palm` survives 40 slots. It did not,
+        # the writer was told he had a scar without being told where, and it put one on his
+        # temple. 15 of 19 books at 60+ scenes carry a mark in two or more body regions.
+        #
+        # So these get the same treatment `knows` already gets — exemption rather than
+        # competition. Newest first within the reservation, because a mark re-asserted later is
+        # the same mark described again.
+        #
+        # **This reserves a floor, not a ceiling**, and the first version of this comment claimed
+        # otherwise. `limit // 5` is how many marks are guaranteed a slot; the rest are returned
+        # to the pool and compete normally, where they rank high because they *are* specific
+        # details. A synthetic ledger of 39 scars fills 27 of 40 slots with them. Real books do
+        # not have 39 scars — the measured mean on a 71-scene novel is 6.7 of 40 — and current
+        # state still reaches every brief, which is the property the test pins.
+        marks = [x for x in hits if is_fixed_mark(x)][:max(1, limit // 5)]
+        if marks:
+            pinned_ids = {id(x) for x in marks}
+            hits = marks + [x for x in hits if id(x) not in pinned_ids]
+
         recent_slots = max(1, int(limit * 0.65))
         recent, older = hits[:recent_slots], hits[recent_slots:]
         spread_slots = limit - len(recent)

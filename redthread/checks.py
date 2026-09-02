@@ -1968,8 +1968,11 @@ _BODY_REGIONS: dict[str, str] = {
 contradiction; `palm` and `temple` cannot both be where one scar is.
 """
 
-_MARK_NOUNS = ("scar", "scars", "tattoo", "tattoos", "birthmark", "birthmarks", "brand")
+from .ledger import FIXED_MARK_NOUNS as _MARK_NOUNS  # noqa: E402  (see the note below)
 """Permanent identifying marks only, and the exclusions are the calibration.
+
+Imported from `ledger` rather than redefined, so the check that *reports* a wandering mark and
+the slice that *reserves a slot* for one can never disagree about what a mark is.
 
 `bruise`, `burn`, `callus` and `mark` were in this list and came out. A person can have several
 bruises, and a live ledger has *"a bruise on his thigh"* (21), *"a bruise on his palm"* (23) and

@@ -858,11 +858,27 @@ Measured over scenes 20–71 of that book, in the same 40 slots:
 **Three times as many unchangeable particulars in every brief, at no cost in slots.** Live-verified
 on `qwen3:8b`: three scenes committed first-pass with zero repairs.
 
-**It does not fix the wandering scar, and that is stated rather than implied.** The palm fact
-still loses its slot — by scene 40 Kai has hundreds of facts and no general priority rule
-guarantees one specific old detail survives 40 slots. Fixing *that* needs permanent-mark details
-exempted from the cap the way `knows` is exempted via its own accessor, which is a real change and
-is not made here.
+That still did not fix the wandering scar — the palm fact lost its slot anyway, because by scene
+40 Kai has hundreds of facts and no *general* priority rule guarantees one specific old detail
+survives 40 slots. So permanent identifying marks now get the same treatment `knows` gets:
+**exemption rather than competition.** `Ledger.about` reserves `limit // 5` slots for
+`is_fixed_mark` details before anything else is selected.
+
+| | scenes whose slice contains a fixed mark | mean marks per slice |
+|---|---:|---:|
+| before | 38 of 52 — 73% | 1.5 |
+| after | **50 of 52 — 96%** | 6.7 |
+
+**And the scene-40 brief now carries `[s16] Kai has a scar on his palm`** beside the arm variants
+from 31 and 32 — so the writer sees the conflict instead of inventing around it, and
+`conflict_candidates` gets to pair them. Live-verified on `qwen3:8b`: three scenes committed
+first-pass, zero repairs. Nine new tests across the two changes.
+
+*A floor, not a ceiling — and the comment first written here claimed the opposite.* `limit // 5`
+is how many marks are *guaranteed* a slot; the rest return to the pool and compete normally,
+where they rank high because they are specific details. A synthetic ledger of 39 scars fills 27
+of 40 slots. Real books do not have 39 scars, and the property the test pins is the one that
+matters: current state is never squeezed out entirely.
 
 *A claim nearly published in this section and withdrawn before it was: that `about` also silently
 caps character knowledge, since only 2 of 101 knowledge facts reach the scene-70 slice. It does

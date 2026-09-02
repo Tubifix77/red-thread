@@ -533,3 +533,56 @@ class TestSliceKeepsFixedParticulars(unittest.TestCase):
         details = sum(1 for x in sl if x.kind is FactKind.DETAIL)
         self.assertEqual(len(sl), 40)
         self.assertGreater(details, 15, f"only {details} details in a 40-fact slice")
+
+
+class TestFixedMarksAreReservedASlot(unittest.TestCase):
+    """Permanent identifying marks get exemption rather than competition.
+
+    Ranking by kind and specificity tripled the details in a slice and still lost the fact this
+    exists for: at scene 40 of a live novel Kai had hundreds of facts, `a scar on his palm` from
+    scene 16 did not survive 40 slots, the brief told the writer he had a scar without saying
+    where, and the writer put one on his temple. `knows` already has exemption via its own
+    accessor; marks now get a capped reservation inside the slice.
+    """
+
+    def test_an_old_mark_survives_a_crowded_slice(self):
+        facts = [f("Kai", "has", "a scar on his palm", 2, FactKind.DETAIL)]
+        for i in range(3, 80):
+            facts.append(f("Kai", "has", f"a numbered token {i}", i, FactKind.DETAIL))
+            facts.append(f("Kai", "is", f"standing in room {i}", i, FactKind.STATE))
+        sl = Ledger(facts).about(["Kai"], scene=80, limit=40)
+        self.assertTrue(any("palm" in x.object for x in sl),
+                        "the oldest fixed mark must not be crowded out")
+
+    def test_current_state_still_reaches_the_brief(self):
+        """The reservation is a floor, not a ceiling, and this pins what that must not cost.
+
+        An earlier version of this test asserted marks were capped at `limit // 5`. They are
+        not: that is how many are *guaranteed* a slot, and the rest compete normally, where they
+        rank high because they are specific details. A synthetic ledger of 39 scars does fill 27
+        of 40 slots. Real books do not have 39 scars — 6.7 of 40 is the measured mean on a
+        71-scene novel — so the property worth pinning is that current state is never squeezed
+        out entirely.
+        """
+        facts = [f("Kai", "has", f"a scar number {i}", i, FactKind.DETAIL)
+                 for i in range(1, 40)]
+        facts += [f("Kai", "is", f"standing in room {i}", i, FactKind.STATE)
+                  for i in range(1, 40)]
+        sl = Ledger(facts).about(["Kai"], scene=50, limit=40)
+        self.assertTrue(any(x.kind is FactKind.STATE for x in sl),
+                        "current state must still reach the brief")
+        self.assertEqual(len(sl), 40)
+
+    def test_is_fixed_mark_only_accepts_details(self):
+        self.assertTrue(ledger_mod.is_fixed_mark(
+            f("Kai", "has", "a scar on his palm", 2, FactKind.DETAIL)))
+        self.assertFalse(ledger_mod.is_fixed_mark(
+            f("Kai", "feels", "the scar still burns faintly", 2, FactKind.STATE)),
+            "a state about a mark may change and is not the pinned kind")
+        self.assertFalse(ledger_mod.is_fixed_mark(
+            f("Kai", "has", "a folded map", 2, FactKind.DETAIL)))
+
+    def test_the_check_and_the_slice_agree_on_what_a_mark_is(self):
+        """`checks.wandering_details` imports this list, so the two cannot drift apart."""
+        from redthread import checks
+        self.assertIs(checks._MARK_NOUNS, ledger_mod.FIXED_MARK_NOUNS)
