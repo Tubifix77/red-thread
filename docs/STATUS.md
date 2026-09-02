@@ -21,7 +21,7 @@ What to do next, in order, with kill criteria: **[PLAN2.md](PLAN2.md)** (PLAN.md
 | | Question | State |
 |---|---|---|
 | 1 | Can it get to the end of a book without help? | **usually — 11 of 14 unattended; halts are resumable, and two of three were resumed to the end** |
-| 2 | Is the prose free of the obvious machine tells? | **per scene, yes — but the floor those figures rest on is one novel's** |
+| 2 | Is the prose free of the obvious machine tells? | **per scene, yes — but the floor those figures rest on is one novel's, and a permanent physical detail wanders in 4 of 5 long books** |
 | 3 | Is the finished book worth reading? | **one of five axes started, and no measure yet matches a reading** |
 
 **1 — Yes, at novel length.** **Eleven distinct premises** across **39 runs with committed
@@ -123,6 +123,38 @@ rating**. The one that appeared to — past perfect, r = −0.282 — turned out
 marker, because that measure feeds candidate selection. An LLM rating LLM prose may be measuring
 fluency-under-a-language-model rather than whether a person turns the page, so none of that is
 evidence about readers.
+
+---
+
+## The defect that only appears at length, again
+
+*Found 2 September while validating a session-side inspector; full trail in
+[MEASUREMENTS.md](MEASUREMENTS.md) and [evidence/inconsistency-finder.md](evidence/inconsistency-finder.md).*
+
+**A permanent physical mark drifts across body regions in 15 of 19 runs of 60+ scenes, against 1
+of 19 shorter ones.** In the shipped *Debt of Years*, Kai's scar is on his palm (11–16, 46–47),
+his arm (31–32), his wrist (53) and his temple (40, 42, 56, 57, 66, 68, 70). The extraction
+prompt's own example of a fixed detail is *"the scar is on the left hand"*.
+
+Traced to a single dropped fact rather than guessed at: scene 15 established both
+`[detail] Kai has a scar along his palm` and `[state] Kai feels the scar still burns faintly`, and
+the stratified slice kept the state and dropped the detail. **The writer was told there was a scar
+and not where it was.**
+
+Three changes followed, all measured, all live-verified on `qwen3:8b`:
+
+| | before | after |
+|---|---:|---:|
+| conflict candidates judged (of 9,560) | 1,302 — **86% silently dropped** | 571 generated, **0 dropped** |
+| details per brief slice | 5.0 | **15.9** |
+| scenes whose slice carries a fixed mark | 73% | **96%** |
+
+Plus `checks.wandering_details`, a deterministic report surfaced in `redthread audit`, and a
+MINOR `conflict_check_truncated` so the cap can never bite silently again.
+
+**Whether any of it stops the drift is under test at n=2 right now**, pre-registered — the outcome
+is binary per book with a 0.211 clean rate, so two clean runs is p = 0.044
+([record](evidence/wandering-mark-fix.md)).
 
 ---
 
@@ -376,7 +408,7 @@ difference.
 | **1,424,274** | words drafted locally |
 | **1,631** | scenes committed |
 | **0** | API calls |
-| **869** | tests passing |
+| **891** | tests passing |
 
 The longest is now 61,733 words, and running it found exactly what was predicted: defects that
 do not exist below about forty scenes. What it also found is the one measure that gets *worse*

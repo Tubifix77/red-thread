@@ -213,7 +213,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`sample.py`](redthread/sample.py) | Sentences with no context and no scores; the blind rating sheet | — |
 | [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` `replicate` `measures` `forecast` `depends` `sample` `rate` | — |
 
-**869 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**891 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
 

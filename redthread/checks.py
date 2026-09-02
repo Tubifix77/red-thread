@@ -15,6 +15,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
+from .ledger import FIXED_MARK_NOUNS
 from .models import (Scene, SceneSpec, Severity, StorySpec, Thread, ThreadKind,
                      ThreadMove, Violation)
 
@@ -1968,7 +1969,7 @@ _BODY_REGIONS: dict[str, str] = {
 contradiction; `palm` and `temple` cannot both be where one scar is.
 """
 
-from .ledger import FIXED_MARK_NOUNS as _MARK_NOUNS  # noqa: E402  (see the note below)
+_MARK_NOUNS = FIXED_MARK_NOUNS
 """Permanent identifying marks only, and the exclusions are the calibration.
 
 Imported from `ledger` rather than redefined, so the check that *reports* a wandering mark and
