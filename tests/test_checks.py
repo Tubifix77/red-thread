@@ -1478,6 +1478,86 @@ class TestWanderingDetails(unittest.TestCase):
             _F("Kai", "a scar on his temple", 12, kind="state"),
         ]), [])
 
+    def test_a_dict_is_read_like_a_fact(self):
+        """The signature promise, pinned — it was false and silently so.
+
+        Fields were read with plain `getattr`, which a dict does not answer, so every field
+        came back empty, no mark noun was ever found, and dict input returned `[]`. Not an
+        error: a confident "no wandering marks" for the exact sequence this check exists to
+        catch. `scripts/wandering_audit.py` had a `_Fact` wrapper for this reason without the
+        reason being known, so no published number went through it — but a check that reports
+        clean when it cannot read its input is the worst failure mode available to it.
+        """
+        rows = [
+            {"kind": "detail", "subject": "Kai", "predicate": "has",
+             "object": "a scar along his palm", "scene": 15},
+            {"kind": "detail", "subject": "Kai", "predicate": "has",
+             "object": "a scar running along his temple", "scene": 40},
+        ]
+        found = checks.wandering_details(rows)
+        self.assertEqual(len(found), 1, "dict input must not report clean")
+        self.assertEqual(sorted(found[0][2]), ["hand", "head"])
+        self.assertEqual(found[0][2]["hand"], [15])
+        self.assertEqual(checks.wandering_details([_F("Kai", "a scar along his palm", 15),
+                                                   _F("Kai", "a scar running along his temple", 40)]),
+                         found, "dicts and Facts must give the same answer")
+
+    def test_a_plural_mark_noun_is_not_a_claim_about_one_mark(self):
+        """"scars on his hands" is a remark in general, not a location for *the* scar.
+
+        One of the two defects that inflated the published wandering rate from 63% to 79%
+        (docs/evidence/wandering-mark-fix.md).
+        """
+        self.assertEqual(checks.wandering_details([
+            _F("Kai", "a scar along his inner elbow", 12),
+            _F("Kai", "old scars on his hands", 12),
+        ]), [])
+
+    def test_regions_meeting_at_a_joint_are_not_a_contradiction(self):
+        """Across scenes, `wrist` and `forearm` can be one scar seen from either side.
+
+        The within-phrase span is caught separately; this is the across-scene case, and it was
+        the second rate-inflating defect. Non-adjacent pairs must still fire, so both halves
+        are asserted together — a fix that silences everything is not a fix.
+        """
+        self.assertEqual(checks.wandering_details([
+            _F("Kai", "a scar on his wrist", 51),
+            _F("Kai", "a scar on his forearm", 58),
+        ]), [])
+        self.assertTrue(checks.wandering_details([
+            _F("Kai", "a scar on his wrist", 51),
+            _F("Kai", "a scar on his temple", 58),
+        ]), "hand and head do not meet; this must still be reported")
+
+    def test_three_regions_report_even_when_two_are_adjacent(self):
+        """The exemption is for exactly two adjacent regions, never for a longer walk."""
+        found = checks.wandering_details([
+            _F("Kai", "a scar on his wrist", 5),
+            _F("Kai", "a scar on his forearm", 20),
+            _F("Kai", "a scar on his temple", 40),
+        ])
+        self.assertEqual(len(found), 1)
+        self.assertEqual(sorted(found[0][2]), ["arm", "hand", "head"])
+
+    def test_the_adjacency_table_holds_only_joints(self):
+        """Every pair names two regions that actually meet, and no pair is a shortcut.
+
+        The table was extended from `hand/arm` to all four pairs after checking the extension
+        changes no classification across 21 long books. This pins the shape rather than that
+        measurement: a later hand that adds `hand`/`head` to quiet a flag has to delete a test
+        that says why it cannot.
+        """
+        self.assertEqual(checks._ADJACENT_REGIONS, frozenset({
+            frozenset(("hand", "arm")), frozenset(("arm", "torso")),
+            frozenset(("head", "torso")), frozenset(("torso", "leg")),
+        }))
+        for pair in checks._ADJACENT_REGIONS:
+            self.assertEqual(len(pair), 2)
+            for region in pair:
+                self.assertIn(region, set(checks._BODY_REGIONS.values()))
+        self.assertNotIn(frozenset(("hand", "head")), checks._ADJACENT_REGIONS)
+        self.assertNotIn(frozenset(("arm", "leg")), checks._ADJACENT_REGIONS)
+
     def test_it_finds_the_real_defect_in_the_shipped_book(self):
         """Regression on the actual sequence, so a later change cannot quietly stop catching it."""
         found = checks.wandering_details(

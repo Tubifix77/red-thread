@@ -2,7 +2,7 @@
 
 `checks.wandering_details` answers this for one ledger and `redthread audit` prints it for one
 run. This runs it across every run in `runs/` and splits the rate by book length, because that
-split is the finding: **15 of 19 books at 60+ scenes carry a mark in two or more body regions,
+split is the finding: **12 of 19 books at 60+ scenes carry a mark in two or more body regions,
 against 1 of 20 shorter ones.**
 
 **Do not call that a length defect.** Every 60+ scene book in `runs/` is *The Debt of Years* --
@@ -104,11 +104,18 @@ def main(argv: list[str]) -> int:
 
     if long_rows:
         clean = 1 - sum(1 for r in long_rows if r["found"]) / len(long_rows)
-        print(f"\n  clean rate on long books: {clean:.3f} - so two clean runs would be "
-              f"p = {clean * clean:.4f}")
-        print("  That arithmetic is the only reason n=2 can confirm anything here: the outcome is\n"
-              "  binary per book, unlike every continuous measure in the panel, where a two-run\n"
-              "  condition may not be used for anything (docs/evidence/two-run-screen.md).")
+        print(f"\n  clean rate on long books: {clean:.3f}")
+        need = next((k for k in range(2, 9) if clean ** k < 0.05), None)
+        for k in range(2, (need or 6) + 1):
+            mark = "  <- first n reaching p<0.05" if k == need else ""
+            print(f"    {k} clean runs by chance: {clean ** k:.4f}{mark}")
+        print("  A binary outcome with a known base rate is the one place in this project\n"
+              "  where repeated runs can confirm rather than only kill - every continuous\n"
+              "  measure needs a floor instead (docs/evidence/two-run-screen.md). But the\n"
+              "  required n falls out of THIS number, not out of habit: the first design\n"
+              "  here assumed a 0.211 clean rate and chose n=2 for p=0.044. Correcting the\n"
+              "  check moved the rate, and n=2 now buys p>0.13. Re-read this block before\n"
+              "  reusing any earlier n.")
     return 0
 
 

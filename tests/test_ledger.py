@@ -494,7 +494,7 @@ class TestSliceKeepsFixedParticulars(unittest.TestCase):
     `[state] Kai feels the scar still burns faintly`. The stratified spread picked whichever fact
     landed on its step boundary, the state won, and by scene 40 the brief told the writer Kai had
     a scar without saying where — so it put one on his temple, and "temple" then propagated to
-    the end of the book. Measured across the corpus, 15 of 19 books at 60+ scenes carry a
+    the end of the book. Measured across the corpus, 12 of 19 books at 60+ scenes carry a
     permanent mark in two or more body regions against 1 of 19 shorter ones.
     """
 

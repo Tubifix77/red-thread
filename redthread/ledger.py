@@ -368,7 +368,7 @@ class Ledger:
         # the fact this exists for: by scene 40 Kai had hundreds of facts, and no general
         # priority rule guarantees that one old `scar on his palm` survives 40 slots. It did not,
         # the writer was told he had a scar without being told where, and it put one on his
-        # temple. 15 of 19 books at 60+ scenes carry a mark in two or more body regions.
+        # temple. 12 of 19 books at 60+ scenes carry a mark in two or more body regions.
         #
         # So these get the same treatment `knows` already gets — exemption rather than
         # competition. Newest first within the reservation, because a mark re-asserted later is
@@ -402,7 +402,7 @@ class Ledger:
             # `[state] Kai feels the scar still burns faintly`. By scene 40 the slice carried the
             # state — a scar with no location — and had dropped the detail. The writer was told
             # Kai had a scar and not where it was, so it put one on his temple; from scene 40 on,
-            # "temple" was in the ledger and propagated to the end of the book. **15 of 19 books
+            # "temple" was in the ledger and propagated to the end of the book. **12 of 19 books
             # at 60+ scenes carry a wandering permanent mark, against 1 of 19 shorter ones.**
             #
             # A `detail` is defined in this codebase as "a concrete particular the prose has now

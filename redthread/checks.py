@@ -1990,6 +1990,24 @@ Even so, a character may have two scars. This check reports rather than gates fo
 """
 
 
+_ADJACENT_REGIONS: frozenset[frozenset[str]] = frozenset(
+    frozenset(pair)
+    for pair in (
+        ("hand", "arm"),      # wrist / forearm
+        ("arm", "torso"),     # shoulder / chest, back
+        ("head", "torso"),    # neck, throat / chest
+        ("torso", "leg"),     # hip / thigh
+    )
+)
+"""Region pairs that meet at a joint, so one mark can legitimately be placed in either.
+
+Derived from anatomy rather than from the flags that prompted it, and that distinction was
+checked rather than asserted: extending the table from `hand/arm` alone to all four pairs
+changes no run's classification in either direction across 21 long books, because the other
+three never fire. Non-adjacent pairs — `hand`/`head`, `arm`/`leg` — remain contradictions.
+"""
+
+
 def wandering_details(facts: list) -> list[tuple[str, str, dict[str, list[int]]]]:
     """Fixed marks a book has placed in two or more body regions.
 
@@ -1998,8 +2016,8 @@ def wandering_details(facts: list) -> list[tuple[str, str, dict[str, list[int]]]
     repaired inside one scene, so it is reported rather than gated — the same treatment
     `check_summary_distance` gets and for the same reason.
 
-    Takes anything with `.subject`, `.predicate`, `.object`, `.scene` and a `.kind` whose value
-    is `"detail"`, so it works on `Fact` objects and on raw ledger dicts alike.
+    Takes `Fact` objects or raw ledger dicts; both are read through the `field` helper below,
+    which is there because the plain-`getattr` version silently reported every dict clean.
 
     **A known limit, measured rather than assumed:** subjects are grouped by their raw string, so
     a mark tracked under two name forms — the ledger holds both `Vay` and `Vay Sorel` — lands in
@@ -2009,30 +2027,55 @@ def wandering_details(facts: list) -> list[tuple[str, str, dict[str, list[int]]]
     therefore not worth its false-positive risk today, and this note is here so the next person
     does not have to re-derive that.
     """
+    def field(fact, name, default=""):
+        """Read one field off a `Fact` or a raw ledger dict.
+
+        The docstring promised dict support and `getattr` does not deliver it: a dict has no
+        `.object` attribute, so every field came back `""`, no mark noun was ever found, and
+        the function returned `[]` — a confident "no wandering marks" for any dict input.
+        Palm-then-temple, the defect this check exists to catch, read as clean. Nothing
+        published went through that path (`scripts/wandering_audit.py` wraps dicts, `cli.py`
+        passes `Fact`s) but the trap was real and silent, which is the worst kind.
+        """
+        if isinstance(fact, dict):
+            return fact.get(name, default)
+        return getattr(fact, name, default)
+
     grouped: dict[tuple[str, str], dict[str, list[int]]] = {}
     for fact in facts:
-        kind = getattr(fact, "kind", None)
+        kind = field(fact, "kind", None)
         kind = getattr(kind, "value", kind)
         if kind != "detail":
             continue
-        obj = str(getattr(fact, "object", "")).lower()
+        obj = str(field(fact, "object")).lower()
         words = re.findall(r"[a-z]+", obj)
         noun = next((w for w in words if w in _MARK_NOUNS), None)
-        if noun is None:
+        if noun is None or noun.endswith("s"):
+            # A plural is a remark about marks in general, not a claim about where *the* mark
+            # is: "scars on his hands" beside "scar along his elbow" is not a contradiction.
+            # Counting plurals is one of the two defects that inflated the published rate from
+            # 63% to 79% (docs/evidence/wandering-mark-fix.md).
             continue
         regions = {_BODY_REGIONS[w] for w in words if w in _BODY_REGIONS}
         if len(regions) != 1:
             # No region named, or several in one phrase ("a scar from wrist to elbow") — the
             # second is a span rather than a contradiction and must not be reported as one.
             continue
-        key = (str(getattr(fact, "subject", "")), noun.rstrip("s") or noun)
+        key = (str(field(fact, "subject")), noun)
         where = grouped.setdefault(key, {})
-        where.setdefault(regions.pop(), []).append(int(getattr(fact, "scene", 0)))
+        where.setdefault(regions.pop(), []).append(int(field(fact, "scene", 0)))
 
     out = []
     for (subject, noun), where in sorted(grouped.items()):
-        if len(where) > 1:
-            out.append((subject, noun, {r: sorted(s) for r, s in sorted(where.items())}))
+        if len(where) < 2:
+            continue
+        if len(where) == 2 and frozenset(where) in _ADJACENT_REGIONS:
+            # Two regions that meet at a joint can hold one continuous mark, described from
+            # either side in different scenes: "a scar on his wrist" in 51 and "a scar on his
+            # forearm" in 58. The within-phrase span is caught above; this is the across-scene
+            # case, and it was the second defect inflating the rate.
+            continue
+        out.append((subject, noun, {r: sorted(s) for r, s in sorted(where.items())}))
     return out
 
 

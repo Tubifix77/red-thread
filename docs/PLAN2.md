@@ -357,8 +357,8 @@ a verdict, every fact carrying the sentence it was extracted from, recall as the
   three regions. Narrow on purpose (regions not parts, so palm-vs-hand is silent; spans excluded;
   `detail` only, since a `state` may change), because rule V's four reverted plan checks all died
   of matching vocabulary instead of meaning.
-- **Run over the whole corpus: 15 of 19 books at ≥60 scenes carry one, against 1 of 20 shorter
-  ones (79% vs 5%) — but "long" and "one premise" are the same set.** Every 60+ scene book in
+- **Run over the whole corpus: 12 of 19 books at ≥60 scenes carry one, against 1 of 19 shorter
+  ones (63% vs 5%) — but "long" and "one premise" are the same set.** Every 60+ scene book in
   `runs/` is *The Debt of Years*, and the longest book of any other premise is 24 scenes, so this
   cannot separate a length defect from a premise defect. Calling it a length defect, as this line
   first did, went past the evidence. Settling it costs one 71-scene run of another premise
@@ -425,10 +425,20 @@ outcomes — like the wandering-mark test — need no floor and are unaffected.
 
 ### Next, in order
 
-1. **Score the wandering-mark test.** Two runs are writing at the new revision against a
-   pre-registered binary criterion ([evidence/wandering-mark-fix.md](evidence/wandering-mark-fix.md)).
-   Both clean is p = 0.044; both wandering means the brief is the wrong lever and the judge is the
-   next one.
+1. **The wandering-mark test FAILED; the next lever is the conflict judge, not the brief.**
+   Both 71-scene runs wandered under the unchanged check
+   ([evidence/wandering-mark-fix.md](evidence/wandering-mark-fix.md)) - the outcome the
+   pre-registration named in advance as the important one. Auditing those flags then found two
+   defects in the check itself, plural mark nouns and `wrist`/`forearm` split across the
+   `hand`/`arm` boundary, worth 16 points of the published rate (79% to 63%). Both fixed, pinned
+   by five regression tests, and corrected everywhere the figure appeared.
+
+   **A re-test needs four runs, not two.** The corrected clean rate is 0.368 against the control
+   and 0.429 across the corpus; n=2 buys p>0.13 either way and only n=4 clears 0.05. It also
+   needs *fresh* runs: under the corrected check both existing runs read clean and the shipped
+   book still wanders across three regions, but the correction was derived from those runs' own
+   flags, so re-reading them with it is exactly what step 28 exists to forbid. ~5 GPU-hours,
+   pre-registration not yet written.
 2. **Step 32** — design the repair-convergence fix *from* step 31's first instrumented table, not
    before it. An exploratory hypothesis is on record with its falsifier: repair need looks like a
    property of the draft, not the scene.
@@ -446,7 +456,7 @@ outcomes — like the wandering-mark test — need no floor and are unaffected.
 - **Run `scripts/mechanism_coverage.py` before designing an ablation** — rule VIII. Two of six
   mechanisms are inert on the corpus.
 - **Run `scripts/wandering_audit.py` after any change to the slice, the extractor or the mark
-  list** — the 15-of-19 figure is a claim and claims nobody re-derives rot.
+  list** — the 12-of-19 figure is a claim and claims nobody re-derives rot.
 - **`checks.PORTABLE` is two measures**, and `clears_noise(..., cross_book=True)` raises on
   anything else.
 

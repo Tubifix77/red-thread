@@ -131,8 +131,8 @@ evidence about readers.
 *Found 2 September while validating a session-side inspector; full trail in
 [MEASUREMENTS.md](MEASUREMENTS.md) and [evidence/inconsistency-finder.md](evidence/inconsistency-finder.md).*
 
-**A permanent physical mark drifts across body regions in 15 of 19 runs of 60+ scenes, against 1
-of 20 shorter ones — though every 60+ scene book in the corpus is the same premise, so length and
+**A permanent physical mark drifts across body regions in 12 of 19 runs of 60+ scenes, against 1
+of 19 shorter ones — though every 60+ scene book in the corpus is the same premise, so length and
 premise cannot be separated here.** In the shipped *Debt of Years*, Kai's scar is on his palm (11–16, 46–47),
 his arm (31–32), his wrist (53) and his temple (40, 42, 56, 57, 66, 68, 70). The extraction
 prompt's own example of a fixed detail is *"the scar is on the left hand"*.
@@ -153,9 +153,16 @@ Three changes followed, all measured, all live-verified on `qwen3:8b`:
 Plus `checks.wandering_details`, a deterministic report surfaced in `redthread audit`, and a
 MINOR `conflict_check_truncated` so the cap can never bite silently again.
 
-**Whether any of it stops the drift is under test at n=2 right now**, pre-registered — the outcome
-is binary per book with a 0.211 clean rate, so two clean runs is p = 0.044
-([record](evidence/wandering-mark-fix.md)).
+**None of it stopped the drift.** Two 71-scene runs were pre-registered at n=2 — the outcome is
+binary per book, the one place a two-run design can confirm anything — and **both wandered**. The
+pre-registration named that outcome in advance: the brief is the wrong lever, and the next one is
+the gate or the conflict judge.
+
+Auditing those flags then found the check over-fired, which cost the published rate 16 points
+(79% to 63%) and the design its power: at the corrected 0.368 clean rate a re-test needs **four**
+runs, not two. Both new runs read clean under the corrected check and the shipped book still
+wanders across three regions — deliberately **not** claimed as a result, because the correction
+came from those runs' own flags ([record](evidence/wandering-mark-fix.md)).
 
 ---
 

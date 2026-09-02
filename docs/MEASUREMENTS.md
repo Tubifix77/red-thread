@@ -813,17 +813,26 @@ records `a scar along his palm` whatever the prose said. Restricting to permanen
 marks is the available approximation and is an approximation: a character may legitimately have
 two scars, which is the other reason this reports instead of gating.
 
-### And it is a length defect — 79% against 5%
+### It appears only in long books — 63% against 5% — but "long" is one premise
 
 Run over all 38 ledgers in `runs/`:
 
 | book length | ledgers carrying a wandering permanent mark |
 |---|---|
-| **≥ 60 scenes** | **15 of 19 — 79%** |
+| **≥ 60 scenes** | **12 of 19 — 63%** |
 | < 60 scenes | 1 of 19 — 5% |
 
-**Four of five long books contradict themselves about a permanent physical mark**, and the short
-ones almost never do.
+**Nearly two in three long books contradict themselves about a permanent physical mark**, and the
+short ones almost never do.
+
+**This rate is a correction.** An earlier version of this section published 15 of 19 — 79%. That
+figure was inflated by two defects in `wandering_details` itself, found by reading the flags of a
+later run rather than by reasoning about the code: it counted plural mark nouns ("scars on his
+hands" beside a scar on his elbow) as a location claim about one mark, and it split `wrist` from
+`forearm` across the `hand`/`arm` boundary, so one scar near a joint described from either side
+read as a contradiction. Both are fixed and pinned; about three flags in ten were the check's own.
+The lesson is the one already on the record twice: a number nobody has read the matches for is
+not yet a measurement.
 
 **Except that "long" and "one premise" are the same set here, and that has to be said before the
 number is quoted.** Every 60+ scene book in `runs/` is *The Debt of Years* — 19 of 19 — and the
@@ -840,9 +849,10 @@ in his character sheet — so at least one of the two wandering objects is premi
 appears there too, it is length; if not, this is a fact about *The Debt of Years*. That is ~1.5
 GPU-hours and is not on any plan yet.
 
-*The 79% is a rate of **flags**, not of confirmed defects: the two audited by hand — Kai's
-palm-then-temple scar in `runs/current`, and the bruise sequence that caused the noun list to
-shrink — came out one real and one spurious. A flag is a line for a person to read.*
+*The 63% is a rate of **flags**, not of confirmed defects: of those audited by hand, Kai's
+palm-then-temple scar in `runs/current` is real, and the bruise sequence that caused the noun list
+to shrink, the plural-hands pair and the wrist/forearm pair were all spurious — the last two only
+recognised as such after they had been counted. A flag is a line for a person to read.*
 
 ### Tracing the mechanism, and one fix it earned
 
