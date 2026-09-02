@@ -1927,6 +1927,90 @@ def describe_difference(measure: str, a: float, b: float) -> str:
 # by tests/test_rule.py.
 # --------------------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------------------
+# Wandering details: a fixed particular that moves across a book
+#
+# The extraction prompt's own example of a `detail` is "the scar is on the left hand", and
+# `is_moveable_pair`'s docstring says a scar on the left hand against one on the right "is exactly
+# the contradiction this system exists to catch". *The Debt of Years* nonetheless shipped with
+# Kai's scar on his palm (scenes 11, 14, 15, 16, 46, 47), his arm (31, 32), his wrist (53) and his
+# temple (40, 42, 56, 57, 66, 68, 70).
+#
+# Why the existing machinery missed it, measured rather than assumed: `conflict_candidates` does
+# pair those facts, and in scene 42 the pair sat at positions 15–16 of 205, inside the
+# `max_pairs = 25` cap. **The model judge saw it and said no.** Making more pairs reach the judge
+# (which `Ledger._latest_only` now does) cannot fix that, so this is the deterministic half — no
+# model call, no judgement, just a closed vocabulary and a grouping.
+#
+# It is deliberately narrow. Only `detail` facts, only anatomical qualifiers, and only across
+# *regions* — so "palm" against "hand" is silent (a palm is part of a hand) while "palm" against
+# "temple" is not. A check that fires on every rephrasing gets switched off, which is the fate of
+# the four plan checks this project has already reverted for matching vocabulary instead of
+# meaning (rule V).
+
+_BODY_REGIONS: dict[str, str] = {
+    part: region
+    for region, parts in {
+        "hand": ("hand", "hands", "palm", "palms", "thumb", "finger", "fingers",
+                 "knuckle", "knuckles", "wrist", "wrists"),
+        "head": ("temple", "temples", "cheek", "cheeks", "forehead", "brow", "jaw",
+                 "chin", "ear", "ears", "lip", "lips", "face", "scalp", "neck", "throat"),
+        "arm": ("arm", "arms", "elbow", "shoulder", "shoulders", "forearm", "bicep"),
+        "leg": ("leg", "legs", "knee", "knees", "ankle", "ankles", "foot", "feet",
+                "thigh", "shin", "calf"),
+        "torso": ("chest", "back", "rib", "ribs", "stomach", "belly", "spine", "hip"),
+    }.items()
+    for part in parts
+}
+"""Which region a body part belongs to. Regions, not parts, because parts nest.
+
+`palm` and `hand` name the same place at different resolutions and must never be reported as a
+contradiction; `palm` and `temple` cannot both be where one scar is.
+"""
+
+_MARK_NOUNS = ("scar", "scars", "tattoo", "tattoos", "burn", "burns", "birthmark",
+               "bruise", "bruises", "mark", "marks", "brand", "callus", "calluses")
+"""Nouns for a fixed mark on a body — the thing that has one location and keeps it."""
+
+
+def wandering_details(facts: list) -> list[tuple[str, str, dict[str, list[int]]]]:
+    """Fixed marks a book has placed in two or more body regions.
+
+    Returns `(subject, noun, {region: [scenes]})` for each subject-and-noun the manuscript
+    contradicts itself about. Deterministic, no model call, and manuscript-level: it cannot be
+    repaired inside one scene, so it is reported rather than gated — the same treatment
+    `check_summary_distance` gets and for the same reason.
+
+    Takes anything with `.subject`, `.predicate`, `.object`, `.scene` and a `.kind` whose value
+    is `"detail"`, so it works on `Fact` objects and on raw ledger dicts alike.
+    """
+    grouped: dict[tuple[str, str], dict[str, list[int]]] = {}
+    for fact in facts:
+        kind = getattr(fact, "kind", None)
+        kind = getattr(kind, "value", kind)
+        if kind != "detail":
+            continue
+        obj = str(getattr(fact, "object", "")).lower()
+        words = re.findall(r"[a-z]+", obj)
+        noun = next((w for w in words if w in _MARK_NOUNS), None)
+        if noun is None:
+            continue
+        regions = {_BODY_REGIONS[w] for w in words if w in _BODY_REGIONS}
+        if len(regions) != 1:
+            # No region named, or several in one phrase ("a scar from wrist to elbow") — the
+            # second is a span rather than a contradiction and must not be reported as one.
+            continue
+        key = (str(getattr(fact, "subject", "")), noun.rstrip("s") or noun)
+        where = grouped.setdefault(key, {})
+        where.setdefault(regions.pop(), []).append(int(getattr(fact, "scene", 0)))
+
+    out = []
+    for (subject, noun), where in sorted(grouped.items()):
+        if len(where) > 1:
+            out.append((subject, noun, {r: sorted(s) for r, s in sorted(where.items())}))
+    return out
+
+
 BLOCKER_SOURCES: dict[str, str] = {
     "check_format": "a heading or a scene number, found by pattern",
     "check_pov": "first- or second-person pronouns outside dialogue, counted",

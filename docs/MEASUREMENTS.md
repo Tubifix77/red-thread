@@ -777,8 +777,28 @@ plural.*
 `conflict_check_truncated` naming how many pairs went unjudged, on both the success and
 parse-failure paths.
 
-*One thing this does not fix: the scar pair was always inside the cap, was judged, and the judge
-said no. Making more pairs reach the judge does not make the judge better at them.*
+### The judge half, done deterministically instead
+
+The scar pair was always inside the cap, was judged, and the judge said no — so making more pairs
+reach the judge could never fix it. `checks.wandering_details` does it without a model:
+
+    Kai's scar:   arm  in [31, 32]
+                  hand in [15, 16, 46]
+                  head in [40, 42, 56, 57, 68, 70]
+
+Group `detail` facts by (subject, mark-noun), map each anatomical word to a **region**, and report
+any mark placed in more than one. Deliberately narrow, because rule V's four reverted plan checks
+all died of matching vocabulary rather than meaning:
+
+- **regions, not parts** — `palm` against `hand` is silent, `palm` against `temple` is not;
+- **spans are not contradictions** — "a scar from wrist to elbow" names two regions in one phrase
+  and is one scar;
+- **`detail` only** — a `state` is allowed to change.
+
+Surfaced in `redthread audit`, as advisory: it is manuscript-level, cannot be repaired inside one
+scene, and by the time it is visible the earlier scenes are committed. Which location is the real
+one is the author's call, not a gate's. Six tests, including a regression on the shipped
+sequence.
 
 ## A judge with perfect detection, rejected for answering a bigger question
 

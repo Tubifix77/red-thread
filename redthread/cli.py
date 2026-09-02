@@ -68,6 +68,28 @@ def cmd_audit(args) -> int:
         arc = " → ".join(s for _, s in seq) or "(no state changes)"
         print(f"  {thread.id:14} {thread.kind.value:12} scenes {scenes or '—'}")
         print(f"  {'':14} {arc}")
+
+    # Manuscript-level, so it belongs after the plan audit rather than inside it: a wandering
+    # detail cannot be seen from one scene or repaired inside one, and only exists once prose has
+    # accumulated. Deterministic — no model call — because the model judge is the part that
+    # already failed here: on *The Debt of Years* the palm-versus-temple scar pair reached
+    # `judge_conflicts` inside its cap and was judged not a contradiction.
+    # `getattr` because a project shape without a ledger is legitimate — the plan audit runs
+    # before any prose exists, and a caller may hand in a plan-only object.
+    ledger = getattr(project, "ledger", None)
+    facts = list(getattr(ledger, "facts", []) or [])
+    wandering = checks.wandering_details(facts)
+    if wandering:
+        print(f"\nWandering details — {len(wandering)} fixed particular(s) the manuscript "
+              f"places in more than one body region:")
+        for subject, noun, where in wandering:
+            spread = "; ".join(f"{region} in {scenes}" for region, scenes in where.items())
+            print(f"  {subject}'s {noun}: {spread}")
+        print("  Advisory: this cannot be repaired inside one scene, and the earlier scenes are "
+              "\n  already committed. It is the author's call which location is the real one.")
+    elif facts:
+        print("\nWandering details: none — every fixed mark stays in one body region.")
+
     return 1 if problems else 0
 
 

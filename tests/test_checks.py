@@ -1415,3 +1415,74 @@ class TestGlossIsAboutNarrationNotSpeech(unittest.TestCase):
                 checks.check_thematic_gloss(
                     self._scene(draft.read_text(encoding="utf-8"))), [],
                 f"{draft.name} should stay clean")
+
+
+class _F:
+    """Minimal stand-in for a ledger Fact, so these tests need no Ledger machinery."""
+
+    def __init__(self, subject, obj, scene, kind="detail"):
+        self.subject, self.object, self.scene, self.kind = subject, obj, scene, kind
+        self.predicate = "has"
+
+
+class TestWanderingDetails(unittest.TestCase):
+    """A fixed mark that moves body region across a book.
+
+    The extraction prompt's own example of a `detail` is "the scar is on the left hand", and
+    `is_moveable_pair` says a scar moving hands "is exactly the contradiction this system exists
+    to catch". *The Debt of Years* shipped with Kai's scar on his hand, his arm and his temple —
+    and the reason is measured, not guessed: `conflict_candidates` did pair the facts, the pair
+    was inside `max_pairs`, and the model judge said no. This is the deterministic half.
+    """
+
+    def test_a_mark_in_two_regions_is_reported(self):
+        found = checks.wandering_details([
+            _F("Kai", "a scar along his palm", 15),
+            _F("Kai", "a scar running along his temple", 42),
+        ])
+        self.assertEqual(len(found), 1)
+        subject, noun, where = found[0]
+        self.assertEqual((subject, noun), ("Kai", "scar"))
+        self.assertEqual(sorted(where), ["hand", "head"])
+        self.assertEqual(where["hand"], [15])
+
+    def test_parts_of_the_same_region_are_silent(self):
+        """`palm` and `hand` name one place at two resolutions.
+
+        Reporting them would make the check fire on ordinary rephrasing, which is how the four
+        plan checks this project has reverted all died (rule V).
+        """
+        self.assertEqual(checks.wandering_details([
+            _F("Kai", "a scar on his hand", 3),
+            _F("Kai", "a scar along his palm", 9),
+            _F("Kai", "a scar across his knuckles", 20),
+        ]), [])
+
+    def test_a_span_across_regions_is_not_a_contradiction(self):
+        """"A scar from wrist to elbow" names two regions in one phrase and is one scar."""
+        self.assertEqual(checks.wandering_details([
+            _F("Kai", "a scar from wrist to elbow", 4),
+            _F("Kai", "a scar from wrist to elbow, pale now", 30),
+        ]), [])
+
+    def test_different_people_do_not_collide(self):
+        self.assertEqual(checks.wandering_details([
+            _F("Kai", "a scar on his palm", 5),
+            _F("Mir", "a scar on his temple", 12),
+        ]), [])
+
+    def test_only_details_count(self):
+        """A `state` may change; a `detail` is what the prose has fixed."""
+        self.assertEqual(checks.wandering_details([
+            _F("Kai", "a scar on his palm", 5, kind="state"),
+            _F("Kai", "a scar on his temple", 12, kind="state"),
+        ]), [])
+
+    def test_it_finds_the_real_defect_in_the_shipped_book(self):
+        """Regression on the actual sequence, so a later change cannot quietly stop catching it."""
+        found = checks.wandering_details(
+            [_F("Kai", "a scar along his palm", s) for s in (15, 16, 46)]
+            + [_F("Kai", "scar on arm", s) for s in (31, 32)]
+            + [_F("Kai", "a scar running along his temple", s) for s in (40, 42, 56)])
+        self.assertEqual(len(found), 1)
+        self.assertEqual(sorted(found[0][2]), ["arm", "hand", "head"])
