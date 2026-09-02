@@ -1968,9 +1968,22 @@ _BODY_REGIONS: dict[str, str] = {
 contradiction; `palm` and `temple` cannot both be where one scar is.
 """
 
-_MARK_NOUNS = ("scar", "scars", "tattoo", "tattoos", "burn", "burns", "birthmark",
-               "bruise", "bruises", "mark", "marks", "brand", "callus", "calluses")
-"""Nouns for a fixed mark on a body — the thing that has one location and keeps it."""
+_MARK_NOUNS = ("scar", "scars", "tattoo", "tattoos", "birthmark", "birthmarks", "brand")
+"""Permanent identifying marks only, and the exclusions are the calibration.
+
+`bruise`, `burn`, `callus` and `mark` were in this list and came out. A person can have several
+bruises, and a live ledger has *"a bruise on his thigh"* (21), *"a bruise on his palm"* (23) and
+*"a bruise on his leg"* (24) — three bruises in four scenes is a man being knocked about, not a
+contradiction. `callus` is plural by nature and `mark` is generic enough to match anything.
+
+The discriminator a reader uses is the article: the prose says *"**the** scar along his palm"* and
+*"**the** scar running along his temple"* — one scar, two places — but *"**a** bruise"*. **That
+distinction is not available here**: the extractor normalises both to "a", so the ledger records
+`a scar along his palm` regardless of what the prose said. Narrowing the noun list is the
+available approximation, and it is an approximation.
+
+Even so, a character may have two scars. This check reports rather than gates for that reason.
+"""
 
 
 def wandering_details(facts: list) -> list[tuple[str, str, dict[str, list[int]]]]:

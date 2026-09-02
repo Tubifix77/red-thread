@@ -348,6 +348,12 @@ a verdict, every fact carrying the sentence it was extracted from, recall as the
   three regions. Narrow on purpose (regions not parts, so palm-vs-hand is silent; spans excluded;
   `detail` only, since a `state` may change), because rule V's four reverted plan checks all died
   of matching vocabulary instead of meaning.
+- **Run over the whole corpus it turns out to be a length defect: 15 of 19 books at ≥60 scenes
+  carry one, against 1 of 19 shorter ones (79% vs 5%).** Same shape as the scale test's ledger
+  bug — a defect that does not exist below about forty scenes — and presumably the same mechanism:
+  a detail fixed at scene 15 is far outside the recency window by scene 42, so nothing but the
+  ledger remembers it. Calibrating the check cost four nouns: `bruise`, `burn`, `callus` and
+  `mark` came out, because three bruises in four scenes is a man being knocked about.
 
 ## What this plan refuses to do
 

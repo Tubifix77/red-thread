@@ -800,6 +800,38 @@ scene, and by the time it is visible the earlier scenes are committed. Which loc
 one is the author's call, not a gate's. Six tests, including a regression on the shipped
 sequence.
 
+### The noun list is the calibration, and it cost four nouns
+
+`bruise`, `burn`, `callus` and `mark` were in the list and came out. A live ledger has *"a bruise
+on his thigh"* (21), *"a bruise on his palm"* (23) and *"a bruise on his leg"* (24) — three
+bruises in four scenes is a man being knocked about, not a contradiction.
+
+The distinction a reader actually uses is **the article**: the prose says *"**the** scar along his
+palm"* and *"**the** scar running along his temple"* — one scar, two places — against *"**a**
+bruise"*. **That signal is unavailable here.** The extractor normalises both to "a", so the ledger
+records `a scar along his palm` whatever the prose said. Restricting to permanent identifying
+marks is the available approximation and is an approximation: a character may legitimately have
+two scars, which is the other reason this reports instead of gating.
+
+### And it is a length defect — 79% against 5%
+
+Run over all 38 ledgers in `runs/`:
+
+| book length | ledgers carrying a wandering permanent mark |
+|---|---|
+| **≥ 60 scenes** | **15 of 19 — 79%** |
+| < 60 scenes | 1 of 19 — 5% |
+
+**Four of five long books contradict themselves about a permanent physical mark**, and the short
+ones almost never do. That is the same shape as the scale test's ledger bug — *"defects that do
+not exist below about forty scenes"* — and it puts a second entry in that category. The mechanism
+is presumably the same: a detail asserted at scene 15 is far outside the recency window by scene
+42, so the brief never restates it and nothing but the ledger remembers.
+
+*The 79% is a rate of **flags**, not of confirmed defects: the two audited by hand — Kai's
+palm-then-temple scar in `runs/current`, and the bruise sequence that caused the noun list to
+shrink — came out one real and one spurious. A flag is a line for a person to read.*
+
 ## A judge with perfect detection, rejected for answering a bigger question
 
 *PLAN2 step 36. Full record in [evidence/inspector-method.md](evidence/inspector-method.md).*
