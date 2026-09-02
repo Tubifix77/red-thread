@@ -40,7 +40,7 @@ GPU-hour is committed.
 
 | # | weakness | evidence |
 |---|---|---|
-| W1 | 3 of 10 unattended runs halt; all three audited halts ended in repair failing to converge within its attempt budget (two of them on genuine contradictions), and no record exists of which rung fires or converges | [STATUS.md](STATUS.md); [PLAN.md](PLAN.md) step 7; `scenes/*.json` stores only an `attempts` count ([project.py](../redthread/project.py)) |
+| W1 | 3 of 14 unattended runs halt; all three audited halts ended in repair failing to converge within its attempt budget (two of them on genuine contradictions). ~~No record exists of which rung fires~~ — **step 31 closed that**: `candidates_drafted`, `repairs`, a rung-level `repair_log` and `halts.json` are now persisted | [STATUS.md](STATUS.md); [evidence/repair-backfill.md](evidence/repair-backfill.md) |
 | W2 | The noise floor is one novel's: 3 of 11 measures land outside it on a fresh premise with nothing ablated | [fresh-premise-panel.md](evidence/fresh-premise-panel.md) |
 | W3 | No measure in the panel is known to correspond to a reading; the dry run predicts none does | [machine-rating.md](evidence/sentences/machine-rating.md); step 21 blank |
 | W4 | Manuscript-level duplication grows with length: .066 across a book vs .002 within any scene | [STATUS.md](STATUS.md) |
@@ -49,14 +49,23 @@ GPU-hour is committed.
 
 ---
 
-## The one hard ordering
+## The one hard ordering — satisfied, and then spent
 
-**Every GPU step that reuses existing runs as its control (28, 29, 30) must finish before any
-write-path change lands (31, 32).** The floor, both phase 1 ablations and the step 25 runs all
-share a writer, verified by `scripts/same_code.py`; the first commit to `pipeline.py` ends that
-era, and after it every comparison against those runs differs by more than its switch. PLAN.md
-learned this as a freeze; here it is a sequencing rule. The zero-GPU steps (26, 27) and the human
-step (33) are unaffected.
+**Every GPU step that reused existing runs as its control (28, 29, 30) had to finish before any
+write-path change landed (31, 32).** The floor, both phase 1 ablations and the step 25 runs all
+shared a writer, verified by `scripts/same_code.py`; the first commit to `pipeline.py` ended that
+era, and after it every comparison against those runs would differ by more than its switch.
+
+**It held.** Phase 8 closed on 2 September at 03:15 with the guard passing at the start of every
+chain, and the three write-path changes landed afterwards. The ordering is now history rather than
+a constraint — see [Picking this up](#picking-this-up) for what it cost, which is that the four
+floor runs no longer describe this writer.
+
+*A hole in the guard was found and closed on the way: both checks compared git against git while
+Python imports the working tree, so an uncommitted edit to `pipeline.py` passed them both. That
+was open for the whole of phase 1 and nothing appears to have fallen through it — the chains were
+launched from clean trees — but the guard had been refusing on the strength of a comparison it was
+not making.*
 
 ---
 
