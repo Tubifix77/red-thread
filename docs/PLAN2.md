@@ -395,22 +395,47 @@ a verdict, every fact carrying the sentence it was extracted from, recall as the
 
 ## Picking this up
 
-**The write path is now free.** Phase 8 is finished, every comparison against the frozen-writer
-era is closed, and `runs/.floor-commit` no longer constrains what may be edited. Step 31 is
-therefore the next thing to do and the first write-path change since 31 August:
+**Three write-path changes landed on 2 September, so the frozen-writer era is definitively over.**
+`runs/.floor-commit` no longer describes this writer:
 
-1. ~~**Step 31**~~ ✅ done, live-verified 2 September evening.
-2. **Step 32** — design the convergence fix *from* 31's first table, not before it. An exploratory
-   hypothesis is already on record with its falsifier: repair need looks like a property of the
-   draft, not the scene.
-3. **Step 29 stage 2** — needs a plan where the 15% gate opens (`solo-a1` at 38%) *and* a floor for
-   that premise, so it is the most expensive item left and the least urgent.
-4. **Step 33** — twenty minutes of Tue, and it gates everything reader-facing.
+1. **Step 31's instrumentation** — `candidates_drafted`, `repairs` and a rung-level `repair_log`
+   persisted per scene, plus `halts.json`.
+2. **`Ledger._latest_only`** — the conflict judge stopped silently discarding 86% of its
+   candidates, and a MINOR `conflict_check_truncated` now fires when the cap still bites.
+3. **The slice** — old-band slots ranked by kind → specificity → recency, and permanent marks
+   given a reserved floor of `limit // 5`.
 
-**Two protocol corrections made under fire this night, both worth reading before designing
-anything:** a two-run *condition* may not be used for anything (step 28's false negative), and
-`scripts/mechanism_coverage.py` must be run before any ablation is designed (rule VIII).
+**What that costs, stated plainly:** no panel measure from a run written after 2 September may be
+compared against `checks.NOISE_FLOOR`, and the four floor runs are now historical. A fresh
+four-run floor is ~5 GPU-h and is the price of the next continuous-measure comparison. Binary
+outcomes — like the wandering-mark test — need no floor and are unaffected.
 
-**Sequencing:** 31 → 32. 29 stage 2 whenever. 33 whenever Tue has twenty minutes — it blocks
-nothing before phase 10 and everything in it. The single most valuable hour on this list is still
-the human one, and this plan inherits PLAN.md's closing prediction unchanged.
+### Next, in order
+
+1. **Score the wandering-mark test.** Two runs are writing at the new revision against a
+   pre-registered binary criterion ([evidence/wandering-mark-fix.md](evidence/wandering-mark-fix.md)).
+   Both clean is p = 0.044; both wandering means the brief is the wrong lever and the judge is the
+   next one.
+2. **Step 32** — design the repair-convergence fix *from* step 31's first instrumented table, not
+   before it. An exploratory hypothesis is on record with its falsifier: repair need looks like a
+   property of the draft, not the scene.
+3. **A new four-run floor**, whenever a continuous-measure comparison is next wanted. Not before —
+   it is five GPU-hours that buys nothing until there is something to compare.
+4. **Step 29 stage 2** — needs a plan where the 15% gate opens (`solo-a1` at 38%) *and* a floor
+   for that premise. Most expensive item left, least urgent.
+5. **Step 33** — twenty minutes of Tue, and it gates everything reader-facing.
+
+### Read before designing anything
+
+- **A two-run *condition* may not be used for anything** — step 28's false negative. A two-run
+  *floor* may kill. And a **binary** outcome with a known base rate is the one exception, with the
+  arithmetic shown rather than asserted (`scripts/wandering_audit.py`).
+- **Run `scripts/mechanism_coverage.py` before designing an ablation** — rule VIII. Two of six
+  mechanisms are inert on the corpus.
+- **Run `scripts/wandering_audit.py` after any change to the slice, the extractor or the mark
+  list** — the 15-of-19 figure is a claim and claims nobody re-derives rot.
+- **`checks.PORTABLE` is two measures**, and `clears_noise(..., cross_book=True)` raises on
+  anything else.
+
+**The single most valuable hour on this list is still the human one**, and this plan inherits
+PLAN.md's closing prediction unchanged.
