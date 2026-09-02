@@ -751,9 +751,34 @@ of 205 candidates, comfortably inside the cap, so it *was* judged — and the ju
 a contradiction. So the wandering scar has two separate causes, both real: a judge that missed a
 pair it saw, and a cap that hides most pairs from the judge entirely.
 
-*Two concrete items follow, neither yet on a plan: order or prioritise candidates before
-truncating (nearest-scene first, or one pair per (subject, predicate) key), and record how many
-were dropped so a run can say what it did not check.*
+### Both follow-ups are now done
+
+**Reduced, not re-ordered.** `Ledger._latest_only` keeps one pair per (new fact, shared-attribute)
+group — the most recent earlier assertion of that attribute. On the same book: **9,560 candidates
+become 571**, median 6, maximum 33, and **one** scene of 70 exceeds the cap instead of 46. It
+loses nothing inductively: a new fact that contradicts scene 5 but agrees with scene 30 means
+scene 30 already contradicted scene 5 and was the scene to hold — an argument that only works if
+the earlier check ran, which at an 86% drop rate it often did not, so the fix repairs the
+induction too.
+
+*The first attempt at this reduction was wrong in an instructive way.* Keying on
+`(subject, predicate)` alone looked obviously right — and `(kai, has)` covers scars, coats and
+maps alike, so the "latest assertion of that key" was an unrelated fact and **both scar facts
+were discarded.** The reduction deleted exactly the defect it was written to expose, and its own
+test caught it. Keying on the tokens the two objects *share* keeps scar against scar; the
+regression is pinned in `tests/test_ledger.py`.
+
+*A more aggressive variant — discarding pairs whose objects share no content words at all —
+reaches 182 candidates and zero truncation. Not used: content tokens are not stemmed, so
+`ledgers` and `ledger` share nothing, and it would silently drop a real contradiction over a
+plural.*
+
+**And the residual is no longer silent.** `judge_conflicts` emits a MINOR
+`conflict_check_truncated` naming how many pairs went unjudged, on both the success and
+parse-failure paths.
+
+*One thing this does not fix: the scar pair was always inside the cap, was judged, and the judge
+said no. Making more pairs reach the judge does not make the judge better at them.*
 
 ## A judge with perfect detection, rejected for answering a bigger question
 

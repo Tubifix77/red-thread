@@ -338,6 +338,11 @@ a verdict, every fact carrying the sentence it was extracted from, recall as the
   scenes exceed the cap; one scene produced 979). The scar pair was inside the cap and the judge
   missed it anyway, so there are two independent causes
   ([MEASUREMENTS.md](MEASUREMENTS.md)).
+- **The truncation half is fixed.** `Ledger._latest_only` reduces the same book from 9,560
+  candidates to 571 (median 6, max 33, one scene over the cap instead of 46), and
+  `judge_conflicts` now emits a MINOR `conflict_check_truncated` when the cap still bites.
+  Live-verified on `qwen3:8b`. **The judge half is not fixed and is not obviously fixable** — the
+  scar pair was always inside the cap and the judge saw it and said no.
 
 ## What this plan refuses to do
 
