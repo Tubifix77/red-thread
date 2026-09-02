@@ -288,11 +288,19 @@ A high-model subagent asked one narrow, falsifiable question with located eviden
 quality judge, never gating (rule VI), never in the product loop, validated on seeded ground truth
 before touching anything live (rule II).
 
-- **Continuity inspector: PARKED by its own thresholds.** 9 of 9 valid seeded contradictions
-  caught with exact fact and evidence — and 2 false alarms against a ceiling of 1, both on
-  transient `state` facts my filler pool should never have admitted. The fix is mechanical
-  (durable-fact sheets + one instruction line about time-indexed states); re-validation required
-  before any use, same thresholds, no third chance.
+- **Continuity inspector: REJECTED on its own evidence, after re-validation.** Round 1: 9 of 9
+  valid seeds caught, 2 false alarms on transient `state` facts. Round 2 with the fix applied
+  (durable-fact sheets, one instruction line, and mutations validated against scene text):
+  **10 of 10 detection, exact fact and quote every time — 19 of 19 across both rounds — and 2
+  new false alarms**, against a ceiling of 1. Failed, and the pre-registration allowed no third
+  chance, so nothing in this project consults it.
+  *The failure is diagnostic rather than noise: across 40 trials **every flag pointed at something
+  genuinely wrong**, including a ledger mis-extraction (the book's "dead — not literally, not
+  exactly" recorded flat) and an anatomically impossible sentence (a temple scar "beneath his
+  shirt collar") in a committed book. The instrument answers a broader question than it is given,
+  which makes a 1-in-10 false-alarm ceiling the wrong specification for it. The successor — an
+  inconsistency **finder**, triaged by a person, recall-weighted, fed the ledger as well as the
+  prose — is a different instrument and needs its own pre-registration.*
 - **Naive-rater replication: the dry run's caveat is funded.** A context-free rater keeps the
   era *direction* and loses the *separation* (2.16 vs 2.04, overlapping); the 0-of-7-signals
   finding held on its second independent rater; inter-rater r = 0.518 with the compression all at
@@ -329,7 +337,7 @@ before touching anything live (rule II).
 | 8 — the last two switches | 28 ✅ 29 ⚠️ 30 ✅ | ~7 h | **closed.** 28 killed at n=2, kept at n=4, claim reduced to a three-phrase filter; 29 unrunnable on this corpus; 30 removed `somatic_share` from `PORTABLE` |
 | 9 — reliability | 31 ✅ 32 ⬜ | ~0 h | **31 done and live-verified.** Every future run pays rung-level data; 32 waits for the first instrumented book |
 | 10 — reader | 33 ⬜ 34 ◐ 35 ⬜ | — | **blocked on the human sheet.** 34's feasibility done: no cheap trained-judge path; step 36's naive rater weakened the separation prediction |
-| 36 — inspectors | A parked, B run | 0 h | none | detection 9/9 exact, false alarms 2 — parked on its own thresholds; re-validate with durable-fact sheets |
+| 36 — inspectors | A **rejected**, B run | 0 h | none | 19/19 detection across two rounds, exact every time; 2 false alarms both rounds against a ceiling of 1. Rejected as designed; successor must be an inconsistency finder, separately pre-registered |
 
 ## Picking this up
 

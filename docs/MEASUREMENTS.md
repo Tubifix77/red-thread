@@ -701,6 +701,29 @@ and 13× for `refusal_per_ask`. Step 27 measured ~2× on the 71-scene *Debt* flo
 floor is half an n=4 floor"* is one book's figure and not a constant — on a 24-scene book it is
 nearer a quarter.
 
+## A judge with perfect detection, rejected for answering a bigger question
+
+*PLAN2 step 36. Full record in [evidence/inspector-method.md](evidence/inspector-method.md).*
+
+Two pre-registered rounds, 40 fresh subagent trials, zero GPU. Detection was flawless: **19 of 19
+valid seeded contradictions caught, each naming the exact mutated fact with a correct quote.** It
+was rejected anyway — 2 false alarms per round against a ceiling of 1, twice.
+
+**And every single flag in 40 trials pointed at something genuinely wrong.** Round 1's two were
+transient facts the sheet should not have carried (fixed, and zero recurred). Round 2's two were
+real defects the question did not ask about: the fact ledger recording *"the donor was dead
+anyway — not literally, not exactly"* as a flat fact, and a committed scene placing a temple scar
+*"beneath his shirt collar"*.
+
+**The lesson is about specification, not capability.** An instrument that reliably finds more than
+you asked for cannot be graded on a false-alarm budget for the narrow question; grading it that
+way rejects a useful tool for succeeding too broadly. The successor is specified differently — an
+inconsistency *finder*, recall-weighted, human-triaged, fed the ledger as well as the prose — and
+it gets its own pre-registration rather than inheriting this one's verdict.
+
+*Also recorded: the verdict hinged on one disputed classification, and the strict reading was
+taken. Excluding the ledger-defect trial as an invalid control would have produced an adopt.*
+
 ## An n=2 screen killed a working mechanism, and the protocol said it could not
 
 *Step 28's re-test. Full record in [evidence/step28-model-refrains.md](evidence/step28-model-refrains.md).*

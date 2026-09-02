@@ -237,3 +237,88 @@ a concrete durable physical attribute the scene verifiably asserts:
 
 Same design otherwise: 20 trials, one fresh Fable-class subagent each, no agent sees more than one
 trial, strict scoring (a hit must name the mutated fact).
+
+## Round 2 results: 10 of 10 detection, 2 false alarms — REJECTED as designed
+
+*All 20 trials returned. Scored against the thresholds fixed at the top of this file, which said
+this run was the last.*
+
+### Detection: perfect, for the second round running
+
+| | |
+|---|---|
+| mutated trials flagged | **10 of 10** |
+| naming the exact mutated fact | **10 of 10** |
+| with a correct scene quote | **10 of 10** |
+
+Across both rounds that is **19 of 19 valid seeded contradictions**, every one correctly attributed.
+Blank-vs-symbol map, gold-vs-iron ring, vellum-vs-brittle-parchment, immaculate-vs-frayed collar —
+none was missed and none was misattributed.
+
+### The durable-fact fix worked, and a different failure took its place
+
+**Zero** false alarms of round 1's kind: no transient-state fact was read as binding on a later
+scene. That fix is confirmed.
+
+Two controls flagged anyway, and neither is noise:
+
+- **Q2-ctl** flagged *"Kai is aware of the donor is dead"* against scene 6's *"if I find the
+  donor — if there even is one"*. Audited against the prose: scene 1 says the donor was dead
+  *"anyway. **Not literally, not exactly**"*. **The ledger's own extraction dropped the hedge**
+  and recorded a figurative line as a flat fact. The inspector found a real defect — in the fact
+  ledger, not the prose.
+- **Q8-ctl** flagged *"Kai has a scar running along his temple"*, which the scene restates
+  verbatim — and then locates *"flaring faintly beneath his shirt collar"*. A temple scar cannot
+  be under a collar. **The inspector found a real defect — an incoherent sentence.**
+
+**Both score as false alarms, and that is the correct scoring.** The question asked was *does the
+scene contradict a listed fact*. In Q8-ctl the scene asserts the listed fact; in Q2-ctl the
+mismatch is between the ledger and the prose, not between the scene and a fact the book
+established. Each answer is about something real and neither answers the question.
+
+### The verdict
+
+    hits         10 of 10   — clears the bar
+    false alarms  2 of 10   — ceiling was 1
+
+**Failed. And the pre-registration said no third chance, so the continuity inspector as designed
+is REJECTED**, not parked. `checks.PORTABLE`-style adoption does not happen; nothing in this
+project consults it.
+
+*The one scoring that would flip this — excluding Q2-ctl as an invalid control, since its sheet
+misrepresented the book — is available and is **not** taken. It would give 1 false alarm in 9 and
+an adopt. But step 28's lesson was to score against the stricter reading of an ambiguous
+pre-registration, and "any CONTRADICTION on a control trial" is not ambiguous. Recording that the
+verdict hinges on this classification, and that the strict side was chosen.*
+
+### Why the rejection is a design result and not a dead end
+
+The failure mode is fully diagnosed, and it is not hallucination: **across 40 trials in two
+rounds, every single flag pointed at something genuinely wrong.** Four pointed at transient facts
+the sheet should not have contained, two at defects the question did not ask about. The instrument
+does not invent problems; **it answers a broader question than the one it is given, and a
+false-alarm ceiling of 1-in-10 is the wrong specification for that behaviour.**
+
+So the successor is a different instrument, needing its own pre-registration and not inheriting
+this one's adoption:
+
+- an **inconsistency finder**, not a contradiction detector — output triaged by a person, with an
+  explicitly loose precision target and recall as the metric that matters;
+- fed the ledger *and* the prose, since two of the six real findings were about the ledger rather
+  than the scene;
+- never gating, per rule VI, which is unchanged.
+
+### One real defect class, deliberately left unquantified
+
+The donor case suggests the extractor flattens hedged prose into flat facts. A scan for facts
+whose surrounding prose carries a hedge returned 116 candidates — **and auditing the sample shows
+most are not mis-extractions at all** ("stepping aside" beside an unrelated *as if*). The scan is
+loose, the way the vacuous ones in this project's history were loose. **One instance is verified;
+the class is plausible and unmeasured, and no number for it is published here.**
+
+### What the two evenings cost and bought
+
+Forty subagent calls, zero GPU, one shipped instrument rejected on its own evidence — and along
+the way: an experimenter's defective seed, a task-definition gap, inter-agent inconsistency, a
+ledger mis-extraction, and an anatomically impossible sentence in a committed book. Every one of
+those was found *because* the method insisted on scoring the judge before believing it.
