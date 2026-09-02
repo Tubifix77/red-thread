@@ -68,10 +68,44 @@ One-sidedness is the property this project's history demands: every retraction i
 claim that should not have been made, never a kill that should not have been. A cheap instrument
 that can only stop spending — and never start believing — cannot recreate the failure mode.
 
+## Out of sample, hours later: the rule holds, the number does not
+
+*Added 03:16 the same night, once step 30 had written the second book's floor at n=4 — the
+re-run this section was written to demand.*
+
+On the 24-scene *Ink of the Drowned*, going from two runs to four widened the observed spread far
+more than it did here:
+
+| measure | n=2 | n=4 | ×wider |
+|---|---:|---:|---:|
+| `refusal_per_ask` | 3% | 40% | **13.1×** |
+| `refusal_rate` | 7% | 41% | 6.1× |
+| `somatic_share` | 13% | 52% | 3.9× |
+| `dialogue_share` | 13% | 43% | 3.5× |
+| `gesture_rate` | 10% | 23% | 2.3× |
+| `recap_grammar` | 10% | 21% | 2.2× |
+
+Median **3.7×**, against roughly **2×** measured above on the 71-scene *Debt* plan.
+
+**So "a two-run floor is half a four-run floor" is a figure for one book, not a constant** — on a
+short book it is nearer a quarter, and for one measure a thirteenth. Quoting the 2× off *The Debt
+of Years* would have understated the problem by a factor of two, which is the same mistake
+[step 25](fresh-premise-panel.md) caught in the floor itself.
+
+**The protocol is unaffected, and in fact strengthened.** Both halves of *an n=2 screen may kill
+and may never confirm* rest on the n=2 floor being **too narrow**, and the second book says it is
+narrower still: a difference that fits inside a two-run floor fits inside the four-run floor with
+even more room to spare, and a difference that clears a two-run floor is even weaker evidence than
+this page's 15-of-72 false-positive rate suggested. The rule survives its first out-of-sample
+test; the constant attached to it does not travel and has been removed from the recommendation.
+
+*It cost `somatic_share` its place in `checks.PORTABLE`, which had been granted on exactly the
+two-run spread this page warns about ([portable-measures.md](portable-measures.md)).*
+
 ## Limits
 
 - The subsample analysis reuses the four control runs, so the 6 pairs are not independent — this
   prices the floor's *understatement*, not a fresh experiment.
-- One plan, one premise, as always. Step 30's premise-B floor at n=4 gives this analysis a second
-  book to run against, and it should be re-run there before the protocol is trusted off *The Debt
-  of Years*.
+- The out-of-sample check above is a different kind of evidence: it compares n=2 against n=4 on a
+  second book directly, rather than re-running the verdict-flip analysis there. Doing *that*
+  would need ablations on the second premise, which do not exist.
