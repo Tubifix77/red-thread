@@ -196,7 +196,7 @@ that does not work. Running every check over all 562 committed scenes turns that
 suite itself: **20 of 48 violation kinds have never fired once**, and the reasons divide three
 ways.
 
-*That count was taken over 562 scenes. The corpus is now 1,299, and at least one of the twenty —
+*That count was taken over 562 scenes. The corpus is now 1,631, and at least one of the twenty —
 `cohesion_cut` — has since fired, so **20 is an upper bound and has not been recomputed.** It is
 left as measured rather than rebased, because the kind universe spans scene checks and plan checks
 and only the scene half is recoverable from `runs/*/scenes/*.json`; a quick recount over the wrong
@@ -218,22 +218,22 @@ denominator is how the last three retracted numbers happened.*
   time without anything here changing. `redthread audit` prints both beside its own result, and
   `tests/test_rule.py` asserts every named kind is one the codebase can still emit.
 - **One is still untested by any run.** `missed_deadline` has unit tests and **no live instance in
-  1,299 committed scenes**, so nothing is known about its false-positive rate on real prose.
-- **`cohesion_cut` has since fired, 23 times, and what it found is a property of the plan.** All 23
+  1,631 committed scenes**, so nothing is known about its false-positive rate on real prose.
+- **`cohesion_cut` has since fired, 27 times, and what it found is a property of the plan.** All 27
   are `minor`, and they cluster on *the same scene in every run of a plan* — scene 48 of *The Debt
-  of Years* fires in all ten phase 1 runs, because the plan puts a full cast cut there. So its rate
-  is 1.8% of scenes, its detection is correct, and it is reporting on **the plan rather than the
+  of Years* fires in every one of its fourteen runs, because the plan puts a full cast cut there.
+  So its rate is 1.7% of scenes, its detection is correct, and it is reporting on **the plan rather than the
   prose**: rule IV's shape without being rule IV's case, since nothing guarantees the field, but a
   check whose firing is fixed by the plan tells you nothing about the writing that run produced.
 
 The mirror matters too. Four kinds fire on more than half of all scenes and are carried into the
-commit almost every time — `repetition` at 95%, `tell_thematic_gloss` at 79%, `tell_summarised` at
-71%, `slop` at 60%. A constant is as uninformative as a silence, and two of those cost a model call
+commit almost every time — `repetition` at 95%, `tell_thematic_gloss` at 78%, `tell_summarised` at
+70%, `slop` at 57%. A constant is as uninformative as a silence, and two of those cost a model call
 per scene.
 
-*Rates recomputed 1 September 2026 over all 1,299 committed scene records. The previous figures
-were over 562 and are within a few points of these, which is the only reason they were safe to
-have quoted.*
+*Rates recomputed 2 September 2026 over all 1,631 committed scene records. They were within a
+few points at 562 scenes and again at 1,299, which is the only reason the earlier figures were
+safe to have quoted — and the reason to keep re-deriving rather than assuming.*
 
 Full tables in [MEASUREMENTS.md](MEASUREMENTS.md).
 

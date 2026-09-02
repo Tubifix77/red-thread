@@ -213,7 +213,7 @@ argument for this project's premise: a thread architecture *is* a subplot archit
 | [`sample.py`](redthread/sample.py) | Sentences with no context and no scores; the blind rating sheet | — |
 | [`cli.py`](redthread/cli.py) | `plan` `audit` `brief` `check` `write` `models` `bench` `status` `ledger` `manuscript` `replicate` `measures` `forecast` `depends` `sample` `rate` | — |
 
-**862 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
+**869 tests, no dependencies beyond the standard library.** Every check is tested by injecting the
 defect it exists to find — a check that never fires is indistinguishable from a check that does
 not work.
 
@@ -228,7 +228,7 @@ That principle has since found its own limit. Run every check over all 562 commi
 **20 of 48 violation kinds have never fired once**, and the reasons divide: blocking kinds are
 absent from committed prose by construction, six checks test properties the scheduler or the
 brief already guarantees, and two were untested by any run — of which **one, `cohesion_cut`, has
-since fired 23 times at 1,299 scenes**, all `minor`, and on the same scene in every run of a plan,
+since fired 27 times at 1,631 scenes**, all `minor`, and on the same scene in every run of a plan,
 because the plan puts a full cast cut there. So it reports on the plan rather than the prose.
 `missed_deadline` is still at zero. A check quiet because the gate
 upstream works is doing its job; a check quiet because nothing has ever tested it is an unknown
@@ -376,13 +376,13 @@ verbatim, a mid-run rejection halts cleanly with nothing from the failed scene i
 and a re-run resumes from the gap. Every check catches its defect.
 
 **Proven by running it to completion, all local, zero API calls:** **eleven distinct premises
-across 33 runs with committed scenes** — 1,299 scenes and 1,138,559 words drafted on `qwen3:8b`.
-The gap between those two numbers is the method: eighteen of the runs are *The Debt of Years*
+across 39 runs with committed scenes** — 1,631 scenes and 1,424,274 words drafted on `qwen3:8b`.
+The gap between those two numbers is the method: twenty-two of the runs are *The Debt of Years*
 rewritten to test code changes, which is the only way anything here gets attributed to a change
 rather than to luck.
 
-**There is now a completion rate rather than a streak.** Ten 71-scene runs written under one code
-revision from one plan, for the phase 1 ablations: **seven reached scene 71 unattended.** All three
+**There is now a completion rate rather than a streak.** Fourteen 71-scene runs written under one
+code revision from one plan, across phases 1 and 8: **eleven reached scene 71 unattended.** All three
 halts were resumable and two were resumed to the end, because `write_all` stops rather than write
 later scenes against an incomplete ledger — so a halt costs a resume, not a book. What it is not
 yet is unattended: something has to notice. The longest run is **71 scenes and 62,229 words**
@@ -395,7 +395,8 @@ fresh premises, and each cost between one and three code fixes.
 
 That last figure was the real measure of how unattended this is, and it reached zero for one book.
 The phase 1 set is the better answer, because it is ten runs at one revision rather than a
-selection: **seven of ten finished unattended**, and the three that did not resumed. Nor should
+selection: **eleven of fourteen finished unattended**, and two of the three that did not were
+resumed to the end. Nor should
 any of it be trusted far: the project had no error bars until 31 August, the first replicate
 retracted three claims made the day before it
 ([record](docs/evidence/replicate-noise-floor.md)), and step 25 then found the floor those error

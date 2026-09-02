@@ -20,23 +20,24 @@ What to do next, in order, with kill criteria: **[PLAN2.md](PLAN2.md)** (PLAN.md
 
 | | Question | State |
 |---|---|---|
-| 1 | Can it get to the end of a book without help? | **usually — 7 of 10 unattended; halts are resumable, and two of three were resumed to the end** |
+| 1 | Can it get to the end of a book without help? | **usually — 11 of 14 unattended; halts are resumable, and two of three were resumed to the end** |
 | 2 | Is the prose free of the obvious machine tells? | **per scene, yes — but the floor those figures rest on is one novel's** |
 | 3 | Is the finished book worth reading? | **one of five axes started, and no measure yet matches a reading** |
 
-**1 — Yes, at novel length.** **Eleven distinct premises** across **33 runs with committed
-scenes** — 1,299 scenes, 1,138,559 words, zero API calls. The gap between those numbers is
-deliberate: eighteen of the runs are *The Debt of Years* rewritten to test code changes, which is
-how anything here gets attributed to a change rather than to luck.
+**1 — Yes, at novel length.** **Eleven distinct premises** across **39 runs with committed
+scenes** — 1,631 scenes, 1,424,274 words, zero API calls. The gap between those numbers is
+deliberate: twenty-two of the runs are *The Debt of Years* rewritten to test code changes, which
+is how anything here gets attributed to a change rather than to luck.
 
-**And there is now a rate rather than a run of luck.** Ten 71-scene runs written under one code
-revision for the phase 1 ablations — one plan, one switch, nothing else varying:
+**And there is now a rate rather than a run of luck.** Fourteen 71-scene runs written under one
+code revision, across phases 1 and 8 — one plan, one switch at a time, nothing else varying:
 
     control, nothing ablated      4 of 4 reached 71
     refrain feedback off          2 of 2
     gesture feedback off          1 of 4   — halted at 66, 48 and 33
+    model refrains off            4 of 4
 
-**Seven of ten reached scene 71 unattended.** That is a real rate rather than "four consecutive
+**Eleven of fourteen reached scene 71 unattended.** That is a real rate rather than "four consecutive
 runs finished", which was true and selected from the runs that finished.
 
 **The more useful fact is that all three halts were resumable, and two were resumed to 71.** A
@@ -371,11 +372,11 @@ difference.
 | | |
 |---:|---|
 | **11** | distinct premises written |
-| **33** | runs with committed scenes |
-| **1,138,559** | words drafted locally |
-| **1,299** | scenes committed |
+| **39** | runs with committed scenes |
+| **1,424,274** | words drafted locally |
+| **1,631** | scenes committed |
 | **0** | API calls |
-| **862** | tests passing |
+| **869** | tests passing |
 
 The longest is now 61,733 words, and running it found exactly what was predicted: defects that
 do not exist below about forty scenes. What it also found is the one measure that gets *worse*

@@ -4,8 +4,8 @@ Every threshold in this project is set from a corpus rather than from taste, whi
 candidate measures get built, tested and thrown away. This file is the record of both halves.
 The refuted list is the more useful one: it is what stops the same afternoon being spent twice.
 
-Corpus as of 1 September 2026: **33 runs with committed scenes across 11 distinct premises,
-1,299 scenes, 1,138,559 words**, `qwen3:8b` in every role, zero API calls. Eighteen of those runs
+Corpus as of 2 September 2026: **39 runs with committed scenes across 11 distinct premises,
+1,631 scenes, 1,424,274 words**, `qwen3:8b` in every role, zero API calls. Twenty-two of those runs
 are *The Debt of Years* rewritten to test code changes, which is what makes a difference
 attributable. One run is short — a halt stops rather than write later scenes against an incomplete
 ledger, so it leaves a short book rather than a broken one, and it resumes.

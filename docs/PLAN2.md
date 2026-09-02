@@ -45,7 +45,7 @@ GPU-hour is committed.
 | W3 | No measure in the panel is known to correspond to a reading; the dry run predicts none does | [machine-rating.md](evidence/sentences/machine-rating.md); step 21 blank |
 | W4 | Manuscript-level duplication grows with length: .066 across a book vs .002 within any scene | [STATUS.md](STATUS.md) |
 | W5 | **Two of six mechanisms are inert on the measured corpus** — the re-people pass (gated at 15%, plan at 14.08%) and `drop_unavoidable_bans` (0 of 3 phrases). Ablating either compares a condition against itself | [evidence/mechanism-coverage.md](evidence/mechanism-coverage.md) |
-| W6 | 18 of 33 runs are one premise; every strong verdict is *The Debt of Years* at 71 scenes | corpus count, [MEASUREMENTS.md](MEASUREMENTS.md) |
+| W6 | 22 of 39 runs are one premise; every strong verdict is *The Debt of Years* at 71 scenes | corpus count, [MEASUREMENTS.md](MEASUREMENTS.md) |
 
 ---
 
@@ -297,13 +297,33 @@ has validated.
 
 ## Shape of it
 
-| phase | steps | GPU | gate | most likely outcome |
-|---|---|---:|---|---|
-| 7 — instrument, from the shelf | 26–27 ✅✅ | 0 h | none | done: 3 of 13 portable; n=2 screens may kill, never confirm |
-| 8 — the last two switches | 28 ⚠️ 29 ⚠️ 30 ✅ | ~6 h | before any write-path change | 28's criterion fired, deletion suspended to n=4 (queued); 29 unrunnable; 30 shrank PORTABLE to two |
-| 9 — reliability | 31 ◐ –32 | ~5 h | after phase 8 | 31's backfill done: 72.5% of scenes commit with no repair; the ladder is exercised on one scene in four |
-| 10 — reader | 33–35 | ~2 h + Tue | **step 33 is the gate** | the panel becomes either validated or explicitly regression-only |
+| phase | steps | GPU spent | state |
+|---|---|---:|---|
+| 7 — instrument, from the shelf | 26 ✅ 27 ✅ | 0 h | **closed.** 2 of 13 measures portable; a two-run *floor* may kill, never confirm |
+| 8 — the last two switches | 28 ✅ 29 ⚠️ 30 ✅ | ~7 h | **closed.** 28 killed at n=2, kept at n=4, claim reduced to a three-phrase filter; 29 unrunnable on this corpus; 30 removed `somatic_share` from `PORTABLE` |
+| 9 — reliability | 31 ◐ 32 ⬜ | 0 h so far | **31's backfill done, its code change is next.** 72.5% of scenes commit with no repair |
+| 10 — reader | 33 ⬜ 34 ◐ 35 ⬜ | — | **blocked on the human sheet.** 34's feasibility done: no cheap trained-judge path exists |
 
-**Sequencing:** 26, 27 anytime. 28–30 next and before 31. 33 whenever Tue has twenty minutes —
-it blocks nothing before phase 10 and everything in it. The single most valuable hour on this
-list is still the human one, and this plan inherits PLAN.md's closing prediction unchanged.
+## Picking this up
+
+**The write path is now free.** Phase 8 is finished, every comparison against the frozen-writer
+era is closed, and `runs/.floor-commit` no longer constrains what may be edited. Step 31 is
+therefore the next thing to do and the first write-path change since 31 August:
+
+1. **Step 31** — persist `candidates_drafted` and `repairs` as separate fields in `pipeline.py`,
+   then rung-level attempts and the terminal state. The spec and the control distribution are in
+   [evidence/repair-backfill.md](evidence/repair-backfill.md). Observability only; no claims.
+2. **Step 32** — design the convergence fix *from* 31's first table, not before it. An exploratory
+   hypothesis is already on record with its falsifier: repair need looks like a property of the
+   draft, not the scene.
+3. **Step 29 stage 2** — needs a plan where the 15% gate opens (`solo-a1` at 38%) *and* a floor for
+   that premise, so it is the most expensive item left and the least urgent.
+4. **Step 33** — twenty minutes of Tue, and it gates everything reader-facing.
+
+**Two protocol corrections made under fire this night, both worth reading before designing
+anything:** a two-run *condition* may not be used for anything (step 28's false negative), and
+`scripts/mechanism_coverage.py` must be run before any ablation is designed (rule VIII).
+
+**Sequencing:** 31 → 32. 29 stage 2 whenever. 33 whenever Tue has twenty minutes — it blocks
+nothing before phase 10 and everything in it. The single most valuable hour on this list is still
+the human one, and this plan inherits PLAN.md's closing prediction unchanged.
