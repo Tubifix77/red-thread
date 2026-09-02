@@ -102,3 +102,58 @@ time, and the other two are the reverse — `refusal_rate` and `refusal_per_ask`
 
 PLAN2 step 30 (+2 runs of `solo-b2`, ~1.5 GPU-h) upgrades the weakest of these three limits and
 re-runs this table at n=4/n=4. `PORTABLE` errs toward refusing until then.
+
+---
+
+# The n=4 re-run: the set shrinks to two, and the stated limit is why
+
+*2 September 2026, 03:15. Panels 3 and 4 written; both books now at n=4. The limit named above —
+"the Ink side is n=2, which systematically understates spread, so condition 3 is easier to pass
+today than it should be" — turned out to be the whole story.*
+
+| measure | Debt n=4 | Ink n=4 | Ink spread | floor | between | verdict |
+|---|---:|---:|---:|---:|---:|---|
+| `refusal_per_ask` | .644 | .821 | 40% | 53% | 24% | **PORTABLE** |
+| `refusal_rate` | .763 | 1.100 | 41% | 69% | 36% | **PORTABLE** |
+| **`somatic_share`** | .373 | .323 | **52%** | 19% | 14% | **spread outside — drops out** |
+| `dialogue_share` | .202 | .158 | 43% | 11% | 24% | both outside |
+| `gesture_rate` | 1.883 | 2.858 | 23% | 22% | 41% | both outside |
+| `recap_grammar` | .035 | .068 | 21% | 59% | 64% | between outside |
+
+**`PORTABLE` = `refusal_rate`, `refusal_per_ask`. Two of thirteen, not three.**
+
+`somatic_share` did not change its *value* between the books — the gap between means is 14%,
+comfortably inside its 19% floor, and slightly *tighter* than at n=2. It failed on the other
+condition: its spread *within* the second book is 52%, nearly three times its floor. The measure
+is not disagreeing across premises; it is unstable inside one. That is exactly what condition 3
+exists to catch, and at n=2 there were not enough samples to see it.
+
+## How badly n=2 understated the spread
+
+| measure | Ink n=2 | Ink n=4 | ×wider |
+|---|---:|---:|---:|
+| `refusal_per_ask` | 3% | 40% | **13.1×** |
+| `refusal_rate` | 7% | 41% | 6.1× |
+| `somatic_share` | 13% | 52% | 3.9× |
+| `dialogue_share` | 13% | 43% | 3.5× |
+| `gesture_rate` | 10% | 23% | 2.3× |
+| `recap_grammar` | 10% | 21% | 2.2× |
+
+Median **3.7×**. [Step 27](two-run-screen.md) measured the same direction on the *Debt* floor and
+put it at about 2×; on a 24-scene book it is nearly four times, and for one measure thirteen.
+
+**So step 27's protocol was right and its number was book-specific.** *An n=2 screen may kill and
+may never confirm* holds a fortiori here — but "half the floor" is a *Debt*-of-Years figure, not a
+constant, and quoting 2× on another book would understate the problem by a factor of two.
+
+## What this cost, and what it saved
+
+The change removes a measure from the set of things this project may compare across books. That is
+a loss of reach and a gain in honesty: `somatic_share` was in `PORTABLE` for four hours on the
+strength of a two-run spread, and any cross-book claim made on it in that window would have been
+judged against a floor 3.9× too narrow.
+
+The instrument caught it rather than a person: `scripts/portability.py` prints its set beside
+`checks.PORTABLE`, saw them disagree, and **refused to authorise the edit** — requiring this
+write-up first. That refusal is the only reason the sequence was write-up-then-code rather than
+the reverse.

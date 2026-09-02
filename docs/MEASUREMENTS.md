@@ -683,16 +683,23 @@ gates: a plan the pass rewrote and a plan it declined to touch are both just pla
 *PLAN2 step 26, zero GPU. Full derivation in
 [evidence/portable-measures.md](evidence/portable-measures.md).*
 
-`checks.PORTABLE` = `refusal_rate`, `refusal_per_ask`, `somatic_share` — the only measures whose
-floor transfers between the two same-writer replicate groups that exist (*Debt of Years* n=4,
-*Ink of the Drowned* n=2). Enforced, not advised: `clears_noise(..., cross_book=True)` raises on
+`checks.PORTABLE` = `refusal_rate`, `refusal_per_ask` — the only measures whose floor transfers
+between the two same-writer replicate groups (*Debt of Years* n=4, *Ink of the Drowned* n=4).
+**`somatic_share` was in the set for four hours and its own n=4 re-run removed it**: not on value
+(means 14% apart, inside a 19% floor) but on spread *within* the second book — 52%, nearly three
+times that floor, which only four runs could show. Enforced, not advised: `clears_noise(..., cross_book=True)` raises on
 everything else, and `redthread measures` detects differing titles itself and prints non-portable
 rows without a verdict.
 
 Two designed expectations failed on contact: `recap_block_share` is vacuous rather than portable
 (zero everywhere has no floor to transfer), and `dialogue_share` — a share, the predicted-portable
-class — fails outright, its 13% second-book spread exceeding its own 11% floor. And the pair
-phase 4 was stopped over, the refusal measures, are the most premise-stable numbers in the panel.
+class — fails outright. And the pair phase 4 was stopped over, the refusal measures, are the most
+premise-stable numbers in the panel.
+
+**The n=2 → n=4 widening on that second book is the number to carry away:** a median of **3.7×**,
+and 13× for `refusal_per_ask`. Step 27 measured ~2× on the 71-scene *Debt* floor, so *"an n=2
+floor is half an n=4 floor"* is one book's figure and not a constant — on a 24-scene book it is
+nearer a quarter.
 
 ## A two-run floor is half a four-run floor, and errs only toward claiming
 

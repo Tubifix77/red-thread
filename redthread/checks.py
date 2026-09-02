@@ -1807,17 +1807,28 @@ def floor_is_established(measure: str) -> bool:
 # is not length-sensitive, (3) the second book's internal spread fits inside the floor, and
 # (4) the gap between the two books' group means fits inside the floor.
 #
-# Three of thirteen pass: the two refusal measures and somatic_share. The refusal pair is the
-# irony worth keeping — the measures phase 4 was stopped over are the most premise-stable numbers
-# in the panel. Two pre-registered expectations failed: `recap_block_share` is vacuous rather
-# than portable (zero everywhere has no floor to transfer), and `dialogue_share` fails both
-# conditions (its 13% spread on the second book exceeds its own 11% floor).
+# **Two** of thirteen pass, and the third was removed by its own re-test. The refusal pair is the
+# irony worth keeping: the measures phase 4 was stopped over are the most premise-stable numbers
+# in the panel.
 #
-# PROVISIONAL: the second book is n=2 and the between-book estimate is one premise pair. Step 30
-# takes that side to n=4; until then this set errs toward refusing. Derivation:
-# docs/evidence/portable-measures.md.
+# `somatic_share` was in this set for four hours, on the strength of a two-run spread, and step 30
+# took the second book to n=4 and dropped it. It did not fail on *value* — the gap between the two
+# books' means is 14%, inside its 19% floor and tighter than it looked at n=2. It failed on
+# spread: 52% *within* the second book, nearly three times its floor. The measure is not
+# disagreeing across premises; it is unstable inside one, which is what condition 3 exists to
+# catch and what n=2 had too few samples to see.
+#
+# That is the general warning on this table. Going from n=2 to n=4 on the 24-scene book widened
+# every measure's spread by a median of 3.7x, and `refusal_per_ask` by 13x. Step 27 measured the
+# same direction on the 71-scene Debt floor and put it near 2x — so "half the floor" is a figure
+# for one book, not a constant, and a two-run spread on a short book is worth very little.
+#
+# Still provisional in one respect: the between-book estimate remains a single premise pair.
+# Derivation, both rounds: docs/evidence/portable-measures.md. Re-derive with
+# `python scripts/portability.py`, which prints its set beside this one and refuses to authorise
+# an edit when they disagree.
 PORTABLE: frozenset[str] = frozenset({
-    "refusal_rate", "refusal_per_ask", "somatic_share",
+    "refusal_rate", "refusal_per_ask",
 })
 
 

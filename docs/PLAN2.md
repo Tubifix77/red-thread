@@ -140,10 +140,17 @@ not a regenerated plan), write n=2 from each.
   not exist yet at n=4, and `solo-a1` is a *third* premise with no floor at all. This runs after
   step 30, or it has nothing to be judged against.
 
-**30. Extend the premise-B floor to n=4** (+2 runs of the 24-scene `solo-b2` plan, ~1.5 GPU-h,
-sharing the frozen writer with the two step 25 runs). This is the first full floor on a second
-book, and it tests step 27's screening protocol out of sample: the protocol predicts the n=4
-floor from the n=2 half; here is an n=4 floor it has never seen.
+**30. Extend the premise-B floor to n=4.** ✅ **Done — and it removed a measure from
+`checks.PORTABLE`.** Four panels at 24 scenes, no halts. `somatic_share` drops out: not on value
+(its two books' means differ by 14%, inside its 19% floor) but on **spread within the second
+book — 52%, nearly three times that floor**, which only four runs could show. **`PORTABLE` is now
+two of thirteen: `refusal_rate`, `refusal_per_ask`.**
+
+*It also tested step 27's protocol out of sample and found its number book-specific. Going n=2 →
+n=4 on this 24-scene book widened spreads by a median of **3.7×**, and `refusal_per_ask` by
+**13×**; step 27 measured ~2× on the 71-scene* Debt *floor. The protocol holds a fortiori — a
+screen may kill, never confirm — but "half the floor" is one book's figure, not a constant.
+Both rounds in [evidence/portable-measures.md](evidence/portable-measures.md).*
 
 ---
 
@@ -284,7 +291,7 @@ has validated.
 | phase | steps | GPU | gate | most likely outcome |
 |---|---|---:|---|---|
 | 7 — instrument, from the shelf | 26–27 ✅✅ | 0 h | none | done: 3 of 13 portable; n=2 screens may kill, never confirm |
-| 8 — the last two switches | 28–30 | ~6 h | before any write-path change | at least one of the two mechanisms comes out |
+| 8 — the last two switches | 28 ⚠️ 29 ⚠️ 30 ✅ | ~6 h | before any write-path change | 28's criterion fired, deletion suspended to n=4 (queued); 29 unrunnable; 30 shrank PORTABLE to two |
 | 9 — reliability | 31 ◐ –32 | ~5 h | after phase 8 | 31's backfill done: 72.5% of scenes commit with no repair; the ladder is exercised on one scene in four |
 | 10 — reader | 33–35 | ~2 h + Tue | **step 33 is the gate** | the panel becomes either validated or explicitly regression-only |
 

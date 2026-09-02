@@ -114,7 +114,20 @@ class TestPortable(unittest.TestCase):
 
     def test_cross_book_answers_a_portable_measure(self):
         self.assertIsInstance(
-            checks.clears_noise("somatic_share", 0.373, 0.312, cross_book=True), bool)
+            checks.clears_noise("refusal_rate", 0.763, 1.100, cross_book=True), bool)
+
+    def test_somatic_share_is_not_portable(self):
+        """It was, for four hours, on a two-run spread. Step 30's n=4 re-run removed it.
+
+        Pinned explicitly rather than left implicit in the set, because it did *not* fail the
+        obvious way: its two books' means differ by 14%, inside its 19% floor. It failed on
+        spread *within* the second book — 52%, nearly three times that floor — which only four
+        runs could show. Anyone tempted to put it back should read
+        docs/evidence/portable-measures.md first.
+        """
+        self.assertNotIn("somatic_share", checks.PORTABLE)
+        with self.assertRaises(ValueError):
+            checks.clears_noise("somatic_share", 0.373, 0.323, cross_book=True)
 
     def test_within_book_behaviour_is_unchanged_by_the_gate(self):
         self.assertEqual(checks.clears_noise("gesture_rate", 1.0, 4.0),
