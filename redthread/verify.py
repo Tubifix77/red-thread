@@ -188,9 +188,24 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
     (docs/RESEARCH.md section 3). The grouping is what keeps this affordable: without it, this
     would be a quadratic comparison against the whole manuscript.
     """
-    pairs = ledger.conflict_candidates(new_facts)[:max_pairs]
+    candidates = ledger.conflict_candidates(new_facts)
+    pairs = candidates[:max_pairs]
     if not pairs:
         return []
+    # Say so when the cap bites. It used to bite in 46 of 70 scenes of one book and discard 86%
+    # of all candidate pairs by list order, in silence — so the gate was far weaker than its
+    # design and no run could tell you. `Ledger._latest_only` now removes the redundancy that
+    # caused it (9,560 candidates to 571 on that book), but a long enough ledger will reach the
+    # cap again, and a check that quietly stops checking is the thing this project most reliably
+    # regrets. A MINOR keeps it in the record without holding the scene.
+    dropped = len(candidates) - len(pairs)
+    truncation: list[Violation] = []
+    if dropped:
+        truncation.append(Violation(
+            "conflict_check_truncated", Severity.MINOR,
+            f"{len(candidates)} candidate pairs, only {max_pairs} judged — {dropped} were not "
+            f"checked for contradictions",
+            "checks:judge_conflicts"))
 
     rendered = "\n".join(
         f"{i}. EARLIER {old.as_line()}\n   NEW     {new.as_line()}"
@@ -204,9 +219,10 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
     except LLMError as exc:
         # A failed judgement must not silently pass. Surfacing the candidates as MINOR keeps
         # them visible to a human without blocking the run on a parse failure.
-        return [Violation("conflict_check_failed", Severity.MINOR,
-                          f"{len(pairs)} candidate pair(s) could not be judged: {exc}",
-                          "llm:judge_conflicts")]
+        return truncation + [Violation(
+            "conflict_check_failed", Severity.MINOR,
+            f"{len(pairs)} candidate pair(s) could not be judged: {exc}",
+            "llm:judge_conflicts")]
 
     rows = data.get("judgements", []) if isinstance(data, dict) else data
     out: list[Violation] = []
@@ -244,7 +260,7 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
             continue
         seen.add(violation.detail)
         unique.append(violation)
-    return unique
+    return truncation + unique
 
 
 # ======================================================================================

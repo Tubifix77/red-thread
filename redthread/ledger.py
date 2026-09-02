@@ -321,6 +321,52 @@ class Ledger:
 
     # ---------------------------------------------------------------- conflicts
 
+    @staticmethod
+    def _latest_only(pairs: list[tuple[Fact, Fact]]) -> list[tuple[Fact, Fact]]:
+        """One pair per (new fact, old key): the most recent earlier assertion of that state.
+
+        **Why this is necessary and not merely tidy.** `judge_conflicts` truncates its candidate
+        list at `max_pairs = 25` because one model call cannot judge hundreds of pairs. Without
+        this reduction, *The Debt of Years* generated 9,560 candidates across 70 scenes — a median
+        of 70 per scene and a maximum of 979 — so the cap silently discarded **86% of them**, by
+        list order, with no record. 46 of 70 scenes were over the cap. A book whose ledger passes a
+        few hundred facts was checking a shrinking fraction of what it generated and saying
+        nothing about it.
+
+        The redundancy was almost all historical: the same new fact paired against every prior
+        assertion of the same `(subject, predicate)` key, when only the latest one describes the
+        state the scene is supposed to be consistent *with*.
+
+        **Why dropping the older ones loses nothing, inductively:** if a new fact contradicts an
+        assertion from scene 5 but agrees with the one from scene 30, then scene 30 already
+        contradicted scene 5 and was the scene that should have been held. Checking each scene
+        against current state propagates correctly — *provided* the earlier check actually ran,
+        which at an 86% drop rate it frequently did not. So this repairs the induction as well as
+        the arithmetic.
+
+        Measured on the same book: 9,560 candidates become **571**, median 6, maximum 33, and
+        one scene of 70 still exceeds the cap instead of 46 — 8,258 pairs dropped becomes 8.
+
+        *A more aggressive variant, discarding pairs whose objects share no content words at all,
+        reaches 182 candidates and no truncation anywhere. It is deliberately not used: content
+        tokens are not stemmed, so `ledgers` and `ledger` share nothing, and the variant would
+        silently discard a real contradiction over a plural.*
+        """
+        best: dict[tuple, tuple[Fact, Fact]] = {}
+        for old, nf in pairs:
+            # Grouped by what the two objects have in common, NOT by (subject, predicate) alone.
+            # The first version of this reduction keyed on the pair key and dropped the very
+            # defect it was written for: `(kai, has)` covers scars, coats and maps alike, so the
+            # "latest assertion" of that key was some unrelated fact and both scar facts were
+            # discarded. Keying on the shared tokens keeps scar-versus-scar in its own bucket.
+            shared = frozenset(content_tokens(old.object) & content_tokens(nf.object))
+            k = (id(nf), old.key(), shared)
+            if k not in best or old.scene > best[k][0].scene:
+                best[k] = (old, nf)
+        # Preserve first-seen order so the output stays stable for a given ledger.
+        order = {id(nf): i for i, (_o, nf) in enumerate(pairs)}
+        return sorted(best.values(), key=lambda p: (order[id(p[1])], p[0].scene))
+
     def conflict_candidates(
         self, new_facts: list[Fact], similarity: float = 0.34
     ) -> list[tuple[Fact, Fact]]:
@@ -380,7 +426,7 @@ class Ledger:
                     seen.add(mark)
                     pairs.append((old, nf))
 
-        return pairs
+        return self._latest_only(pairs)
 
     # ---------------------------------------------------------------- rendering
 

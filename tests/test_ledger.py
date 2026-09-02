@@ -231,6 +231,69 @@ class TestConflictCandidates(unittest.TestCase):
         self.assertEqual(len(pairs), 1)
 
 
+class TestCandidateRedundancyIsReduced(unittest.TestCase):
+    """`conflict_candidates` used to hand the judge every historical assertion of a key.
+
+    On *The Debt of Years* that produced 9,560 candidate pairs across 70 scenes — median 70 per
+    scene, maximum 979 — while `judge_conflicts` truncates at 25. **86% of all candidate pairs
+    were discarded by list order, silently**, so the gate was far weaker than its design and no
+    run said so. Reducing to the latest assertion per shared attribute brings the same book to
+    571 pairs, and one scene over the cap instead of 46.
+    """
+
+    def test_only_the_latest_assertion_of_an_attribute_is_offered(self):
+        """Two re-assertions of the same claim collapse to the newer one.
+
+        Both of these share exactly `{scar, hand}` with the new fact, so they are the same claim
+        restated and only the later one describes the state the new scene must agree with.
+
+        *Note on what is deliberately NOT collapsed:* `a scar on her left palm` against
+        `a scar on her right hand` shares only `{scar}`, a different signature, so it would be
+        offered as its own pair. That is wanted — hand-versus-palm and hand-versus-hand are two
+        different questions, and an earlier draft of this test asserted the wrong thing by
+        assuming they were one.
+        """
+        ledger = Ledger([
+            f("Siv", "has", "a scar on her left hand", 2, FactKind.DETAIL),
+            f("Siv", "has", "a scar on her left hand, pale now", 5, FactKind.DETAIL),
+        ])
+        new = f("Siv", "has", "a scar on her right hand", 9, FactKind.DETAIL)
+        pairs = ledger.conflict_candidates([new])
+        self.assertEqual(len(pairs), 1, [(a.as_line(), b.as_line()) for a, b in pairs])
+        self.assertEqual(pairs[0][0].scene, 5, "the newer assertion is the one to judge against")
+
+    def test_a_wandering_attribute_survives_the_reduction(self):
+        """The regression the first version of the reduction introduced, pinned.
+
+        Keying on `(subject, predicate)` alone looked right and was wrong: `(siv, has)` covers
+        scars, coats and maps alike, so the "latest assertion of that key" was an unrelated fact
+        and **both scar facts were discarded** — the reduction deleted exactly the defect it was
+        written to expose. Keying on the tokens the two objects share keeps scar against scar.
+        """
+        ledger = Ledger([
+            f("Siv", "has", "a scar on her palm", 3, FactKind.DETAIL),
+            f("Siv", "has", "a canvas satchel", 8, FactKind.DETAIL),
+            f("Siv", "has", "a folded map", 11, FactKind.DETAIL),
+        ])
+        new = f("Siv", "has", "a scar on her temple", 20, FactKind.DETAIL)
+        pairs = ledger.conflict_candidates([new])
+        scar = [(o, n) for o, n in pairs
+                if "scar" in o.object and "scar" in n.object]
+        self.assertTrue(scar, f"the scar pair must survive; got "
+                              f"{[(a.as_line(), b.as_line()) for a, b in pairs]}")
+
+    def test_unrelated_attributes_are_still_offered_separately(self):
+        """The reduction must not collapse two genuinely different claims into one."""
+        ledger = Ledger([
+            f("Siv", "eye colour", "grey", 2, FactKind.DETAIL),
+            f("Siv", "hair colour", "black", 3, FactKind.DETAIL),
+        ])
+        new_eyes = f("Siv", "eye colour", "brown", 9, FactKind.DETAIL)
+        new_hair = f("Siv", "hair colour", "red", 9, FactKind.DETAIL)
+        pairs = ledger.conflict_candidates([new_eyes, new_hair])
+        self.assertEqual(len(pairs), 2, [(a.as_line(), b.as_line()) for a, b in pairs])
+
+
 class TestRollback(unittest.TestCase):
     def test_drop_scene_removes_only_that_scene(self):
         ledger = Ledger([f("a", "b", "c", 1), f("d", "e", "g", 2), f("h", "i", "j", 2)])
