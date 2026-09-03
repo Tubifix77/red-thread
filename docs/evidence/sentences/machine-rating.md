@@ -105,3 +105,111 @@ for the human sheet to adjudicate.*
 The thing that resolves both is a person filling in the same sheet from the same shuffle. The
 strong prediction to check it against: **the human means will separate in the same direction, and
 none of the seven signals will reach r = 0.3.**
+
+## A second machine null: forced choice, 17 of 29
+
+*3 September. ChatGPT, given `pairs.md` and asked to pick A or B on each of 29 length-matched
+narrated pairs. Scored against the threshold registered in `pairs-key.md` before any choice
+existed.*
+
+    current-era wins   17 of 29      one-sided p = 0.229
+    registered bound   20 of 29                p = 0.031
+    VERDICT            not distinguishable at this n
+
+**Position bias accounts for nearly all of it.** The rater picked **A 23 times of 29 - 79%**.
+Holding its picks fixed and treating side assignment as random, expected current-era wins are
+`23*(15/29) + 6*(14/29) = 14.8`. It scored 17. Roughly two pairs of signal above its own
+preference for the first option, which is not distinguishable from noise.
+
+*This is where balancing the sheet paid.* The first draft of `pairs.md` left side assignment to
+the coin and put current-era on A **17** times of 29; the balanced version is 15/14, so pure
+position bias scores exactly chance. A rater 79% biased toward A would have scored near the
+threshold under the first draft **on position preference alone**. That correction was made before
+these answers existed, which is the only reason this number can be read at all.
+
+**Its stated confidence carries no information.** It named 7 pairs it was least sure of:
+
+| | current-era chosen |
+|---|---:|
+| its 7 low-confidence pairs | 4/7 — 57% |
+| the other 22 | 13/22 — 59% |
+
+No difference. A rater that cannot tell its guesses from its judgements is not supplying
+judgements.
+
+### What this does and does not establish
+
+- **It is consistent with the correlation work above** - no per-sentence machine signal reached
+  r = 0.3, and now a holistic machine rater scores p = 0.23 on forced choice. Two independent
+  machine nulls on the same question.
+- **It is not evidence that a human cannot discriminate.** The sheet was built for a human
+  rater; a model rater failing at it is a fact about the model rater. Nothing here licenses a
+  claim about the two revisions being indistinguishable *to a reader*, and the human measurement
+  remains unmade.
+- **It does compromise `pairs.md` for Tue.** He has now seen 29 A/B answers, so his own choices
+  would be anchored. The anchoring runs toward the null - those answers are 79% A, and copying
+  them scores 15 - so it cannot manufacture a false positive, but it can hide a real effect. A
+  fresh sheet is needed, drawn from sentences neither of us has seen.
+
+## The sharpest result of the lot: it detects the revision and misreads the valence
+
+*3 September, and exploratory - see the caveat at the end. Asked a second, different question on
+the same 58 sentences: which feel more humanly written and which more AI-written. It named 10
+each, by pair and side.*
+
+Scored against the era key:
+
+| its list | current-era | pre-prose-work |
+|---|---:|---:|
+| 10 **most human-feeling** | 8 | 2 |
+| 10 **most AI-feeling** | **8** | 2 |
+
+**Identical. Fisher two-sided p = 1.000.** The human-versus-AI axis carries no information
+whatever about which revision wrote the sentence.
+
+Its own two judgements are also mutually uninformative. Cross-checking the "feels human" lists
+against its earlier forced-choice picks: it chose **8 of 10** of the sentences it called human,
+and **8 of 10** of the sentences it called AI-generated. Whatever it liked reading, it was not
+"feels human".
+
+### But which sentences it noticed at all is not noise
+
+The two lists cover **20 distinct pairs with no overlap**, so it made 20 independent choices of
+which side of a pair to single out. Sixteen landed on current-era:
+
+    ranked at all      16 of 20 current-era, against a 50% base rate
+    one-sided binomial  p = 0.0059   (two-sided ~0.012)
+
+And **it is not length.** The 20 it ranked average 16.5 words against 16.4 for the 38 it ignored
+- no difference at all - so this is not the "more natural = shorter" artefact that its earlier
+bucketing turned out to be.
+
+**So a model reader can tell which revision wrote a sentence, and cannot tell whether that is
+good or bad.** It reliably notices the current-era prose and then assigns a valence at chance.
+What the prose work changed is *distinctiveness*, which is detectable; whether distinctiveness
+is an improvement is the question it cannot answer.
+
+That makes the human measurement more valuable rather than less. The one thing no rater here can
+supply is the direction.
+
+### Two things it got right, unprompted and for a third time
+
+- **`pulled taught` should be `taut`** (its item 11A). Independently spotted, having been found
+  the same day by [cross-scene-tics.md](../cross-scene-tics.md) at 8 occurrences against 43
+  correct.
+- **Its list of recycled vocabulary** - *the weight of*, *as if*, *something shifted*, *something
+  colder*, *layers of time* - is the measured tic set, arrived at by reading rather than counting.
+  `as if` is in 70-82% of scenes and `the weight of` in 65-72%, and nothing in the panel watches
+  either.
+
+An outside reader that cannot rank quality has now named the same real defects three times. That
+is worth keeping in mind about what such a reader is *for*: not a verdict, a list of things to go
+and measure.
+
+### Caveat, stated plainly
+
+**This is exploratory and was not pre-registered.** The salience result comes from an analysis
+designed after seeing the lists, on 20 items the rater selected itself. p = 0.012 from an
+unregistered test on a self-selected set is a hypothesis, not a finding. It earns a fresh
+pre-registered test on sentences neither party has seen - which is what `scripts/build_pairs2.py`
+exists to draw - and the registered question there should include salience, not only preference.
