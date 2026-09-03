@@ -79,6 +79,24 @@ Thirteen of its fourteen patterns have never fired and say so in their own viola
 because the one pattern dropped from the table returned two matches that were **both false
 positives**.
 
+**Live-verified 3 September** ([evidence/judge-marks.md](evidence/judge-marks.md)).
+`runs/current-preflag1`, 71 scenes, 60,806 words, at `6107ba1` with a clean tree:
+
+    halts                              ZERO
+    continuity_contradiction repairs   3, all accepted
+    most repair rounds any scene used  2 (budget 3)
+    final ledger                       989 facts, book-level check CLEAN
+
+The gate fired three times, the writer satisfied it three times, and the wrong location never
+entered the ledger. A green suite and perfect corpus precision did not answer this; only a live
+book did.
+
+*Two things came free. The run survived a mains power cut at scene 37 — 36 scenes and 492 facts
+intact, nothing truncated, resumed with no manual repair. And the verifier reported "the gate
+never fired" before it was fixed: it read a file this pipeline does not write and a field the
+records do not use, then treated an empty counter as evidence. That is the third instance in one
+day of a component returning the reassuring answer when it could not read its input.*
+
 **Nothing on the board now needs GPU, and nothing needs a person.**
 
 ---

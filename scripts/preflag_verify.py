@@ -70,28 +70,49 @@ def report(run: pathlib.Path):
     else:
         print("  no halts.json -> completed with ZERO halts")
 
-    # Which violation kinds sent a scene back, from step 31's repair_log.
-    project = run / "project.json"
+    # Which violations sent a scene back, from step 31's repair_log.
+    #
+    # **This block had two bugs and they produced a confident wrong answer**, which is why it is
+    # commented at length. It read `project.json`, which this pipeline does not write - the
+    # per-scene records under `scenes/*.json` carry `repair_log` - and it looked for a `kinds`
+    # field where the entries actually use `targets`. Both misses were silent, `kinds` came back
+    # empty, and the script then took an empty counter as evidence and printed "the new gate
+    # never fired" for a run whose log plainly showed it firing three times.
+    #
+    # That is the third instance today of one failure shape: a check that cannot read its input
+    # reporting the reassuring answer instead of an error (`wandering_details` on dicts, the
+    # rater panel's 8-token budget, this). The lesson that keeps re-earning itself is to make
+    # absence loud - so the count of records actually parsed is printed below, and a run with no
+    # parsed records says so instead of reporting zero repairs.
     kinds = collections.Counter()
-    rounds = collections.Counter()
-    if project.is_file():
+    outcomes = collections.Counter()
+    rounds_used = {}
+    records = sorted((run / "scenes").glob("*.json"))
+    for f in records:
         try:
-            data = json.loads(project.read_text(encoding="utf-8"))
+            sc = json.loads(f.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
-            data = {}
-        for sc in data.get("scenes", []):
-            for entry in sc.get("repair_log", []) or []:
-                for k in (entry.get("kinds") or []):
-                    kinds[k] += 1
-                rounds[sc.get("index")] = sc.get("repairs", 0)
+            continue
+        for entry in sc.get("repair_log") or []:
+            for k in (entry.get("targets") or []):
+                kinds[k] += 1
+                outcomes[(k, entry.get("outcome", "?"))] += 1
+            rounds_used[sc.get("index")] = max(rounds_used.get(sc.get("index"), 0),
+                                               int(entry.get("round", 0) or 0))
+
+    print(f"  scene records parsed: {len(records)}"
+          + ("   <- NONE: the repair figures below mean nothing" if not records else ""))
     if kinds:
         print("  repairs by violation kind:")
         for k, n in kinds.most_common():
             flag = "   <- the new gate" if k == "continuity_contradiction" else ""
-            print(f"    {n:>3}  {k}{flag}")
-        print(f"  scenes needing any repair: {sum(1 for v in rounds.values() if v)}")
-    else:
-        print("  no repair_log found (older run, or no repairs needed)")
+            detail = ", ".join(f"{oc}x{c}" for (kk, oc), c in outcomes.items() if kk == k)
+            print(f"    {n:>3}  {k:32} [{detail}]{flag}")
+        worst = max(rounds_used.values()) if rounds_used else 0
+        print(f"  scenes needing any repair: {len(rounds_used)}; "
+              f"most rounds any scene used: {worst} (budget is 3)")
+    elif records:
+        print("  no scene needed a repair")
 
     facts = load_facts(run)
     wandering = checks.wandering_details(facts) if facts else []

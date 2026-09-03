@@ -161,3 +161,57 @@ unqualified.
 That is a structural change rather than a wording change, it is the second option this document
 listed in advance, and it is cheap. **It needs its own pre-registration, with more control trials
 than this one had.**
+## Live verification: the gate fires, the writer satisfies it, the book completes
+
+*3 September, `runs/current-preflag1`, 71 scenes, 60,806 words, `qwen3:8b`, at revision
+`6107ba1` with a clean working tree.*
+
+The suite was green and the corpus precision was perfect before this ran, and **neither fact
+answered the shipping question.** `checks:mark_conflict` is a BLOCKER that fires on 13 of 13
+wandering books; a scene that trips a blocker its repair cannot satisfy spends its whole budget
+and never commits. A gate that turns an unattended writer into one that stops is a regression
+however precise it is.
+
+    scenes                                  71/71
+    halts                                   ZERO (no halts.json written)
+    continuity_contradiction repairs        3, all outcome "accepted"
+    scenes needing any repair               15
+    most repair rounds any scene used       2  (budget is 3)
+    final ledger                            989 facts, book-level check CLEAN
+
+**The gate fired three times, the writer satisfied it three times, and the wrong location never
+entered the ledger** — so it cannot propagate the way `temple` did from scene 40 of the shipped
+book. That is the outcome that licenses shipping it as a BLOCKER.
+
+Two details worth keeping:
+
+- **Repair headroom is real but not generous.** The worst scene used 2 of 3 rounds. Nothing came
+  within one round of halting on a mark conflict specifically, but the margin is one round, and a
+  future check that adds pressure to the same budget should be measured against this figure
+  rather than assumed to fit.
+- **The adjacency rule earned its place on live data.** This book's scar sits on the *wrist* —
+  the `hand` region — so a draft placing it on the forearm would correctly not fire, those
+  regions meeting at a joint. The rule was derived from anatomy before this run existed.
+
+### A power cut, and an unplanned robustness result
+
+The run died at scene 37 when mains power failed mid-draft. Nothing was lost: 36 scenes and 492
+facts were intact and contiguous, no scene file was truncated, the ledger parsed and agreed with
+the scene files, and `python -m redthread write` resumed at scene 37 with no manual repair. For a
+system whose entire purpose is running unattended, surviving a hard kill mid-draft and picking up
+cleanly is worth knowing — learned by accident rather than by testing for it, which is stated
+plainly because an accident is weaker evidence than a test.
+
+### And the verifier lied first
+
+`scripts/preflag_verify.py` initially reported **"the new gate never fired"** for this run. It
+read `project.json`, which this pipeline does not write, and looked for a `kinds` field where the
+records use `targets`. Both misses were silent, the counter came back empty, and the script
+treated an empty counter as evidence.
+
+**That is the third instance today of one failure shape** — `wandering_details` reporting clean
+for dict input, the rater panel's 8-token budget silently deleting a rater, and now this. In every
+case a component that could not read its input returned the reassuring answer instead of an
+error, and in every case the reassuring answer was wrong. The fix each time is the same and it is
+not cleverness: **make absence loud.** The verifier now prints how many records it actually
+parsed and says outright that its figures mean nothing when that count is zero.
