@@ -237,7 +237,19 @@ Design constraints:
 
 ---
 
-## Phase 10 — Reader  *(gated on step 21; nothing here starts before the sheet is rated)*
+## Phase 10 — Reader  *(CUT 3 September — [evidence/no-human-rater.md](evidence/no-human-rater.md))*
+
+**The whole phase is cut, and steps 34 and 35 fall with it rather than becoming independently
+open** — both were explicitly gated on step 33 confirming the eras separate for a person. Three
+instruments failed for one reason: a sentence with no context has no job, so its fitness cannot
+be judged, and the largest measured defect in this prose is invisible at sentence level because
+every single instance of it reads fine. The record below is kept as written, unedited, because
+the branch table is exactly what can no longer be evaluated.
+
+**Replaced by** [evidence/rater-panel.md](evidence/rater-panel.md): a cross-family model panel on
+*passages*, order-counterbalanced, with the writer's own model as the self-preference control. It
+can license "model families of different lineage prefer X". It cannot license "readers prefer X",
+and nothing here will.
 
 **33. Score the human sheet** — PLAN.md's step 21, unchanged, twenty minutes of Tue. The two
 machine predictions are already committed and falsifiable
@@ -389,9 +401,10 @@ a verdict, every fact carrying the sentence it was extracted from, recall as the
   [#16117](https://github.com/ollama/ollama/issues/16117)). String-level machinery
   (step 28's list, the refrain feedback) is the honest local ceiling; FTPO-style token work
   would need a different serving stack and is out of scope.
-- **Extend the measure panel before step 33.** The dry run predicts the panel is orthogonal to
-  reading; building measure #12 before a human confirms or refutes that is effort spent on the
-  wrong side of the gate.
+- **Extend the measure panel on the strength of a reading claim.** There is no reader and there
+  will not be one ([evidence/no-human-rater.md](evidence/no-human-rater.md)), so "the panel is
+  orthogonal to reading" can no longer be confirmed or refuted by a person. Build measure #12
+  when a *named defect* wants measuring, never to chase perceived quality.
 - **Compare across books on non-portable measures.** After step 26, `clears_noise` enforces this
   rather than a doc pleading for it.
 
@@ -446,7 +459,11 @@ outcomes — like the wandering-mark test — need no floor and are unaffected.
    it is five GPU-hours that buys nothing until there is something to compare.
 4. **Step 29 stage 2** — needs a plan where the 15% gate opens (`solo-a1` at 38%) *and* a floor
    for that premise. Most expensive item left, least urgent.
-5. **Step 33** — twenty minutes of Tue, and it gates everything reader-facing.
+5. **The rater panel** — [evidence/rater-panel.md](evidence/rater-panel.md), pre-registered and
+   running. Replaces the cut step 33. Costs no human time and no GPU beyond a few hundred short
+   judgements, and a null is as useful as a positive: if four unrelated model families cannot
+   separate the eras on passages, the speculative mechanisms above that assume the eras are
+   perceptibly different retire with it.
 
 ### Read before designing anything
 

@@ -40,7 +40,10 @@ difference smaller than the floor is a coin, and several here are.
 | `code-drift-floor.md` | Four books sharing one plan across four code revisions: no mean moves beyond the sampling floor, but somatic_share's spread widens 5x |
 | `inconsistency-finder.md` | The rejected inspector's successor: recall passes, precision proves unmeasurable because 'clean' controls were not clean, and the run finds a substring bug in its own harness plus four real defects in a committed book |
 | `inspector-method.md` | The focused-inspector method: pre-registered thresholds, a continuity inspector that caught 9/9 seeded contradictions exactly and still got parked for crying wolf twice, and a naive rater that kept the eras' direction but lost their separation |
-| `sentences/sentences.md` | A hundred sentences, half from each era, shuffled and unlabelled — the one thing here that needs a person rather than a measurement. **Still blank; still the open step** |
+| `sentences/sentences.md` | A hundred sentences, half from each era, shuffled and unlabelled. **RETIRED unrated 3 September** — see `no-human-rater.md`. Kept as a built instrument and as the record of why the unit was wrong |
+| `sentences/pairs.md`, `pairs2.md` | Two later forced-choice designs, 29 and 40 pairs, with the confounds of the first fixed. **Also retired unrated** — controlling confounds did not touch the flaw, which was the unit |
+| `no-human-rater.md` | Why the human rating is cut, and precisely which claims the project may no longer make. Read before writing any sentence about prose *quality* |
+| `rater-panel.md` | What replaces it: a cross-family model panel on passages, order-counterbalanced, with the writer's own model as the self-preference control |
 | `sentences/sentences-key.md` | Its key, deliberately a separate file. Do not open it before the sheet is filled in |
 | `sentences/sentences-claude.md` | The same sheet filled in by Claude, blind, into a separate file so the blank one stays blind. A dry run of the analysis, not the step |
 | `sentences/machine-rating.md` | What that dry run says: the eras separate at 2.12 against 1.67, and **zero of seven** per-sentence signals correlate — the one that appeared to was a perfect era marker. Both are predictions to check the human rating against |

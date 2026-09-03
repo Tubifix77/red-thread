@@ -674,10 +674,15 @@ a shuffled sheet from two conditions and writes the key to a **separate file**, 
 beside the sheet is not a blind and the person who has to resist reading it is the one who wrote
 the prose.*
 
-**21. Rate a hundred sentences by hand, once.** ⏳ **The sheet is built and waiting for a
-person. A machine has now filled in a copy of it, which is a dry run and not the step.** Fifty
-from before the prose work, fifty from after, shuffled and unlabelled. Would you read it again.
-This is the only ground truth this project will ever have on the question.
+**21. Rate a hundred sentences by hand, once.** ❌ **CUT 3 September**
+([evidence/no-human-rater.md](evidence/no-human-rater.md)). The sheet was built, a second and a
+third instrument were built after it, and all three failed for one reason: a decontextualised
+sentence has no job, so its fitness cannot be judged. The measurements taken the same day confirm
+it rather than excusing it - `the weight of` is in ~72% of scenes and every instance reads fine,
+so the largest measured defect here is invisible at sentence level by construction. **The unit
+was wrong, and confound control does not fix a wrong unit.** Replaced by a cross-family model
+panel on passages ([evidence/rater-panel.md](evidence/rater-panel.md)), which licenses "models
+of different lineage prefer X" and never "readers prefer X".
 
 *The dry run is written up in
 [machine-rating.md](evidence/sentences/machine-rating.md), with the ratings themselves in
@@ -800,7 +805,11 @@ condition under which the honest answer is to stop.
 **Sequencing.** Phase 0 blocks everything. Phase 2 blocks step 16. Phase 5 depends on nothing and
 could start tonight. Phases 1 and 4 are independent of each other and of everything after phase 0.
 
-**The one prediction worth committing to:** step 21 is the highest-value item on this list and the
-only one requiring a person. Everything else measures whether the prose *scores* better. A hundred
-rated sentences is the only thing that can say whether it *is* better — and if the answer is no,
-most of the panel needs rethinking rather than extending.
+**The one prediction worth committing to — WITHDRAWN 3 September.** It read: *"step 21 is the
+highest-value item on this list and the only one requiring a person... the only thing that can say
+whether it* is *better."* The premise was sound and the item was not merely expensive in human
+time, it was **unanswerable in the form asked**
+([evidence/no-human-rater.md](evidence/no-human-rater.md)). The consequence stands and is now
+load-bearing rather than conditional: nothing in this project can say whether the prose *is*
+better, so it does not claim it. It measures defects, and every past sentence claiming quality is
+a bug.
