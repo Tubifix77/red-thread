@@ -133,9 +133,25 @@ def build_pairs(cur_books, pre_books, n_pairs, rng, tol=0.15):
     return pairs
 
 
-def ask(model, a, b):
+# A reasoning model needs room to finish thinking before it can emit an answer at all, and some
+# ignore `think=False` entirely. Measured on deepseek-r1:8b: at num_predict 8, 64, 512 and 1024
+# the content field comes back EMPTY with done_reason "length" - it is still reasoning when the
+# budget runs out - and only at 4096 does it stop and answer, having spent 10,557 characters of
+# scratchpad to produce "A". An 8-token budget silently produced no data from that rater for a
+# whole run, which is the same class of failure as a check that reports clean when it cannot read
+# its input: no error, no answer, and nothing in the output saying which.
+REASONING_BUDGET = 4096
+STRAIGHT_BUDGET = 8
+
+
+def budget_for(name):
+    return REASONING_BUDGET if re.search(r"r1|reason|think|qwq", name, re.I) else STRAIGHT_BUDGET
+
+
+def ask(model, a, b, max_tokens=STRAIGHT_BUDGET):
     """One forced choice. Returns 'A', 'B' or None if the reply is not a clean letter."""
-    reply = model.critic.complete(PROMPT.format(a=a, b=b), max_tokens=8, temperature=0.0)
+    reply = model.critic.complete(PROMPT.format(a=a, b=b),
+                                  max_tokens=max_tokens, temperature=0.0)
     m = re.search(r"\b([AB])\b", (reply.text or "").strip().upper())
     return m.group(1) if m else None
 
@@ -161,13 +177,14 @@ def main(argv=None):
     results = {}
     for name in [m.strip() for m in args.models.split(",") if m.strip()]:
         model = Models.local(name, name, args.base_url, native=True)
+        tokens = budget_for(name)
         consistent = cur_wins = position_bound = unparsed = 0
         first_choice = collections.Counter()
         for p in pairs:
             # Order 1: current-era as A. Order 2: current-era as B. A real preference picks the
             # same PASSAGE both times; position bias picks the same LETTER both times.
-            r1 = ask(model, p["cur"], p["pre"])
-            r2 = ask(model, p["pre"], p["cur"])
+            r1 = ask(model, p["cur"], p["pre"], tokens)
+            r2 = ask(model, p["pre"], p["cur"], tokens)
             if r1 is None or r2 is None:
                 unparsed += 1
                 continue
@@ -180,6 +197,7 @@ def main(argv=None):
                 cur_wins += 1
         results[name] = {"consistent": consistent, "cur_wins": cur_wins,
                          "position_bound": position_bound, "unparsed": unparsed,
+                         "budget": tokens,
                          "first_A": first_choice["A"], "first_B": first_choice["B"]}
         n = consistent
         if n:
@@ -190,8 +208,13 @@ def main(argv=None):
         else:
             p_val = float("nan")
         results[name]["p"] = p_val
+        bound_rate = position_bound / len(pairs)
+        flag = ("  UNUSABLE: no parseable answer" if consistent + position_bound == 0
+                else f"  EXCLUDED: {bound_rate:.0%} position-bound" if bound_rate > 0.50
+                else "")
         print(f"  {name:22} usable {n:>2}/{len(pairs)}  current-era {cur_wins:>2}/{n or 1}"
-              f"  position-bound {position_bound:>2}  p={p_val:.3f}")
+              f"  bound {position_bound:>2} ({bound_rate:>3.0%})  unparsed {unparsed:>2}"
+              f"  p={p_val:.3f}{flag}")
 
     print("\n  usable = picked the same passage in both orders. position-bound = same letter")
     print("  twice, i.e. the rater answered by position and not by prose.")

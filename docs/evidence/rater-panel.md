@@ -73,3 +73,66 @@ estimated from one book.
 ---
 
 *Result appended below after the run. Nothing above changes.*
+## Run 1: VOID by the registered rule
+
+*3 September. 32 pairs, word gap median 6, max 17. Reported in full before any amendment.*
+
+| rater | lab | usable | current-era | position-bound | p | registered verdict |
+|---|---|---:|---:|---:|---:|---|
+| gemma3:12b | Google | 15/32 | 13/15 | 17 — **53%** | 0.007 | **EXCLUDED**, over the 50% bar |
+| gemma4:12b | Google | 29/32 | 26/29 | 3 — 9% | **0.000** | usable |
+| phi4:14b | Microsoft | 18/32 | 13/18 | 14 — 44% | 0.096 | usable, not significant |
+| deepseek-r1:8b | DeepSeek | 0/32 | — | 0 | — | **UNUSABLE**, no parseable answer |
+| qwen3:8b | *control, wrote the prose* | 20/32 | 12/20 | 12 — 38% | 0.503 | — |
+
+Two usable panel members where the registration requires three. **The registered rule says that
+is VOID, not negative**, and it says so precisely because an unreliable panel measures nothing in
+either direction. The appealing reading — *two of two usable raters favour current-era at p=0.007
+and p<0.001* — is not available, and the pre-registration exists to make it unavailable.
+
+### Why it voided: one real rater property and one bug of mine
+
+- **gemma3 at 53% position-bound is a fact about gemma3.** It answered by position on more than
+  half the pairs. It sits two pairs over the bar, so its exclusion could flip on noise, and that
+  fragility is worth naming rather than smoothing.
+- **deepseek-r1 produced nothing because I starved it.** Diagnosed rather than assumed: it
+  **ignores `think=False`** — verified directly against `/api/chat` with `think` false, null and
+  true, all three returning empty `content` with `done_reason: length` while `thinking` fills up.
+  At `num_predict` 8, 64, 512 and 1024 it is still reasoning when the budget ends; at 4096 it
+  stops and answers, having spent 10,557 characters of scratchpad to produce one letter.
+
+  **An 8-token budget silently produced no data from an entire rater for a whole run** — no error,
+  no answer, and nothing in the output distinguishing "declined" from "never got to speak". That
+  is the same failure class as `wandering_details` reporting clean when it could not read its
+  input, found this morning. The script now sets the budget per model and prints `unparsed`
+  separately from `position-bound`, so this cannot be silent again.
+
+### One result from the void run worth keeping, because it is the control
+
+**`qwen3:8b` — the model that wrote the prose — showed no preference at all: 12/20, p = 0.503.**
+Self-preference was the artefact this control exists to catch, and it is absent. That is the
+opposite of what a self-flattery explanation predicts, and it survives the void because it is a
+null on a rater whose reliability (38% position-bound) passed the bar.
+
+## Amendments before run 2, with the criterion untouched
+
+**The pass criterion does not move**: at least 3 usable panel raters significant at p < 0.05 in
+the same direction, >50% position-bound excludes a rater, and fewer than 3 usable panel raters
+voids rather than fails. Three changes, all of which I would make had run 1 gone the other way:
+
+1. **Per-model token budget** (`REASONING_BUDGET = 4096`). A bug fix, not a design change.
+2. **60 pairs instead of 32.** Usable rates of 44-56% mean 32 pairs yields 15-20 usable, which is
+   thin. More pairs raises power and cannot bias direction.
+3. **A correction to my own registered wording, which tightens the bar against me.** It said "at
+   least 3 of the 4 **unrelated families**" and then listed gemma3 *and* gemma4 — which are two
+   generations from **one lab**, not two lineages. As written, "3 of 4" could be satisfied by
+   gemma3 + gemma4 + one other and pass on essentially two labs. **Run 2 therefore also requires
+   the significant raters to span at least 2 distinct labs.** This is stricter than what was
+   registered and is applied knowing it makes a pass harder.
+
+**The risk, stated rather than buried:** run 2 is not blind — I have seen that both Google models
+favour current-era. The protections are that the criterion is unchanged, the tightening runs
+against my interest, and run 1 is reported above in full including the numbers that would have
+looked better left out. A void caused by a harness bug is the case the registration anticipated
+when it wrote "void, not negative"; it is not a licence to keep running until the answer is nice,
+and **if run 2 voids again the answer is that this panel cannot measure it, not run 3.**
