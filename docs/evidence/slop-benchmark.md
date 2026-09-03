@@ -199,8 +199,10 @@ uses 1,632; suppressing 42 words moves the score by less than one point.
 
 - **A first external comparison exists and this project is mid-field on it**, near a bare 4B model
   of its writer's own family and far from `claude-sonnet-4-5` at 9.26 or the 6.90 human baseline.
-- **The pipeline does not reduce slop.** Gating, repair and best-of-three selection buy nothing
-  measurable on this axis. That is a real negative about the architecture, not about the model.
+- ~~**The pipeline does not reduce slop.** Gating, repair and best-of-three selection buy
+  nothing measurable on this axis. That is a real negative about the architecture, not about the
+  model.~~ **WITHDRAWN the same day — see the correction below.** Content moves this metric 28.7
+  points within one pipeline and one model, and the gap being interpreted was 6.05.
 - **It is still not a model-versus-model result**, and the pre-registration said so before the
   number existed: their samples are single-pass raw output, ours are gated and repaired, which
   favours us — and we came out no better anyway, which makes the negative harder to dismiss
@@ -209,3 +211,84 @@ uses 1,632; suppressing 42 words moves the score by less than one point.
   public 1,632-word list by the same author. Extending it is a data change, not a design change.
   **That is a separate experiment and needs its own pre-registration** — and it would be scored
   on the held-out remainder, never on the words newly added, or it measures itself.
+## Correction: the architecture conclusion is WITHDRAWN
+
+*Same day, prompted by Tue asking the obvious question I had not asked myself — "compared to
+**bare**? as in no pipeline at all? so did you show it was worse than no pipeline?"*
+
+**No. That is not what was shown, and the section above claimed more than the data supports.**
+The withdrawn sentence is: *"The pipeline does not reduce slop. Gating, repair and best-of-three
+selection buy nothing measurable on this axis. That is a real negative about the architecture."*
+
+### What their "bare" actually is, verified rather than assumed
+
+    300 samples per model, median 1,197 words each
+    one one-line creative prompt -> one completion
+    temperature 0.7, min_p 0.1, max_tokens 8096
+    no planning, no revision, no orchestration
+
+So the comparison as first run was **300 independent 1,200-word pieces against 42 continuous
+novels of up to 60,000 words** — and this document had already measured `r = +0.672` between
+length and slop rate. The unit was not matched.
+
+### Matching the unit did not rescue it, and their per-sample spread existed all along
+
+Re-scored in ~1,200-word chunks, and their per-sample `rate_per_1k` **is** in the result files, so
+the earlier complaint that "no per-sample spread is available for them" was also wrong:
+
+| | n | median | mean | sd | p25-p75 |
+|---|---:|---:|---:|---:|---|
+| red-thread, 1.2k chunks | 933 | **25.02** | 24.58 | 6.49 | 20.71-28.99 |
+| qwen3-4b, per sample | 222 | **18.97** | 22.50 | 14.52 | 11.78-31.16 |
+| gemma-3-12b-it, per sample | 300 | 30.87 | 32.97 | 11.53 | 25.10-39.78 |
+| claude-sonnet-4-5, per sample | 150 | 8.76 | 9.27 | 5.54 | 4.88-12.27 |
+
+red-thread still sits above bare qwen3-4b, by 6.05 points of median.
+
+### But content moves this metric five times further than the gap does
+
+Our own corpus, matched 1.2k chunks, **one pipeline and one model throughout**, split by premise:
+
+| premise | n | median |
+|---|---:|---:|
+| The Book of Safe Days | 8 | **5.12** |
+| The Inherited Glitch | 6 | 5.90 |
+| The List | 5 | 10.32 |
+| The Four-Minute Tide | 18 | 11.41 |
+| The Register of Kvitmyr | 5 | 12.61 |
+| The Ink of the Drowned | 48 | 23.73 |
+| The Keeper's Fourth Book | 8 | 24.04 |
+| The Debt of Years | 806 | 25.14 |
+| The Last Tide | 12 | 33.84 |
+
+**A 28.72-point range with the pipeline and the model held fixed.** The 6.05-point gap being
+interpreted is less than a quarter of it. Their 300 prompts span many genres; ours is 806 of 926
+chunks from a single dystopian ledger novel.
+
+**So the comparison cannot separate "our pipeline is worse" from "our novel's subject matter
+scores higher on this list", and it is not evidence about the architecture in either direction.**
+
+### What survives, and what the real test would be
+
+Survives:
+
+- **The calibration.** The implementation reproduces their published figures to within 1%, so the
+  measure is theirs.
+- **A located position.** red-thread's committed prose sits mid-field on a public deterministic
+  metric — above bare gemma-3-12b, below `claude-sonnet-4-5` at 8.76 and the 6.90 human baseline.
+  As a *position*, with no causal claim attached, that stands and is the first external number
+  this project has.
+- **`check_slop` barely touches this list.** 42 of 138 enforced phrases overlap; the gate moves
+  the score 0.71. That is a fact about the gate, not a comparison, and it needs no control.
+
+Does not survive: any claim that the pipeline helps or hurts.
+
+**The test that would answer Tue's question** is an ablation, not a benchmark: the same plan and
+the same model, with and without the slop gate, scored on the held-out remainder. Everything else
+held constant, which is what this project's harness was built for and what a cross-corpus
+comparison can never be. **Not run, not pre-registered, and not free** — but it is the only design
+that answers what was asked.
+
+*The lesson is one already on the record here and it recurred anyway: **a difference is only a
+result if the things being compared differ in one way.** These two corpora differ in pipeline,
+model, prompt, genre, and unit length, and I attributed the difference to the first of five.*
