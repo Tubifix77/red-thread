@@ -31,8 +31,14 @@ From `js/metrics.js`: tokenise to lowercase `[a-z]+(?:'[a-z]+)?`, then
     trigramScore = (consecutive 3-token windows in trigram list)/ total_tokens * 1000
 
 Whole-token matching, every occurrence counted. Lists as downloaded 3 September:
-**1,648 words** and **430 trigrams**. *(A fetched summary of the same file claimed 1,874 words;
-the count above is from the file. A summary of data is not the data.)*
+**1,648 raw word entries — 1,632 unique** once lowercased, since 16 appear twice in different
+cases (`intricate`, `relentless`, `meticulously` among them) — and **430 trigrams**. The scoring
+set is the 1,632, because matching is against a set of lowercased tokens.
+
+*(Two counting notes, both worth keeping. A fetched summary of this same file claimed 1,874
+entries — a summary of data is not the data. And the 1,648/1,632 gap is why the figure appears
+twice in this document: the pre-registration above was written from the raw length before the
+loader deduplicated it, and the result below reports what was actually matched against.)*
 
 ## The comparison set, and the circularity that makes one arm mandatory
 
@@ -61,7 +67,7 @@ therefore be partly a measurement of our own gate.
 
 So two arms, and only one of them is reportable as evidence:
 
-- **FULL** — their 1,648 words. Circular on the overlap, reported for completeness only.
+- **FULL** — their 1,632 unique words. Circular on the overlap, reported for completeness only.
 - **HELD-OUT** — their list minus every phrase red-thread enforces. **This is the arm that
   counts**, and it is rule II applied to an external benchmark: score against what the system was
   not built to match.
@@ -82,7 +88,7 @@ figure for three models whose raw outputs I re-score with it**: `qwen3-4b`,
 
 On the **held-out** list, red-thread lands **between the human baseline (6.90) and raw qwen3-4b
 (23.63)**. Reasoning stated so it can be wrong for a nameable reason: our slop gate covers 138 of
-1,648 terms, so the great majority of the held-out list is entirely unaddressed by anything in
+1,632 terms, so the great majority of the held-out list is entirely unaddressed by anything in
 this codebase, and the pipeline's other pressures do not push against it.
 
 **The falsifier, and it is a live possibility:** if red-thread's held-out score is **worse than
@@ -115,3 +121,91 @@ That is a narrow claim and it is the first external one this project has ever be
 ---
 
 *Result appended below after the calibration gate and the scoring run. Nothing above changes.*
+## Result: calibration passed, and **the prediction failed**
+
+*3 September. `scripts/slop_benchmark.py`, lists and leaderboard as downloaded the same day.*
+
+### The calibration gate passed, so the numbers below are the same measure as theirs
+
+| model | their published slop/1k | my reimplementation | delta |
+|---|---:|---:|---:|
+| qwen3-4b | 23.63 | 23.46 | 0.7% |
+| gemma-3-12b-it | 36.35 | 36.20 | 0.4% |
+| claude-sonnet-4-5 | 9.72 | 9.71 | **0.1%** |
+
+Within 1% on all three, against a ±5% bar. The implementation reproduces theirs, so a difference
+found below is a difference in the prose and not in the code.
+
+### The result
+
+| | full list | held-out list |
+|---|---:|---:|
+| claude-sonnet-4-5 *(bare)* | 9.71 | **9.26** |
+| qwen3-4b *(bare)* | 23.46 | **22.18** |
+| **red-thread** *(gated pipeline, qwen3:8b)* | 25.15 | **24.44** |
+| gemma-3-12b-it *(bare)* | 36.20 | 32.87 |
+| human baseline | 6.90 *(published; their corpus is not in the repo, so it cannot be re-scored held-out)* | — |
+
+**The pre-registered prediction was that red-thread would land between 6.90 and 23.63. It landed
+at 24.44 — outside that range, and above bare qwen3-4b.** The registered falsifier read: *"if
+red-thread's held-out score is worse than qwen3-4b's held-out score, the pipeline adds slop rather
+than removing it."* By the letter, it fired.
+
+### By the letter, not by the spirit — and the distinction is measurable
+
+The gap is 2.26 per 1,000 words. Our **book-to-book** spread on the same metric:
+
+    38 books of 8+ scenes    min 5.31   median 23.59   max 32.90   sd 6.65
+
+**A 2.26 gap sits comfortably inside a standard deviation of 6.65**, and 12 of our 38 books score
+*at or below* bare qwen3-4b. So the honest reading is not "worse" but **"not distinguishable, and
+certainly not better"**. Claiming a regression from 2.26 against that spread would be the same
+error as reading a two-run difference as a result.
+
+*Their side cannot be given the same treatment: `leaderboard_results.json` pools each model into
+one figure, so no per-sample spread is available for them and a proper test is not possible in
+either direction. That asymmetry is a limit of their published data, not a choice.*
+
+### The pooled figure is confounded, in this project's oldest way
+
+    correlation, scene count vs held-out slop/1k     r = +0.672
+    The Debt of Years   n=24   median 25.35   (scenes median 71)
+    every other premise n=14   median 17.64   (scenes median 10)
+
+And length is inseparable from premise **again**: every 60+ scene book is *The Debt of Years*, and
+no other premise has one. Since the pooled score is token-weighted, **24.44 is substantially "the
+slop rate of The Debt of Years at 71 scenes", not "red-thread's slop rate"** — the same caveat
+that withdrew the length attribution from the wandering-mark finding.
+
+The range is the striking part. Our best book, `glitch` at **5.31**, would sit above the human
+baseline of 6.90 on their leaderboard; our worst, `deps-book` at **32.90**, is near bare
+gemma-3-12b. One pipeline spans nearly the whole leaderboard depending on which book you score,
+which says this metric is dominated by content and length rather than by anything the pipeline
+does.
+
+### The circularity worry was real and turned out small
+
+    red-thread enforces        138 phrases
+    of those, on their list     42
+    held-out                 1,590 of 1,632 words — 97% unaddressed by this codebase
+    cost of the overlap        25.15 full vs 24.44 held-out = 0.71
+
+Methodologically that is good news: the full-list figure is nearly honest, because our gate and
+their list barely intersect. Substantively it is the opposite — **`check_slop` does almost nothing
+about what this benchmark measures.** The gate was built from a 138-phrase list and the benchmark
+uses 1,632; suppressing 42 words moves the score by less than one point.
+
+### What this establishes
+
+- **A first external comparison exists and this project is mid-field on it**, near a bare 4B model
+  of its writer's own family and far from `claude-sonnet-4-5` at 9.26 or the 6.90 human baseline.
+- **The pipeline does not reduce slop.** Gating, repair and best-of-three selection buy nothing
+  measurable on this axis. That is a real negative about the architecture, not about the model.
+- **It is still not a model-versus-model result**, and the pre-registration said so before the
+  number existed: their samples are single-pass raw output, ours are gated and repaired, which
+  favours us — and we came out no better anyway, which makes the negative harder to dismiss
+  rather than easier.
+- **The obvious lever is now named and cheap**: `check_slop` enforces 138 phrases against a
+  public 1,632-word list by the same author. Extending it is a data change, not a design change.
+  **That is a separate experiment and needs its own pre-registration** — and it would be scored
+  on the held-out remainder, never on the words newly added, or it measures itself.
