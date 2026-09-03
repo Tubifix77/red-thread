@@ -105,12 +105,13 @@ day of a component returning the reassuring answer when it could not read its in
 
 | | Question | State |
 |---|---|---|
-| 1 | Can it get to the end of a book without help? | **usually — 11 of 14 unattended; halts are resumable, and two of three were resumed to the end** |
-| 2 | Is the prose free of the obvious machine tells? | **per scene, yes — but the floor those figures rest on is one novel's, and a permanent physical detail wanders in 4 of 5 long books** |
-| 3 | Is the finished book worth reading? | **one of five axes started, and no measure yet matches a reading** |
+| 1 | Can it get to the end of a book without help? | **yes — 11 of 14 unattended as of 31 August, and the 3 September verification book ran 71 scenes with zero halts. Not re-derivable across the whole corpus: `halts.json` only exists on runs written after step 31** |
+| 2 | Is the prose free of the obvious machine tells? | **per scene, yes — but the floor those figures rest on is one novel's. A permanent physical detail wandered in 12 of 19 long books; a deterministic gate now catches it at the point of introduction, live-verified** |
+| 3 | Is the finished book worth reading? | **unmeasured, and now permanently so — three reader instruments failed on the unit, and this project measures defects rather than quality** |
 
-**1 — Yes, at novel length.** **Eleven distinct premises** across **39 runs with committed
-scenes** — 1,631 scenes, 1,424,274 words, zero API calls. The gap between those numbers is
+**1 — Yes, at novel length.** **Eleven distinct premises** across **42 runs with committed
+scenes** — 1,844 scenes, 1,607,299 words, zero API calls *(counts as of 3 September; they move
+with every run, so re-derive rather than quote them)*. The gap between those numbers is
 deliberate: twenty-two of the runs are *The Debt of Years* rewritten to test code changes, which
 is how anything here gets attributed to a change rather than to luck.
 
@@ -603,12 +604,24 @@ most expensive negative result was stored that way.
 
 ## The short answer
 
-The orchestrator is close to shippable. The writer is not. What remains is not a list of bugs — it
-is one unanswered question about whether a plan can be made dramatic enough that a small local
-model has something worth writing about. Everything measured says the plumbing works. Nothing
-measured says the book is good, because nothing measures that.
+**The orchestrator is shippable, and was verified as such on a real book rather than a suite.**
+71 scenes, 60,806 words, zero halts, three continuity blockers raised and repaired, final ledger
+clean ([evidence/judge-marks.md](evidence/judge-marks.md)). Every plan step is landed, cut, or
+dropped with a stated reason.
 
-The one thing that could is a hundred sentences read blind, and the sheet is built and waiting:
-[evidence/sentences/sentences.md](evidence/sentences/sentences.md). It needs twenty minutes of a
-person, and it is the only item on the whole plan that the machine which wrote the sentences
-cannot do for itself.
+**Whether the book is good is not measured, and now never will be here.** Three reader
+instruments were built and all three failed for one reason — a decontextualised sentence has no
+job, so its fitness cannot be judged — and the measurements agree rather than excuse: `the weight
+of` sits in ~72% of scenes and every instance reads fine, so the largest measured defect in this
+prose is invisible at sentence level by construction
+([evidence/no-human-rater.md](evidence/no-human-rater.md)). The cross-family model panel that
+replaced the human sheet did not clear its own bar either.
+
+So the honest close is narrower than the one this section used to carry, and the narrowness is
+the point: **this project measures defects, not quality, and does not claim the second.** That
+the two prose eras *differ* is measured and large. Different is not better.
+
+**One real question is left open and it is not a bug**: whether a plan can be made dramatic
+enough that a small local model has something worth writing about. Nothing here answers it, and
+nothing here can — answering it needs a kind of instrument this project has now failed to build
+three times, not more of the kind it has.

@@ -749,6 +749,12 @@ def cmd_sample(args) -> int:
     print(f"\n  {len(sheet)} sentences, {args.n} from each side, shuffled")
     print(f"  sheet:  {sheet_path}")
     print(f"  key:    {key_path}   (do not open it until the sheet is filled in)")
+    # This instrument was retired unrated on 3 September. The command still works and is
+    # kept deliberately - the sheet builder found a real confound and the machinery is
+    # sound - but three attempts to rate sentences blind failed on the UNIT, not on the
+    # confounds, so anyone about to spend twenty minutes on a fresh sheet should read why
+    # first rather than rediscover it.
+    print("  note:   sentence-level blind rating was retired unrated on 3 September -\n          see docs/evidence/no-human-rater.md before spending time on this sheet")
 
     # A control on the sheet itself, printed rather than filtered. The sentence splitter breaks
     # after a closing quote, so a drawn "sentence" is sometimes a speech tag joined to the line

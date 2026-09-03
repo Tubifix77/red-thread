@@ -56,5 +56,10 @@ The honest summary of the project's instrument panel, after all of this:
   support. That works, and phase 1 is what it looks like working.
 - It cannot yet say whether a book is better than another book. Three of eleven measures move
   between two premises for reasons that are not quality.
-- And whether any of it corresponds to what a reader notices is still unanswered, because that is
-  [step 21](sentences/sentences.md) and it needs a person.
+- And whether any of it corresponds to what a reader notices is **permanently unanswered here.**
+  That was step 21, and it is **cut** — three instruments failed on the unit rather than the
+  confounds, and a sentence-level one could never have worked because the largest measured defect
+  in this prose is invisible in any single sentence
+  ([no-human-rater.md](no-human-rater.md)). The model panel built in its place did not clear its
+  own pre-registered bar ([rater-panel.md](rater-panel.md)). Read this document's figures as
+  defect rates, never as quality.

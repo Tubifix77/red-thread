@@ -28,13 +28,21 @@ A measure is **portable** iff all four hold:
 3. the second book's internal spread fits inside the floor — the floor's *size* transfers;
 4. the gap between the two books' group means fits inside the floor — the *value* transfers.
 
-## The result: 3 of 13
+## The result: 3 of 13 at n=2 — **corrected to 2 of 13 at n=4**
+
+> **Correction, [step 30](../PLAN2.md).** `somatic_share` was in the portable set for four hours.
+> Extending the premise-B side from n=2 to n=4 removed it — not on its value, which barely moved,
+> but because its *spread* widened once there were four runs to measure it over. `checks.PORTABLE`
+> holds **two** measures today, `refusal_rate` and `refusal_per_ask`. The n=2 table below is left
+> exactly as it was published, because the point of it is that a two-run condition admitted a
+> measure a four-run condition rejects — which is [step 27](two-run-screen.md)'s protocol arriving
+> from the other direction, and the reason `clears_noise` refuses rather than guesses.
 
 | measure | Debt n=4 | Ink n=2 | Ink spread | floor | between | verdict |
 |---|---:|---:|---:|---:|---:|---|
 | `refusal_per_ask` | .644 | .944 | 3% | 53% | 38% | **PORTABLE** |
 | `refusal_rate` | .763 | 1.236 | 7% | 69% | 47% | **PORTABLE** |
-| `somatic_share` | .373 | .312 | 13% | 19% | 18% | **PORTABLE** |
+| `somatic_share` | .373 | .312 | 13% | 19% | 18% | ~~PORTABLE~~ **removed at n=4** |
 | `dialogue_share` | .202 | .169 | 13% | 11% | 18% | spread and gap both outside |
 | `gesture_rate` | 1.883 | 2.812 | 10% | 22% | 40% | gap outside |
 | `recap_grammar` | .035 | .064 | 10% | 59% | 59% | gap outside, by a hair |
@@ -42,7 +50,8 @@ A measure is **portable** iff all four hold:
 | `recap_block_share` | .000 | .000 | 0% | 0% | 0% | floor degenerate — vacuous |
 | `words`, `scenes`, `duplication_manuscript`, `repetition_concentration`, `worst_refrain` | | | | | | length-sensitive |
 
-Now in code as `checks.PORTABLE`, and enforced: `clears_noise(..., cross_book=True)` raises on
+In code as `checks.PORTABLE` — **two measures, not the three this table found**, after the n=4
+re-run above — and enforced: `clears_noise(..., cross_book=True)` raises on
 anything outside it, and `redthread measures` detects two different titles by itself and prints
 the non-portable rows as numbers with **no verdict** rather than as comparisons.
 

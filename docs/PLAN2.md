@@ -21,9 +21,17 @@ from forcing three opposed readings of the milestone to coexist:
   of them for zero GPU-hours before any new book is written.
 
 **So: three budgets, one gate.** Reliability and Instrument work is ungated and starts now.
-Reader-facing quality work is gated on step 21's human sheet, because both the external evidence
-and this project's own dry run say the proxies are unproven. Within every budget, cheapest
+Reader-facing quality work was gated on step 21's human sheet, because both the external evidence
+and this project's own dry run said the proxies are unproven. Within every budget, cheapest
 information first.
+
+***Superseded 3 September: that gate never opened and never will.*** *Step 21 and the whole of
+phase 10 are **cut** — three reader instruments failed on the unit rather than the confounds
+([evidence/no-human-rater.md](evidence/no-human-rater.md)), and the model panel built to replace
+them did not clear its own pre-registered bar
+([evidence/rater-panel.md](evidence/rater-panel.md)). Every "gated on step 21/33" sentence below
+therefore describes a gate that is now closed permanently. The phase text is kept unedited
+because its branch tables are exactly what can no longer be evaluated.*
 
 The rules of [PLAN.md](PLAN.md) apply to every step here unchanged. Rule VII is applied at
 design time: each experiment below names its statistic *and the statistic's type*, so a per-scene
@@ -72,7 +80,11 @@ not making.*
 ## Phase 7 — Instrument, from the shelf  *(0 GPU-h)*
 
 **26. Mine the cross-book floor out of the corpus that already exists.** ✅ **Done, same day —
-3 of 13 measures are portable: `refusal_rate`, `refusal_per_ask`, `somatic_share`.** Published as
+3 of 13 measures are portable at n=2, corrected to 2 of 13 at n=4: `refusal_rate` and
+`refusal_per_ask`.** `somatic_share` was in the set for four hours and [step 30](#) removed it —
+its *spread* widened once four runs existed to measure it over, which is
+[step 27](evidence/two-run-screen.md)'s protocol arriving from the other side. `checks.PORTABLE`
+holds two. Published as
 `checks.PORTABLE` and enforced: `clears_noise(..., cross_book=True)` raises on everything else,
 and `redthread measures` detects differing titles itself. Full table in
 [evidence/portable-measures.md](evidence/portable-measures.md).
