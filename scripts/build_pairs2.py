@@ -34,16 +34,49 @@ SENT = re.compile(r"[^.!?]+[.!?]+")
 # A sentence is unusable as a blind stimulus if it cannot stand alone. Openers that point at
 # something the rater cannot see ("But now,", "That was when") make the task about missing
 # context rather than about the writing.
-DANGLING = re.compile(r"^\s*(but|and|so|then|that|those|these|it|this|which|nor|yet)\b", re.I)
+DANGLING = re.compile(
+    r"^\s*(but|and|so|then|that|those|these|it|this|which|nor|yet|because|whereas"
+    r"|or|also|though|although|instead|otherwise|still|even)\b", re.I)
+# Unquoted dialogue is the trap the quote-mark filter misses entirely: "Tell me the name of the
+# thief who stole these years" carries no quote marks and is plainly speech. Third-person past
+# narration does not address anybody, so any first- or second-person pronoun disqualifies a
+# sentence as a narration stimulus. It costs some legitimate free indirect style and is worth
+# it — a rater comparing a line of dialogue against a line of narration is rating form, not prose.
+PERSONAL = re.compile(r"\b(i|me|my|mine|you|your|yours|we|us|our|ours)\b", re.I)
+# A verbless fragment ("A choice to live, to survive, to breathe another year") gives the rater
+# nothing to prefer. Requiring a finite verb somewhere is crude but effective at excluding a
+# stimulus that never predicates anything.
+HAS_VERB = re.compile(
+    r"\b(\w+ed|was|were|had|has|is|are|felt|saw|knew|said|stood|sat|held|kept|took|came|went"
+    r"|made|gave|found|left|turned|moved|looked|watched|waited|began|seemed|lay|drew|shook)\b",
+    re.I)
 
 
-def classify_books(runs_dir="runs", min_scenes=6):
-    """(current_era, pre_prose_work) book directories, by the mechanical marker."""
+def classify_books(runs_dir="runs", min_scenes=6, title=None):
+    """(current_era, pre_prose_work) book directories, by the mechanical marker.
+
+    `title` holds the premise fixed, and it matters more than the sample size it costs. Without
+    it the old side pulls in `glitch`, `register`, `verify` - different novels - and the rater is
+    then comparing stories rather than prose. With it there is exactly ONE pre-prose-work book of
+    *The Debt of Years*, `debt` at 27 scenes, so the whole old side comes from a single book.
+    That is a real limitation of the corpus and not a choice: book-level variance cannot be
+    estimated from one book, so a result here speaks for `debt` against the current era and not
+    for the era in general. The original hundred-sentence sheet had the same constraint.
+    """
     cur, pre = [], []
     for d in sorted(pathlib.Path(runs_dir).iterdir()):
         scenes = sorted((d / "scenes").glob("*.txt"))
         if len(scenes) < min_scenes:
             continue
+        if title is not None:
+            story = d / "story.json"
+            if not story.is_file():
+                continue
+            try:
+                if json.loads(story.read_text(encoding="utf-8")).get("title") != title:
+                    continue
+            except (OSError, json.JSONDecodeError):
+                continue
         texts = [f.read_text(encoding="utf-8", errors="replace") for f in scenes]
         recappy = sum(1 for t in texts if checks.recap_blocks(t))
         (cur if recappy == 0 else pre).append((d.name, texts, recappy / len(texts)))
@@ -62,6 +95,10 @@ def harvest(books, used, lo=9, hi=30):
                 n = len(s.split())
                 if not (lo <= n <= hi) or DANGLING.match(s):
                     continue
+                if PERSONAL.search(s) or not HAS_VERB.search(s):
+                    continue
+                if s[:1].islower() or s.count(",") > 4:
+                    continue        # a mid-sentence split, or a comma-spliced list
                 k = s.lower()
                 if k in used:
                     continue
@@ -74,11 +111,13 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--pairs", type=int, default=40)
     ap.add_argument("--seed", type=int, default=903)
+    ap.add_argument("--title", default="The Debt of Years",
+                    help="hold the premise fixed; '' to allow any")
     ap.add_argument("--out", default="docs/evidence/sentences/pairs2.md")
     ap.add_argument("--key", default="docs/evidence/sentences/pairs2-key.md")
     args = ap.parse_args(argv)
 
-    cur_books, pre_books = classify_books()
+    cur_books, pre_books = classify_books(title=args.title or None)
     print(f"  current-era books  : {len(cur_books)}  "
           f"({', '.join(n for n, _t, _r in cur_books[:6])}...)")
     print(f"  pre-prose-work books: {len(pre_books)}  "
@@ -165,6 +204,16 @@ def main(argv=None):
     thresh = next(k for k in range(n // 2, n + 1)
                   if sum(comb(n, x) for x in range(k, n + 1)) / 2 ** n < 0.05)
     key += ["",
+            "## A limitation of the corpus, not a choice",
+            "",
+            "The premise is held fixed at one novel, because letting it vary pulls different",
+            "stories onto the old side and turns the task into story preference. The cost is that",
+            "*The Debt of Years* has exactly **one** pre-prose-work book, `debt` at 27 scenes, so",
+            "the whole old side comes from a single book. Book-level variance cannot be estimated",
+            "from one book, so a result here speaks for `debt` against the current era and not for",
+            "the era in general. The original hundred-sentence sheet had the same constraint and",
+            "did not say so.",
+            "",
             "## Reading the result, fixed before any choice is made",
             ""]
     for k in range(thresh - 1, min(n, thresh + 3)):
