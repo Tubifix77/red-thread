@@ -462,3 +462,24 @@ outcomes — like the wandering-mark test — need no floor and are unaffected.
 
 **The single most valuable hour on this list is still the human one**, and this plan inherits
 PLAN.md's closing prediction unchanged.
+
+### Step 38 — this model's own tics (measured; fix not yet designed)
+
+Found 3 September ([evidence/cross-scene-tics.md](evidence/cross-scene-tics.md)). `as if` in
+70-82% of scenes, `the weight of` in 65-72%, across every premise in the corpus. Neither the
+per-scene `duplication_ratio` nor the externally-sourced antislop list can see any of it - the
+first is per-scene by construction, the second is other models' stock phrases.
+
+- **Measured and reproducible.** `scripts/tic_audit.py` separates tic from premise vocabulary by
+  cross-premise recurrence, the `checks.PORTABLE` logic applied to phrasing. It under-reports:
+  a tic carrying a character name lands premise-bound.
+- **The lever is the slop list, not a gate** (rule VI). The external list is sound and simply
+  aimed elsewhere; the proposal is to extend it with this model's measured tics.
+- **Blocked on a measure, not on GPU.** Rule VII: a criterion is only as good as the measure it
+  names, and the measure that would judge this fix is `duplication_ratio`, which is blind to the
+  thing being fixed. Suppressing `the weight of` could easily make the prose worse - the phrase
+  is not wrong, only overused. **Finding the measure is the work; pre-registration comes after.**
+- **Also open, and cheap:** `pulled taught` for `taut`, 8 occurrences against 43 correct across
+  7 current-era books. A homophone check is a few lines and catches an outright error rather than
+  a preference. Not built yet - it is a gate-side change and wants a moment's thought about rule
+  VI first.

@@ -1088,3 +1088,43 @@ would not target it.
 
 **The generalisation worth keeping:** before adding anything to the brief, ask what it will look
 like repeated seventy times. Everything in there arrives in every scene.
+
+## Cross-scene stock phrasing: a defect class the panel cannot see
+
+*3 September. Full trail in [evidence/cross-scene-tics.md](evidence/cross-scene-tics.md).*
+
+`duplication_ratio(text)` takes **one scene**, so it measures repeated 4-grams inside a scene and
+is blind by construction to a phrase the writer returns to every fifth scene. The current-era
+.002 in the era table above is a per-scene figure and is not evidence about a book. The
+138-phrase antislop list would be the other candidate, and it is sourced from
+sam-paech/antislop-sampler - other models' tics. Measured against what `qwen3:8b` actually
+repeats it covers **none** of it.
+
+Separating a tic from a story's own vocabulary needs no external corpus, only the corpus
+structure already here: a phrase that also recurs under a different premise cannot be this
+story's vocabulary. 1,552 *Debt of Years* scenes against 221 across ten other premises
+(`scripts/tic_audit.py`), and the split validates itself - every name-bearing phrase lands
+premise-bound, every abstraction cross-premise.
+
+| construction | Debt scenes | unrelated premises |
+|---|---:|---:|
+| `as if` | 70.2% | 82.4% |
+| `the weight of` | 72.2% | 65.2% |
+| `as though` | 51.0% | 50.7% |
+| `the edge of` | 33.8% | 59.3% |
+| `the space between` | 33.2% | 26.7% |
+
+**"the weight of" is in roughly seven scenes in ten and `as if` in seven to eight**, and nothing
+was watching either. The measure under-reports: a tic carrying a character name
+(`vay tilted his head`, 12.2%) is classified premise-bound.
+
+Also found, and separate: `pulled taught` for `pulled taut`, **8 against 43 correct - a 16% error
+rate on that homophone** across 7 current-era books. Three of the eight get it right and wrong in
+the same sentence. Fifteen homophone patterns were audited and thirteen found nothing; **one of
+the two that fired was a false positive** (`born of necessity` is correct idiom), so the count is
+8 and not the 10 the patterns returned.
+
+*Prompted by an outside reader - ChatGPT, given the hundred-sentence sheet - whose conclusion was
+wrong (every sentence in that sheet is machine-written) and whose two stylistic diagnoses were
+right and unmeasured. Its era discrimination was chance, 49/51, which is also why the sheet
+survives having been shown to it: the priming is non-differential.*
