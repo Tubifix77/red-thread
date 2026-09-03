@@ -14,32 +14,32 @@ second look is you doing the instrument's job.
 Should take ten minutes. Do not open `pairs-key.md` until you are finished.
 
 **1.**  [ ]
-  - **A**  Eventually, he closed his fingers around the folded paper and pushed it deeper into his coat, the motion precise, deliberate, final.
-  - **B**  The liquid inside shimmered, its glow shifting between hues of amber and indigo, as if the substance itself were alive, waiting.
+  - **A**  The liquid inside shimmered, its glow shifting between hues of amber and indigo, as if the substance itself were alive, waiting.
+  - **B**  Eventually, he closed his fingers around the folded paper and pushed it deeper into his coat, the motion precise, deliberate, final.
 
 **2.**  [ ]
-  - **A**  Their eyes locked onto his for a moment longer than necessary, then shifted toward the glowing vial once more.
-  - **B**  Dain had seen it in the records, in the coded notes, in the way the ledger had shifted.
+  - **A**  Dain had seen it in the records, in the coded notes, in the way the ledger had shifted.
+  - **B**  Their eyes locked onto his for a moment longer than necessary, then shifted toward the glowing vial once more.
 
 **3.**  [ ]
   - **A**  He had heard the name before, whispered in the backrooms of the Bureau, muttered in the dead of night when the real work had already been done.
   - **B**  He kept his weight shifted onto the balls of his feet, toes curling against the uneven ground, the gravel shifting under his boots like dead leaves stirred by wind.
 
 **4.**  [ ]
-  - **A**  He had known the Bureau would not let him walk away.
-  - **B**  Vay inclined his head very slightly, as if weighing something internal.
+  - **A**  Vay inclined his head very slightly, as if weighing something internal.
+  - **B**  He had known the Bureau would not let him walk away.
 
 **5.**  [ ]
-  - **A**  He let his shoulders slump, barely noticeable, then straightened.
-  - **B**  But now, he was beginning to see the truth.
+  - **A**  But now, he was beginning to see the truth.
+  - **B**  He let his shoulders slump, barely noticeable, then straightened.
 
 **6.**  [ ]
-  - **A**  The people who had been lost, the years that had been taken, the way the system had allowed it all to happen.
-  - **B**  Kai stood near the edge of the light, watching the flame in the lantern shift from yellow to orange without realizing how long he’d been there.
+  - **A**  Kai stood near the edge of the light, watching the flame in the lantern shift from yellow to orange without realizing how long he’d been there.
+  - **B**  The people who had been lost, the years that had been taken, the way the system had allowed it all to happen.
 
 **7.**  [ ]
-  - **A**  But here, in this quiet space, among ghosts and dust, something shifted.
-  - **B**  The Bureau had made its choice, and now he would make his.
+  - **A**  The Bureau had made its choice, and now he would make his.
+  - **B**  But here, in this quiet space, among ghosts and dust, something shifted.
 
 **8.**  [ ]
   - **A**  He thought of the ledger entries, names reduced to numbers, transactions carved deep into history.
@@ -50,8 +50,8 @@ Should take ten minutes. Do not open `pairs-key.md` until you are finished.
   - **B**  But he had also known that if he left, if he let the Bureau take the years, he would never be able to look at himself in the mirror again.
 
 **10.**  [ ]
-  - **A**  Kai’s fingers tightened around the edges of the folded sheet, the grain of the paper rough beneath his calloused palm.
-  - **B**  He caught it mid-air, his breath catching for a moment as he stared at the thing in his palm.
+  - **A**  He caught it mid-air, his breath catching for a moment as he stared at the thing in his palm.
+  - **B**  Kai’s fingers tightened around the edges of the folded sheet, the grain of the paper rough beneath his calloused palm.
 
 **11.**  [ ]
   - **A**  His words were even, calm, but the space between them tightened, pulled taught by something neither named aloud.
@@ -62,8 +62,8 @@ Should take ten minutes. Do not open `pairs-key.md` until you are finished.
   - **B**  They simply closed in, their movements methodical, their presence an unshakable wall of steel and order.
 
 **13.**  [ ]
-  - **A**  He needed proof, a trace, some sign that the case hadn’t gone unnoticed.
-  - **B**  But the truth was there, and it would not let him walk away.
+  - **A**  But the truth was there, and it would not let him walk away.
+  - **B**  He needed proof, a trace, some sign that the case hadn’t gone unnoticed.
 
 **14.**  [ ]
   - **A**  Kai exhaled slowly through his nose, muscles coiling tight within his throat.
@@ -74,12 +74,12 @@ Should take ten minutes. Do not open `pairs-key.md` until you are finished.
   - **B**  The air smelled of stale bread and rust, thick with the weight of midnight.
 
 **16.**  [ ]
-  - **A**  There were stories in this place, buried deep in the layers of time, and he would need more than a single vial to uncover them.
-  - **B**  He had already spoken through the warrant in his hand, through the way the Bureau had marked this place as unclaimed.
+  - **A**  He had already spoken through the warrant in his hand, through the way the Bureau had marked this place as unclaimed.
+  - **B**  There were stories in this place, buried deep in the layers of time, and he would need more than a single vial to uncover them.
 
 **17.**  [ ]
-  - **A**  He had made his choice, and now it was time to live with it.
-  - **B**  His expression wasn’t anger, not really—it was something colder, sharper, like frost beneath the skin.
+  - **A**  His expression wasn’t anger, not really—it was something colder, sharper, like frost beneath the skin.
+  - **B**  He had made his choice, and now it was time to live with it.
 
 **18.**  [ ]
   - **A**  Finally, Vay exhaled sharply, shaking their head once.
@@ -90,12 +90,12 @@ Should take ten minutes. Do not open `pairs-key.md` until you are finished.
   - **B**  He landed near the center of the bridge, boots sinking slightly into packed earth, then stepped onto solid ground.
 
 **20.**  [ ]
-  - **A**  He had not expected the Bureau to take him.
-  - **B**  It did not meet the warmth of true laughter.
+  - **A**  It did not meet the warmth of true laughter.
+  - **B**  He had not expected the Bureau to take him.
 
 **21.**  [ ]
-  - **A**  The man stopped halfway up, shoulders hunched, face obscured by shadow.
-  - **B**  He had known the Bureau had come to take the years.
+  - **A**  He had known the Bureau had come to take the years.
+  - **B**  The man stopped halfway up, shoulders hunched, face obscured by shadow.
 
 **22.**  [ ]
   - **A**  Only the lantern blinked weakly overhead, flicker-by-flicker, as if trying to remember what it was meant to show.
@@ -106,8 +106,8 @@ Should take ten minutes. Do not open `pairs-key.md` until you are finished.
   - **B**  His coat remained stiff around the shoulders, clinging like memory to the shape of his back.
 
 **24.**  [ ]
-  - **A**  He turned, his steps slow, the watch ticking louder in his pocket, a sound now louder than the chaos.
-  - **B**  His voice carried the weight of dust and memory, slow as the drip of water from a leaking pipe.
+  - **A**  His voice carried the weight of dust and memory, slow as the drip of water from a leaking pipe.
+  - **B**  He turned, his steps slow, the watch ticking louder in his pocket, a sound now louder than the chaos.
 
 **25.**  [ ]
   - **A**  This wasn’t the time to speak, nor even to move beyond standing ground.
@@ -126,5 +126,5 @@ Should take ten minutes. Do not open `pairs-key.md` until you are finished.
   - **B**  He had given the years to save lives, but now they had become something else.
 
 **29.**  [ ]
-  - **A**  He had not expected them to want to take Riven.
-  - **B**  Yet even as he prepared to answer, the words faltered.
+  - **A**  Yet even as he prepared to answer, the words faltered.
+  - **B**  He had not expected them to want to take Riven.
