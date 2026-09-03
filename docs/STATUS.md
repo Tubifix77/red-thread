@@ -14,6 +14,37 @@ current to 1 September: <https://claude.ai/code/artifact/79ab4f28-db0c-4e86-80ce
 
 What to do next, in order, with kill criteria: **[PLAN2.md](PLAN2.md)** (PLAN.md is complete except step 21, which PLAN2 inherits as its gate).
 
+## Prose quality: measured as defects only, and that is now a decision
+
+**The human rating step is cut** ([evidence/no-human-rater.md](evidence/no-human-rater.md)).
+Three instruments failed for one reason — a decontextualised sentence has no job, so its fitness
+cannot be judged — and the measurements agree rather than excuse: `the weight of` is in ~72% of
+scenes and every instance reads fine, so the largest measured defect here is invisible at sentence
+level by construction.
+
+**What this project may not claim, from 3 September:** that the prose is *better*, that a change
+*improved* the writing, or that *readers* would prefer anything. There is no reader instrument and
+there will not be one. What it does claim is unchanged: named defect rates, and that the two eras
+**differ** — 140-fold in within-scene duplication, 8-fold in recap density. Different is not
+better.
+
+**A cross-family model panel replaced it and did not meet its bar**
+([evidence/rater-panel.md](evidence/rater-panel.md)). Run 1 voided on a harness bug of mine that
+silently deleted a rater. Run 2, 60 pairs, order-counterbalanced:
+
+| rater | current-era preferred | p |
+|---|---:|---:|
+| gemma4:12b | 89% | 0.00000 |
+| gemma3:12b *(excluded, 55% position-bound)* | 89% | 0.00005 |
+| phi4:14b | 84% | 0.00002 |
+| deepseek-r1:8b | 57% | 0.511 |
+| qwen3:8b *(control — wrote the prose)* | 62% | 0.229 |
+
+Two of three usable raters significant where three were registered: **criterion not met,
+separability unresolved.** The one thing that held across both runs is the control — the model
+that wrote this prose does not significantly prefer it, while two models from other labs do at
+84-89%, so self-preference is not the explanation.
+
 ---
 
 ## Three questions, not ten steps

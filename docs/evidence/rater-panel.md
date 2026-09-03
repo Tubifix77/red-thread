@@ -136,3 +136,78 @@ against my interest, and run 1 is reported above in full including the numbers t
 looked better left out. A void caused by a harness bug is the case the registration anticipated
 when it wrote "void, not negative"; it is not a licence to keep running until the answer is nice,
 and **if run 2 voids again the answer is that this panel cannot measure it, not run 3.**
+## Run 2: the criterion is NOT MET
+
+*3 September, 60 pairs, per-model token budget, criterion unchanged. Not void this run — three
+usable panel raters — so it is evaluable, and it fails.*
+
+| rater | lab | current-era | p (two-sided) | reliability | registered status |
+|---|---|---:|---:|---:|---|
+| gemma4:12b | Google | 49/55 — **89%** | 0.00000 | 8% bound | usable, **significant** |
+| gemma3:12b | Google | 24/27 — 89% | 0.00005 | **55% bound** | **EXCLUDED** |
+| phi4:14b | Microsoft | 32/38 — 84% | 0.00002 | 37% bound | usable, **significant** |
+| deepseek-r1:8b | DeepSeek | 21/37 — 57% | **0.511** | 38% bound | usable, not significant |
+| qwen3:8b | *control, wrote it* | 21/34 — 62% | 0.229 | 43% bound | — |
+
+    >= 3 usable panel raters        3   not void
+    >= 3 significant, same dir      2   NOT MET
+    >= 2 distinct labs              2   met
+
+**Two of three usable raters, where three were required. The criterion is not met, and no claim
+of separability follows.**
+
+**The tightening did not cause this.** Under the originally registered wording — 3 of the 4 named
+families — gemma3 is excluded by the same reliability rule, so it is still 2 of 4. The amendment
+that made the bar harder is not what the failure rests on, and that is worth stating because it is
+the obvious thing to suspect.
+
+**And this failure is a genuine disagreement, not a repeat of run 1's bug.** `deepseek-r1`
+answered properly this time: 37 usable pairs, 0 unparsed, 38% position-bound — better reliability
+than the control. It simply came out at chance while three other raters came out at 84-89%.
+
+### Correcting my own registration, in the conservative direction
+
+The registration's null clause said: *"fewer than 3 of 4 → the eras **are not separable** by model
+raters on passages"*, and went on to say a null would retire the speculative PLAN2 mechanisms that
+assume the eras are perceptibly different. **Both halves of that were badly written and I am not
+applying them.**
+
+- "Not separable" conflates *not established* with *established not*. Failing to meet a bar is
+  not evidence for the null, and a 3-versus-1 split among raters is not a diffuse null at all.
+- More importantly, the same document already said a positive result **could not** license any
+  claim about readers. A test that could never license a reader claim cannot retire one either.
+  The retire clause was incoherent with the rest of the registration the moment it was written.
+
+So the honest outcome is narrow: **model-panel separability is unresolved.** The mechanisms stay
+exactly where [no-human-rater.md](no-human-rater.md) left them — unjustified by any reader
+evidence, because there is none and will be none.
+
+### Two observations, clearly labelled as not the test
+
+**Every rater leaned the same way.** 89%, 89%, 84%, 57%, 62% — five of five above 50%, none
+favouring `debt`. A sign test on rater-level direction gives p = 0.0625, which is also not
+significant, and 5 of 5 is what a real effect and a mild shared bias both look like at this n.
+
+**The control is still clean, and that is the part I would have most expected to break.**
+`qwen3:8b` wrote this prose and does not significantly prefer it (62%, p = 0.229), while two
+models from other labs do at 84-89%. Self-preference was the artefact this control exists to
+catch and it remains absent across both runs.
+
+### The design flaw this run exposes, for whoever runs the next one
+
+**The reliability rule is discarding real signal.** gemma3 was 24/27 — 89%, p = 0.00005 — on the
+pairs where it answered by prose, and was thrown out for answering by position on the other 55%.
+Those are not contradictory: a rater can be strongly position-prone *and* have real preferences
+where it is not. The rule as registered treats position-proneness as disqualifying rather than as
+a separate axis, and 55% against a 50% bar is a coin-flip's distance from inclusion in a test
+whose whole verdict then turns on it.
+
+**The fix is not available to this run.** Changing the reliability treatment now, having seen that
+it is what excluded a significant rater, is precisely the move step 28 forbids. It has to be
+registered first, and the honest version is probably: report the position-bound rate as rater
+reliability, weight or stratify by it, and stop using it as a gate — with the threshold and the
+weighting fixed before the run.
+
+**And the standing limit is unchanged:** one pre-prose-work book, `debt` at 27 scenes, supplies
+the entire old side. Book-level variance cannot be estimated from one book, so even a passing
+result would have spoken for `debt` and not for the era.
