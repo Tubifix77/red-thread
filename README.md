@@ -436,8 +436,10 @@ rather than as a habit.
 1. **Whether the prose is *good*.** Every countable per-scene tell now sits at or below the
    reference band — duplication .002, recap .047, none of the three prose tells in any of the 373
    scenes written since the sampler fix. None of that says the prose is worth reading. The
-   project has no human rating of a single sentence, and until it has one, "good" is a word with
-   no measurement behind it here.
+   project has no human rating of a single sentence and **will not get one** — the attempt was
+   made three times and cut on 3 September, because a decontextualised sentence has no job and
+   so cannot be judged for fitness ([record](docs/evidence/no-human-rater.md)). So "good" is a
+   word with no measurement behind it here, permanently and by decision rather than by omission.
 1b. **Whether a book of clean scenes is a clean book.** It is not: duplication across a whole
    manuscript is .066 against .002 within any scene of it, and the gap widens with length. The
    aggregate is also the wrong statistic — a book with a phrase in 15 scenes can score *better*
@@ -456,12 +458,24 @@ rather than as a habit.
    source compares unit sizes for reader-perceived quality. Scene-sized units with beat-sized
    specs is a judgement call.
 
-## Next
+## Where this stands
 
-The full plan — 25 steps, six phases, ordered by what blocks what — is in
-**[docs/PLAN.md](docs/PLAN.md)**, kept up to date as each step lands. Where it stands:
+**The work is closed.** Two plans, 38 numbered steps between them:
+**[docs/PLAN.md](docs/PLAN.md)** (25 steps, six phases) and
+**[docs/PLAN2.md](docs/PLAN2.md)** (13 more, written at the first milestone). Thirty landed,
+eight were **cut or dropped as decisions with stated reasons** — PLAN2 carries the table, so
+that none of them gets re-proposed as an oversight.
 
-**The instruments are built and the plan is 24 of 25.** `redthread replicate` writes N books from
+**What it does:** writes 71-scene novels unattended on local models, no API calls, zero
+halts. Live-verified 3 September on a fresh book — 60,806 words, three continuity blockers
+raised and repaired, final ledger clean
+([record](docs/evidence/judge-marks.md)). It survived a mains power cut mid-draft during
+that run and resumed with nothing lost, which was learned by accident rather than by
+testing for it.
+
+What the phases found:
+
+**The instruments are built.** `redthread replicate` writes N books from
 one plan with nothing varying but the sampling; `redthread measures --against` puts every
 difference through `checks.clears_noise`, which **raises** rather than guessing on a measure whose
 noise floor nobody has measured. All four mechanisms that shipped without an off switch now have
@@ -502,19 +516,58 @@ headline claim and halved the correlation.
 code can locate; the plan may be shaped by anything, including a model's reading. A bad plan costs
 one re-ask, a bad gate costs a book that never finishes at three in the morning.
 
-**What is left needs a person.** One step of twenty-five, and no amount of GPU can do it. A hundred sentences, half from each era, shuffled and
-unlabelled, rated by hand once —
-[docs/evidence/sentences/sentences.md](docs/evidence/sentences/sentences.md). It is the only
-thing on the list that can say whether two days of measurable improvement produced prose anyone
-prefers, and if the answer is no, most of the instrument panel needs rethinking rather than
-extending. Building the sheet already found a confound nobody had noticed: the two sides come
-back 12% and 42% spoken, so the key records the flag and `redthread rate` splits on it.
+### The limit, stated plainly
 
-A machine has filled in a *separate copy* of the sheet as a dry run of the analysis, leaving the
-blank one blind ([record](docs/evidence/sentences/machine-rating.md)). It produces two predictions
-to check the human rating against: the eras separate (2.12 against 1.67, surviving the dialogue
-control), and **zero of seven per-sentence signals correlate**. The one that appeared to —
-`past_perfect` at r = −0.282 — is a perfect era marker, because `summary_distance` feeds candidate
-selection; inside the only era where it varies it does nothing. That is rule II firing on the
-project's own analysis output. None of it is evidence about human readers: an LLM rating LLM prose
-may be measuring fluency-under-a-language-model rather than whether a person turns the page.
+**This project measures defects. It does not measure quality, and it does not claim to.**
+
+Three instruments were built to ask a reader whether the prose is any good — a hundred sentences
+rated 1/2/3, then 29 forced-choice sentence pairs, then 40 with the confounds fixed. All three
+failed for one reason, and the rater's own diagnosis is the clearest statement of it: *"it's like
+I need to choose a police cruiser or a fire engine — without knowing if I should take it to a
+party, a fire or a crime."* A decontextualised sentence has no job, so its fitness cannot be
+judged.
+
+The measurements agree rather than excuse. `the weight of` appears in roughly **72%** of scenes
+and `as if` in **70–82%**, and every individual instance reads perfectly well — the defect exists
+only in aggregate. **A sentence-level instrument cannot see the largest measured defect in this
+prose by construction**, so those were not three accidents of design. The unit was wrong, and
+controlling confounds does not fix a wrong unit.
+([record](docs/evidence/no-human-rater.md), [the tics](docs/evidence/cross-scene-tics.md))
+
+A cross-family model panel replaced it and **did not clear its own pre-registered bar** — two of
+three usable raters significant where three were required, so separability is unresolved. The one
+thing that held across both runs is the control: `qwen3:8b` *wrote* this prose and does not
+significantly prefer it, while two models from other labs do at 84–89%. Self-preference was the
+artefact most likely to explain a positive, and it is absent.
+([record](docs/evidence/rater-panel.md))
+
+So the claims available here are narrow and the narrowness is the point: **named defect rates,
+measured deterministically and audited by reading what each pattern actually matched.** That the
+two prose eras *differ* is measured and large — 140-fold in within-scene duplication, 8-fold in
+recap density. Different is not better, and any sentence in this repository's history claiming
+otherwise is a bug.
+
+### The thing worth stealing
+
+Not the architecture — the discipline, and specifically the parts that cost something. Every
+threshold was written down and committed before the data existed, which is why the record is
+mostly **negatives**: the brief-side wandering fix failed, the judge-prompt rewrite was rejected
+for breaking a guardrail, the re-people pass turned out inert, `want`/`obstacle`/`cost` missed its
+correlation bar, a session-side inspector was rejected after 19/19 detection, and the human rating
+was cut. None could be rescued afterwards, and that is the only reason the few positives mean
+anything.
+
+Three rules earned the hard way, each from a specific mistake documented in
+[docs/evidence/](docs/evidence/):
+
+- **Audit what a pattern actually matched.** Two shipped measures were 56% contaminated behind a
+  docstring saying they were narrow. Read the matches before publishing a number — it has since
+  caught a wandering-mark rate inflated by 16 points and a homophone count overstated by 25%.
+- **A kill criterion is only as good as the measure it names** (rule VII). An accumulating
+  mechanism needs an accumulating measure; a per-scene mean averaged one away and nearly deleted
+  a mechanism that works.
+- **Make absence loud.** Three separate components were caught returning the *reassuring* answer
+  when they could not read their input: a continuity check reporting "clean" for dict input, a
+  rater silently deleted by an 8-token budget, and a verifier reporting "the gate never fired"
+  for a run whose log showed it firing three times. No errors, no answers, and nothing saying
+  which. This is the failure mode this project hit most often.
