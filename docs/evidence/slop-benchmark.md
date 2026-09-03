@@ -1,4 +1,6 @@
-# Where does this prose sit on an external benchmark? Pre-registered
+# Where does this prose sit on an external benchmark? **It cannot be said** — pre-registration, result, and two withdrawals
+
+> **Read this first.** The benchmark was implemented faithfully (calibrated to within 1% of the authors' own published figures) and then produced a comparison that had to be withdrawn twice — once for confounding pipeline with content, model, prompt, genre and unit length, and once because the metric counts this corpus's protagonist and macguffin as slop, worth up to 39% of a book's score, in a way that cannot be corrected on both sides. **Nothing here supports a comparison between this project and any model on that leaderboard.** Two narrow facts survive and are listed at the end.
 
 *3 September 2026. Committed before red-thread's own score is computed. Thresholds and the
 non-comparability list below cannot move afterwards.*
@@ -274,10 +276,11 @@ Survives:
 
 - **The calibration.** The implementation reproduces their published figures to within 1%, so the
   measure is theirs.
-- **A located position.** red-thread's committed prose sits mid-field on a public deterministic
-  metric — above bare gemma-3-12b, below `claude-sonnet-4-5` at 8.76 and the 6.90 human baseline.
-  As a *position*, with no causal claim attached, that stands and is the first external number
-  this project has.
+- ~~**A located position.** red-thread's committed prose sits mid-field on a public
+  deterministic metric — above bare gemma-3-12b, below `claude-sonnet-4-5` at 8.76 and the 6.90
+  human baseline.~~ **ALSO WITHDRAWN — see the second correction below.** A plot object and a
+  character name account for up to 39% of the score, against corpora where no name can recur.
+  The metric is not valid for a replicated-single-novel corpus.
 - **`check_slop` barely touches this list.** 42 of 138 enforced phrases overlap; the gate moves
   the score 0.71. That is a fact about the gate, not a comparison, and it needs no control.
 
@@ -292,3 +295,89 @@ that answers what was asked.
 *The lesson is one already on the record here and it recurred anyway: **a difference is only a
 result if the things being compared differ in one way.** These two corpora differ in pipeline,
 model, prompt, genre, and unit length, and I attributed the difference to the first of five.*
+## Second correction: the comparison is WITHDRAWN ENTIRELY. The measure is not valid for this corpus
+
+*Same day again, prompted by Tue refusing to accept the premise spread: "howcome the huge median
+difference in each of our premises?? its the same framework... are you sure your own measurements
+are even correct??" The arithmetic was correct. The measure was not valid. He was right to ask.*
+
+### First, the premise spread was never about premises
+
+*The Debt of Years* appears in **both** eras, which disambiguates what the earlier table could not:
+
+| | era | books | slop/1k |
+|---|---|---:|---:|
+| The Debt of Years | pre-prose-work | 1 | **20.43** |
+| The Debt of Years | current-era | 24 | **25.57** |
+
+Every pre-prose-work premise scores below 21 and every current-era premise above 22, with no
+overlap. So the "28.7-point content range" in the correction above **is also wrong** — the
+variable tracking it is the *era*, not the story. One premise, two eras, five points apart.
+
+### Then, the reason for the spread, and it is the oldest failure in this repository
+
+Reading the matched words — which is a written rule here, and which I did not do before
+publishing:
+
+    debt      top hits: vial x139, varyn x71, tightened x43, gaze x43, unreadable x33
+    current   top hits: vial x111, gaze x61, shadows x51, faintly x45, muttered x40
+    glitch    top hits: faded x9, leaned x6, clutched x5, tightened x4, shadows x3
+
+**`vial` is the novel's central plot object. `varyn` is a character.** Their list contains
+LLM-favoured fantasy names — `elara`, `aelara`, and an entire `aethel*` family — and story props
+that recur in LLM fiction. In a corpus that is one novel replicated 24 times, the cast and the
+macguffin are counted as slop, hundreds of times each.
+
+Removing only the 19 words our own `story.json` files declare as character names and which also
+appear on their list (`vial`, `varyn`, `vael`, `voss`, `shadows`, `unspoken`, `whisper`,
+`cartographer`, `clockmaker`, …):
+
+| book | with names | names removed | delta |
+|---|---:|---:|---:|
+| `debt` | 20.43 | **12.51** | **-7.92 (-39%)** |
+| `deps-book` | 32.90 | 25.65 | -7.24 |
+| `current` | 25.69 | 22.50 | -3.20 |
+| `register` | 6.27 | 5.44 | -0.83 |
+| `glitch` | 5.31 | 4.99 | -0.32 |
+
+**The contamination ranges from 0.32 to 7.92 points and is larger than every gap this document
+tried to interpret** — the 6.05-point gap to bare qwen3-4b included.
+
+### Why this cannot be fixed by correcting for it
+
+The obvious repair is to score everyone on the list minus proper nouns. **It is not symmetrically
+applicable.** Our cast is declared in `story.json` and enumerable; theirs is invented per sample
+across 300 one-off prompts and is not recoverable from their result files. Correcting only our
+side would flatter us by construction — which is the same circularity as the antislop-tuned model
+at the top of their leaderboard, arriving from a third direction.
+
+And the correction over-reaches even on our own side: `shadows`, `unspoken` and `whisper` are on
+that 19-word list because this project uses them as names or roles, yet as ordinary scenery they
+are exactly the slop the list is for. Lowercasing destroyed the distinction, so -7.92 is an upper
+bound on `debt`'s contamination, not a measurement of it.
+
+### So the whole comparison is withdrawn, not only the architecture claim
+
+**Withdrawn:** the position claim as well — *"red-thread sits mid-field, above bare gemma-3-12b and
+below claude-sonnet-4-5."* It rests on a number in which a plot object and a character name
+account for up to 39% of the score, against corpora where no single name can recur because every
+sample is a fresh prompt. **The metric systematically penalises a replicated-single-novel corpus,
+by an amount that varies per book and cannot be corrected on both sides.**
+
+**What actually survives, and it is now only two things:**
+
+1. **The calibration.** The implementation reproduces their published figures to within 1% on
+   their own text. The arithmetic was never in doubt and is not what failed.
+2. **`check_slop` barely intersects their list** — 42 of 138 phrases, worth 0.71 of score. That
+   needs no cross-corpus comparison and stands.
+
+**The distinction worth keeping from all of this: a measure can be arithmetically exact and still
+invalid for the thing you point it at.** The calibration gate was the right idea and it passed —
+and passing it proved only that I had implemented *their* measure faithfully, not that their
+measure answers a question about *this* corpus. A validity check is a different check from a
+correctness check, and this document had one and not the other.
+
+*Third time today the same rule earned itself: read what the pattern matched. `wandering_details`
+counting plurals, the homophone patterns' `born of necessity`, and now a benchmark counting the
+protagonist's name. The rule is in `MEASUREMENTS.md` and in my memory and I still published a
+comparison without applying it.*
