@@ -180,6 +180,53 @@ Schema:
 {{"judgements": [{{"pair": 0, "contradiction": true, "why": "one short sentence"}}]}}"""
 
 
+# A mark's location is the one kind of "where" that cannot move, and the current prompt never
+# says so. Measured: the judge misses 58% of genuine wandering marks while false-flagging only
+# 4% (docs/evidence/judge-marks.md), so it is not confused about contradictions in general - it
+# is specifically blind to this one, and the reason is visible in the wording. "Position is
+# never a contradiction" is stated absolutely and read literally covers a scar; "assume time
+# passed unless the pair is from adjacent scenes" tells the model that scene 15 against scene 40
+# is fair game. The named exception, "a scar's location", sits in a three-item list underneath
+# eight emphatic exemptions.
+#
+# Defined as an explicit diff of CONFLICT_PROMPT rather than as a second copy: the replacements
+# below ARE the change, they cannot drift from the original, and an edit upstream that
+# invalidates one of them fails loudly at import instead of silently leaving two prompts that
+# differ in ways nobody chose.
+_REVISIONS = (
+    # 1. Carve permanent marks out of the blanket position exemption, at the point of the claim.
+    ("  who walked there. Position is never a contradiction.",
+     "  who walked there. Position is never a contradiction — EXCEPT for a permanent mark on a\n"
+     "  body, which is not a position but an identifying feature. See below."),
+    # 2. And out of the assume-time-passed rule, which otherwise licenses any distant pair.
+    ("of story in between; assume time passed unless the pair is from adjacent scenes.",
+     "of story in between; assume time passed unless the pair is from adjacent scenes. Time does\n"
+     "not move a scar, a tattoo, a birthmark or a brand: for those, distance between scenes is\n"
+     "not an excuse and makes the contradiction worse, not better."),
+    # 3. Make the positive rule as concrete as the exemptions it has to compete with.
+    # Deliberately ONE illustration, and that one the defect actually found in the shipped book.
+    # A first draft of this enumerated hand/cheek, shoulder/ankle, chest/palm and left/right
+    # hand — which are four of the eight pairs in `scripts/judge_marks.py`. Naming the test cases
+    # in the prompt would have made a pass unfalsifiable, and the general rule is what has to
+    # carry the other seven.
+    ('- the same unchanging detail given two different values (eye colour, a scar\'s location, a name)',
+     "- A PERMANENT MARK IN A DIFFERENT PLACE. A scar, tattoo, birthmark or brand belongs to one\n"
+     "  part of the body for the whole book, so two different parts of the body is a\n"
+     "  contradiction however many scenes apart they are — palm in one scene and temple in\n"
+     "  another. Two names for one place are fine (a palm is part of a hand; a wrist and a\n"
+     "  forearm meet), and a character may have two separate marks — but one mark has one place.\n"
+     "- the same unchanging detail given two different values (eye colour, a name)"),
+)
+
+CONFLICT_PROMPT_REVISED = CONFLICT_PROMPT
+for _old, _new in _REVISIONS:
+    if CONFLICT_PROMPT_REVISED.count(_old) != 1:
+        raise AssertionError(
+            f"CONFLICT_PROMPT no longer contains, exactly once: {_old[:60]!r}. The revised "
+            f"prompt is defined as a diff of it and must be re-derived, not patched.")
+    CONFLICT_PROMPT_REVISED = CONFLICT_PROMPT_REVISED.replace(_old, _new)
+
+
 def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
                     max_pairs: int = 25) -> list[Violation]:
     """Ask a model only about the pairs the deterministic grouping already flagged.

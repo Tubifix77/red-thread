@@ -95,3 +95,69 @@ four fresh runs the corrected check already demands, and those are separate and 
 ---
 
 *Result appended below after both arms run. Nothing above changes.*
+
+## Result: the fix is REJECTED, and the recall half worked
+
+*Both arms run 3 September, same session, `qwen3:8b`, 5 repetitions, pairs reshuffled per
+repetition. Criterion as committed in `f2a7b0d` and untouched.*
+
+| | arm A (current) | arm B (revised) | registered bound | |
+|---|---:|---:|---|---|
+| miss rate | 26/40 — 65% | **9/40 — 22%** | <= 10/40 | **PASS** (p = 2.6e-4) |
+| false rate | 2/45 — 4% | **7/45 — 16%** | <= 5/45 | **FAIL** |
+
+**Success required both. It is rejected.**
+
+The pre-registration named this outcome and its meaning: *"it would mean the exemptions were
+doing real work and the wording traded precision for recall rather than adding anything."* That
+is what happened, and the per-case detail says so rather than merely being consistent with it.
+
+### The damage landed exactly where the wording was loosened
+
+    arm A false positives:  an object somebody moved 1/5, a state that changed 1/5
+    arm B false positives:  regions meeting at a joint 2/5, an object somebody moved 2/5,
+                            a span restated 1/5, what somebody is holding 1/5,
+                            a state that changed 1/5
+
+Revision 1 weakened *"Position is never a contradiction"* by hanging an exception on it. The two
+controls that newly broke are **an object somebody moved** and **what somebody is holding** — the
+position exemption and the clause that explicitly rests on it (*"for the same reason position is
+not"*). Qualifying an absolute rule cost the rule its force for cases the qualifier never
+mentioned. That is mechanism, not noise.
+
+And **the explicit carve-out did not take**: the revised prompt says in as many words that *"a
+wrist and a forearm meet"*, and the wrist/forearm control was still flagged 2/5 — up from 0/5.
+Naming an exception inside a strengthened rule did not protect the exception.
+
+### What the recall number is worth, and what it is not
+
+65% to 22% is real: p = 2.6e-4 on Fisher's exact, and the shipped palm/temple pair went 1/5 to
+**5/5**. The hypothesis was right — the judge *was* misreading a mark's location as a position
+question, and telling it otherwise fixes that specific blindness.
+
+**One honesty note that does not change the verdict.** The precision loss is 2/45 against 7/45,
+p = 0.157 — not itself statistically established. The rejection therefore rests on the
+pre-registered absolute bound, not on a demonstrated regression. The bound is what it is because
+it was chosen before the numbers existed, which is the entire point; arguing the verdict down now
+on a p-value computed afterwards is the move [step 28](step28-preregistration.md) forbids, and the
+answer there was more trials, never a softer line.
+
+**A real defect in my own criterion, recorded because it will recur:** 45 control trials give
+2.2 points of resolution, so a single extra false positive moves the rate by half the distance
+between the arms. An absolute bound at that resolution is close to a coin-flip on one trial. A
+re-test needs materially more control trials, and that has to be registered in advance too.
+
+### The next lever, which this result points at cleanly
+
+Do not touch the general prompt. The exemptions are load-bearing and were measured to be so.
+
+**Pre-flag mark pairs deterministically and ask about them separately.** `checks._MARK_NOUNS`,
+`_BODY_REGIONS` and `_ADJACENT_REGIONS` already identify a mark-in-two-regions pair with no model
+call at all — that is what `wandering_details` does over a finished book. Applying the same test
+to a candidate pair at write time splits the judge's job in two: mark pairs get a narrow question
+that presumes the rule, everything else gets today's prompt with its exemptions intact and
+unqualified.
+
+That is a structural change rather than a wording change, it is the second option this document
+listed in advance, and it is cheap. **It needs its own pre-registration, with more control trials
+than this one had.**
