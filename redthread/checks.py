@@ -565,6 +565,66 @@ def _pov_slips(scene: Scene, pattern: re.Pattern, detail: str,
     return out
 
 
+# Homophone misuse: a definite error, not a preference, and nothing looked for it.
+#
+# **Only the first entry is validated, and the distinction matters.** Fifteen patterns were
+# audited against 1,773 scenes (docs/evidence/cross-scene-tics.md). `taut/taught` returned 8
+# matches and all 8 are genuine - `pulled taught` against 43 correct `pulled taut`, a 16% error
+# rate on that homophone across 7 current-era books, three of them getting it right and wrong in
+# the same sentence. Thirteen patterns returned nothing. The fifteenth, `borne/born`, returned 2
+# matches and **both were false positives** - "born of necessity" is correct idiom - which is why
+# it is absent below and why the ones that never fired are marked unvalidated: a pattern nobody
+# has read the matches for is not yet a check, and that one would have shipped a 25% error.
+#
+# The unvalidated entries are kept because they cost nothing and catch a real error class, but
+# the first time one of them fires, read the match before trusting it.
+_HOMOPHONES: tuple[tuple[str, str, str, bool], ...] = (
+    # (label, pattern, correction, validated)
+    (r"taut", r"\b(pulled|drawn|stretched|held|wound|strung|goes|went)\s+taught\b",
+     "taut", True),
+    (r"bated breath", r"\bbaited\s+breath\b", "bated breath", False),
+    (r"rein", r"\b(free\s+reign\b|reigned?\s+in\b)", "rein", False),
+    (r"horde", r"\bhoards?\s+of\s+(men|people|soldiers|figures)\b", "horde", False),
+    (r"pore over", r"\bpour(ed|ing)?\s+over\s+(the\s+)?(records?|ledger|books?|papers?)\b",
+     "pore over", False),
+    (r"piqued", r"\bpeak(ed|ing)?\s+(his|her|their|my|its)\s+(interest|curiosity)\b",
+     "piqued", False),
+    (r"mantel", r"\bmantle\s*piece\b", "mantelpiece", False),
+    (r"strait jacket", r"\bstraight\s*jacket\b", "straitjacket", False),
+    (r"all intents", r"\bfor\s+all\s+intensive\s+purposes\b",
+     "for all intents and purposes", False),
+    (r"waist", r"\bwaste\s+(band|line|coat|high|deep)\b", "waist", False),
+    (r"wonder", r"\bwander(ed|ing)?\s+(if|whether|why|how)\b", "wonder", False),
+    (r"led", r"\bhad\s+lead\s+(him|her|them|us|me)\b", "led", False),
+    (r"passed", r"\bhad\s+past\s+(through|by|him|her)\b", "passed", False),
+)
+_HOMOPHONE_RX = tuple((label, re.compile(pat, re.I), fix, valid)
+                      for label, pat, fix, valid in _HOMOPHONES)
+
+
+def check_homophones(scene: Scene) -> list[Violation]:
+    """Words the writer got wrong rather than chose - `pulled taught` for `pulled taut`.
+
+    MAJOR, not BLOCKER: it is an outright error and must not reach a manuscript, but it is a
+    single word and repairable in place, so it should send the scene back rather than stop the
+    run. Rule VI puts *quality* at the plan and not the gate; a misspelling is not quality, it is
+    correctness, which is what a gate is for.
+
+    Dialogue is included deliberately. A character may speak ungrammatically, but no character
+    misspells a homophone - spelling is the narrator's, and a wrong one in speech is the writer's
+    error just the same.
+    """
+    out: list[Violation] = []
+    for label, rx, fix, validated in _HOMOPHONE_RX:
+        for match in rx.finditer(scene.text):
+            note = "" if validated else " (pattern not yet validated - read the match)"
+            out.append(Violation(
+                "homophone", Severity.MAJOR,
+                f"{match.group(0)!r} should be {fix!r}{note}",
+                "check_homophones", match.group(0)))
+    return out
+
+
 def check_pov(scene: Scene, story: StorySpec, max_slips: int = 2) -> list[Violation]:
     """Narration must be in the person the style contract specifies.
 
@@ -2008,6 +2068,115 @@ three never fire. Non-adjacent pairs — `hand`/`head`, `arm`/`leg` — remain c
 """
 
 
+def _mark_and_region(fact):
+    """(singular mark noun, body region) for a fact that names exactly one of each, else None.
+
+    The single-pair form of the grouping `wandering_details` does over a whole book, sharing its
+    tables and its two hard-won exclusions: a plural mark noun is a remark in general rather than
+    a claim about one mark, and a phrase naming two regions at once ("a scar from wrist to
+    elbow") is a span rather than a contradiction.
+    """
+    def field(f, name, default=""):
+        return f.get(name, default) if isinstance(f, dict) else getattr(f, name, default)
+
+    kind = field(fact, "kind", None)
+    if getattr(kind, "value", kind) != "detail":
+        return None
+    words = re.findall(r"[a-z]+", str(field(fact, "object")).lower())
+    noun = next((w for w in words if w in _MARK_NOUNS), None)
+    if noun is None or noun.endswith("s"):
+        return None
+    regions = {_BODY_REGIONS[w] for w in words if w in _BODY_REGIONS}
+    if len(regions) != 1:
+        return None
+    return noun, regions.pop()
+
+
+def mark_conflict(old, new) -> str | None:
+    """Why this pair puts one permanent mark in two places, or None.
+
+    **Deterministic, and it exists because the model judge is measurably bad at exactly this.**
+    Measured on `qwen3:8b` over 40 trials (docs/evidence/judge-marks.md): the conflict prompt
+    misses **65%** of genuine wandering marks while false-flagging only 4% of controls — it is
+    not confused about contradictions in general, it is specifically blind to a mark changing
+    place, because "Position is never a contradiction" is stated absolutely and a scar reads as a
+    question of where.
+
+    Rewriting the prompt was tried and **rejected**: recall went 65% to 22% but the false rate
+    went 4% to 16%, breaking its pre-registered guardrail, and the controls that broke were the
+    moved-object and held-object exemptions — qualifying an absolute rule cost it force for cases
+    the qualifier never mentioned. So the prompt keeps its exemptions unqualified and this pair
+    class is taken away from the model instead.
+
+    A pair is a conflict only when both facts are `detail`s about the same subject naming the
+    same singular mark noun in exactly one body region each, and those regions are different and
+    do not meet at a joint. Everything the book-level check learned to let through, this lets
+    through too.
+    """
+    def field(f, name, default=""):
+        return f.get(name, default) if isinstance(f, dict) else getattr(f, name, default)
+
+    if str(field(old, "subject")) != str(field(new, "subject")):
+        return None
+    a, b = _mark_and_region(old), _mark_and_region(new)
+    if a is None or b is None or a[0] != b[0]:
+        return None
+    if a[1] == b[1] or frozenset((a[1], b[1])) in _ADJACENT_REGIONS:
+        return None
+    return (f"a {a[0]} cannot be in two places: {a[1]} earlier, {b[1]} now — "
+            f"a permanent mark has one location for the whole book")
+
+
+def mark_conflicts_against(new_facts: list, ledger_facts: list) -> list[tuple]:
+    """Every wandering mark introduced by `new_facts`, as `(old, new, why)`, one per conflict.
+
+    **Deliberately independent of `conflict_candidates`.** Routing this through the candidate
+    machinery lost three of thirteen wandering books, and the reason was the original defect
+    wearing a different hat: candidates pair a new fact against the *latest* matching row, and by
+    the time `Mirra | has | a scar on her face` arrives in scene 60 of `var3`, the latest scar row
+    is `[s58] Mirra | has | scar` — no region at all. The location-bearing `[s46] scar on left
+    hand` had been displaced by a location-free one, exactly as scene 15's palm detail was
+    displaced in the brief slice. A location-free row cannot contradict anything, so the pair was
+    silently unjudgeable.
+
+    Scanning the whole ledger for the most recent row that actually names a region costs nothing
+    — no model call, one pass — so there is no reason to accept a capped, latest-only view of it.
+    """
+    def field(f, name, default=""):
+        return f.get(name, default) if isinstance(f, dict) else getattr(f, name, default)
+
+    # Latest region-bearing row per (subject, mark noun), from the established ledger only.
+    established: dict[tuple, tuple] = {}
+    for fact in sorted(ledger_facts, key=lambda f: int(field(f, "scene", 0))):
+        got = _mark_and_region(fact)
+        if got:
+            established[(str(field(fact, "subject")), got[0])] = (fact, got[1])
+
+    out, seen = [], set()
+    for fact in new_facts:
+        got = _mark_and_region(fact)
+        if not got:
+            continue
+        noun, region = got
+        subject = str(field(fact, "subject"))
+        prior = established.get((subject, noun))
+        if prior is None:
+            continue
+        old, old_region = prior
+        if old_region == region or frozenset((old_region, region)) in _ADJACENT_REGIONS:
+            continue
+        if int(field(old, "scene", 0)) >= int(field(fact, "scene", 0)):
+            continue
+        key = (subject, noun, frozenset((old_region, region)))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((old, fact,
+                    f"a {noun} cannot be in two places: {old_region} earlier, {region} now — "
+                    f"a permanent mark has one location for the whole book"))
+    return out
+
+
 def wandering_details(facts: list) -> list[tuple[str, str, dict[str, list[int]]]]:
     """Fixed marks a book has placed in two or more body regions.
 
@@ -2094,6 +2263,19 @@ BLOCKER_SOURCES: dict[str, str] = {
     # story, and it cannot refuse a scene for being weak — only for saying that a thing is blue
     # which an earlier scene said is red.
     "llm:judge_conflicts": "two ledger rows contradict — pairs chosen in code, both rows quoted",
+
+    # The same finding as above for one pair class, with the model taken out of the loop. It is
+    # the most hand-checkable blocker in this table: two ledger rows name the same character's
+    # same singular mark noun in two body regions that do not meet at a joint, both rows are
+    # quoted, and a person confirms it by reading the two lines. No prose judgement is involved
+    # and none is possible.
+    #
+    # It exists because the model was measured at this exact question and is bad at it: 65% of
+    # genuine wandering marks missed at a 4% false rate, and a prompt rewrite was rejected for
+    # breaking the moved-object exemption (docs/evidence/judge-marks.md). Taking the class away
+    # from the model is what that result pointed at.
+    "checks:mark_conflict": "one permanent mark placed in two body regions — both ledger rows "
+                            "quoted, no model call",
     # Not a judgement either, and it took a test to say so precisely: this fires when the call
     # returned nothing parseable, or returned zero facts for a scene of prose. It is a broken
     # call, not an opinion about the writing, and the run must stop because the ledger cannot be
@@ -2168,6 +2350,7 @@ def run_all(
     out += check_seam(scene, previous_tail)
     out += check_character_overlap(spec, previous_characters or [])
     out += check_pov(scene, story)
+    out += check_homophones(scene)
     out += check_somatic(scene)
     out += check_thematic_gloss(scene)
     out += check_style_leak(scene, story)

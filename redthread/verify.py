@@ -236,16 +236,46 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
     would be a quadratic comparison against the whole manuscript.
     """
     candidates = ledger.conflict_candidates(new_facts)
-    pairs = candidates[:max_pairs]
+
+    # Take the wandering-mark pairs away from the model before it gets a chance to be wrong
+    # about them. It misses 65% of them and false-flags only 4% of controls
+    # (docs/evidence/judge-marks.md), and rewriting the prompt to fix that was tried and
+    # rejected: recall improved but the moved-object and held-object exemptions broke, because
+    # qualifying "Position is never a contradiction" cost that rule its force for cases the
+    # qualifier never mentioned. So the prompt keeps its exemptions unqualified and this one
+    # pair class is decided deterministically instead.
+    #
+    # Two things this buys beyond accuracy. The mark pairs no longer compete for slots under
+    # `max_pairs` — in the shipped book the real palm/temple pair sat at list position 22 of 25,
+    # two slots from never being judged at all — and the finding no longer depends on a model
+    # call succeeding, so it survives a parse failure.
+    # Scanned over the whole ledger rather than over the candidate list, because routing it
+    # through candidates lost 3 of 13 wandering books to a location-free row displacing a
+    # location-bearing one — see `checks.mark_conflicts_against`. It also emits one finding per
+    # conflict rather than per pair: scene 40 of the shipped book pairs its temple scar against
+    # both `[s15] a scar along his palm` and `[s16] a scar on his palm`, and two blockers for one
+    # wandering mark would demand two repair rounds for one fix.
+    mark_conflicts = [
+        Violation("continuity_contradiction", Severity.BLOCKER,
+                  f"{why} — earlier: {old.as_line()}; now: {new.as_line()}",
+                  "checks:mark_conflict", new.object)
+        for old, new, why in _checks.mark_conflicts_against(new_facts, ledger.facts)]
+
+    # The pairs the model no longer needs to be asked about, so they stop competing for slots
+    # under `max_pairs` — in the shipped book the real palm/temple pair sat at position 22 of 25.
+    remaining = [(old, new) for old, new in candidates
+                 if not _checks.mark_conflict(old, new)]
+
+    pairs = remaining[:max_pairs]
     if not pairs:
-        return []
+        return _dedupe(mark_conflicts)
     # Say so when the cap bites. It used to bite in 46 of 70 scenes of one book and discard 86%
     # of all candidate pairs by list order, in silence — so the gate was far weaker than its
     # design and no run could tell you. `Ledger._latest_only` now removes the redundancy that
     # caused it (9,560 candidates to 571 on that book), but a long enough ledger will reach the
     # cap again, and a check that quietly stops checking is the thing this project most reliably
     # regrets. A MINOR keeps it in the record without holding the scene.
-    dropped = len(candidates) - len(pairs)
+    dropped = len(remaining) - len(pairs)
     truncation: list[Violation] = []
     if dropped:
         truncation.append(Violation(
@@ -266,7 +296,9 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
     except LLMError as exc:
         # A failed judgement must not silently pass. Surfacing the candidates as MINOR keeps
         # them visible to a human without blocking the run on a parse failure.
-        return truncation + [Violation(
+        # The deterministic mark findings survive this path deliberately: they never needed the
+        # model, so a parse failure must not lose them.
+        return _dedupe(mark_conflicts) + truncation + [Violation(
             "conflict_check_failed", Severity.MINOR,
             f"{len(pairs)} candidate pair(s) could not be judged: {exc}",
             "llm:judge_conflicts")]
@@ -297,17 +329,26 @@ def judge_conflicts(new_facts: list[Fact], ledger: Ledger, models: Models,
             f"{row.get('why', 'contradicts established state')} — earlier: "
             f"{old.as_line()}; now: {new.as_line()}",
             "llm:judge_conflicts", new.object))
-    # One finding per pair. The same pair can be forwarded twice — once on the exact-key branch
-    # and once on the near-synonym branch of `conflict_candidates` — and a live scene was held by
-    # three blockers of which two were the same claim, each demanding its own repair round.
+    return _dedupe(mark_conflicts + out) + truncation
+
+
+def _dedupe(violations: list[Violation]) -> list[Violation]:
+    """One finding per distinct claim.
+
+    The same pair can be forwarded twice — once on the exact-key branch and once on the
+    near-synonym branch of `conflict_candidates` — and a live scene was held by three blockers of
+    which two were the same claim, each demanding its own repair round. Deduplicating across the
+    deterministic and model findings together also stops a mark pair being reported twice if the
+    model independently flags a near-synonym of the same pair.
+    """
     seen: set[str] = set()
     unique: list[Violation] = []
-    for violation in out:
+    for violation in violations:
         if violation.detail in seen:
             continue
         seen.add(violation.detail)
         unique.append(violation)
-    return truncation + unique
+    return unique
 
 
 # ======================================================================================

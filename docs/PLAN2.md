@@ -133,7 +133,9 @@ two-run **condition** may not be used for anything.* What prevented the deletion
 precedent, not the protocol — the second time a documented kill has been suspended on that
 precedent and the second time the re-test reversed it.
 
-**29. Test the re-people pass.** ⚠️ **Stage 1 done, zero GPU — and it killed two designs. The
+**29. Test the re-people pass.** ❌ **Stage 2 DROPPED permanently, 3 September.** Stage 1's result settled it: the pass is **inert** on every book this project has measured, so there is nothing for stage 2 to measure a difference in — rule VIII, confirm the something happens before measuring a difference in it. Stage 2 would need a fresh premise-A plan *and* a floor for that premise, several GPU-hours, to characterise a mechanism already known not to fire. **Stage 1 stands as the answer.**
+
+*Stage 1, for the record.* ⚠️ **Zero GPU — and it killed two designs. The
 pass has never run on any book this project has measured.** It is gated: below a 15% solo share
 it returns 0 immediately. The plan every phase 1 run, the four-run floor and both step 25 panels
 were written from sits at **10 solo of 71 = 14.08%**, one scene under the gate. Full derivation
@@ -195,7 +197,9 @@ interpretable; (2) which repair kinds were attempted and which converged; (3) th
 committed or halted-on-what-after-how-many. Observability only, zero claims — and the write-path
 change that ends the frozen era, which is why phase 8 precedes it.
 
-**32. Fix repair convergence, as an experiment.** Designed *after* 31's first table exists —
+**32. Fix repair convergence, as an experiment.** ❌ **DROPPED permanently, 3 September** — step 31's instrumentation landed and its first table says repair need looks like a property of the *draft* rather than the scene, which makes the fix a sampler question rather than a ladder question. Five GPU-hours for an increment on a writer that already completes 71 scenes with zero halts. Not worth it, and the exploratory hypothesis stays on record with its falsifier for anyone who revisits.
+
+*Original design follows.* Designed *after* 31's first table exists —
 committing to a mechanism before seeing which rung fails is how the gesture criterion nearly
 deleted a working mechanism. The candidate space, each traced to evidence:
 
@@ -438,7 +442,22 @@ outcomes — like the wandering-mark test — need no floor and are unaffected.
 
 ### Next, in order
 
-1. **The wandering-mark test FAILED; the next lever is the conflict judge, not the brief.**
+1. **DONE 3 September — the mark pre-flag.** ✅ `checks.mark_conflicts_against` decides the
+   wandering-mark pair class deterministically, before the model is asked, and
+   `judge_conflicts` emits it as a `checks:mark_conflict` BLOCKER. Measured across the 28 books
+   of 20+ scenes in `runs/`: it fires in **all 13** the book-level check calls wandering and in
+   **none of the 15** it calls clean — 28 of 28, **zero false blockers** — and on the shipped
+   book it fires at **scene 40**, the exact point where `temple` entered the ledger and the
+   model judge said no. It also scans the whole ledger rather than the candidate list, because
+   routing it through candidates lost 3 of 13 books to a location-free row displacing a
+   location-bearing one: the original defect wearing a different hat.
+
+   **The 4-run wandering re-test is ❌ DROPPED permanently.** It was going to ask whether the
+   *brief-side* fix works. That question is now moot — the defect is caught deterministically at
+   the point of introduction, with perfect precision on the corpus and no model call — and five
+   GPU-hours to characterise a superseded lever buys nothing.
+
+   *The failed test that led here, for the record.*
    Both 71-scene runs wandered under the unchanged check
    ([evidence/wandering-mark-fix.md](evidence/wandering-mark-fix.md)) - the outcome the
    pre-registration named in advance as the important one. Auditing those flags then found two
@@ -455,8 +474,10 @@ outcomes — like the wandering-mark test — need no floor and are unaffected.
 2. **Step 32** — design the repair-convergence fix *from* step 31's first instrumented table, not
    before it. An exploratory hypothesis is on record with its falsifier: repair need looks like a
    property of the draft, not the scene.
-3. **A new four-run floor**, whenever a continuous-measure comparison is next wanted. Not before —
-   it is five GPU-hours that buys nothing until there is something to compare.
+3. **A new four-run floor** — kept, but only as a *precondition*, not as work. Five GPU-hours
+   that buys nothing until there is a continuous-measure comparison someone actually wants. With
+   steps 12, 29b, 32 and the tic fix all dropped, there is currently no such comparison on the
+   board, so this is dormant rather than pending.
 4. **Step 29 stage 2** — needs a plan where the 15% gate opens (`solo-a1` at 38%) *and* a floor
    for that premise. Most expensive item left, least urgent.
 5. **The rater panel** — [evidence/rater-panel.md](evidence/rater-panel.md), pre-registered and
@@ -464,6 +485,26 @@ outcomes — like the wandering-mark test — need no floor and are unaffected.
    judgements, and a null is as useful as a positive: if four unrelated model families cannot
    separate the eras on passages, the speculative mechanisms above that assume the eras are
    perceptibly different retire with it.
+
+### What is permanently dropped, and why — so it is not re-proposed
+
+Recorded as decisions, not gaps. Each was dropped for a stated reason, and the reason is the
+thing to argue with if anyone wants it back.
+
+| dropped | reason |
+|---|---|
+| **PLAN.md step 12** — prediction spread | Fed step 13's plot, and the whole predictability line existed to find a *quality* correlate. No quality instrument exists or will |
+| **PLAN.md step 21** — hundred sentences | Unanswerable in the form asked; three instruments failed on the unit, not the confounds |
+| **Phase 10, steps 33-35** — reader | 34 and 35 were gated on 33, which is cut. Replaced by a model panel that did not clear its own bar |
+| **Step 29 stage 2** — re-people | The pass is inert. Rule VIII: nothing to measure a difference in |
+| **Step 32** — repair convergence | Step 31's data points at the sampler, not the ladder. Five GPU-hours for an increment on a writer that already completes 71 scenes with zero halts |
+| **Step 38's fix** — tic suppression | Rule VII: the only available measure is blind to the defect, and there is no arbiter of whether the result reads better. The *measurement* stands |
+| **The 4-run wandering re-test** | Asked whether the brief-side lever works. Superseded — the defect is now caught deterministically at the point of introduction |
+
+**What that leaves:** nothing that needs GPU, and nothing that needs a person. The writer
+completes 71-scene books unattended with zero halts, and the two defects worth closing were
+closed on 3 September — the mark pre-flag and the homophone check, both deterministic, both with
+their precision measured against the corpus rather than asserted.
 
 ### Read before designing anything
 
@@ -496,7 +537,18 @@ first is per-scene by construction, the second is other models' stock phrases.
   names, and the measure that would judge this fix is `duplication_ratio`, which is blind to the
   thing being fixed. Suppressing `the weight of` could easily make the prose worse - the phrase
   is not wrong, only overused. **Finding the measure is the work; pre-registration comes after.**
-- **Also open, and cheap:** `pulled taught` for `taut`, 8 occurrences against 43 correct across
-  7 current-era books. A homophone check is a few lines and catches an outright error rather than
-  a preference. Not built yet - it is a gate-side change and wants a moment's thought about rule
-  VI first.
+- **The homophone check is DONE, 3 September.** `checks.check_homophones`, MAJOR, registered
+  in the scene panel with a `REMEDIES` line worded to change the one word and nothing else.
+  Fires exactly 8 times across 1,773 scenes - the 8 audited errors, no others - and is silent on
+  every correct usage tested, `he had taught her to read` and `the reins of the horse` included.
+  One entry is validated; thirteen have never fired and say so in their own violation text,
+  because the fifteenth pattern audited returned two matches that were **both false positives**
+  (`born of necessity` is correct idiom) and is absent for that reason.
+- **The tic fix itself is ❌ DROPPED permanently, 3 September.** The *measurement* stands and is
+  the finding. The fix does not happen, for the reason rule VII exists: a criterion is only as
+  good as the measure it names, and the only measure that could judge suppressing `the weight of`
+  is `duplication_ratio`, which is per-scene and structurally blind to a cross-scene tic. There
+  is also no reader instrument to say whether the result reads better
+  ([evidence/no-human-rater.md](evidence/no-human-rater.md)), and the phrase is not wrong, only
+  overused - so suppressing it could as easily make the prose worse. **A fix with no measure and
+  no arbiter is not a step, it is a hope.**

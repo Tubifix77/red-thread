@@ -509,7 +509,7 @@ embeddings unmoved. And that re-score cost **six embedding calls against 309 ser
 with no regeneration at all: the persistence fix earning its place within an hour of being
 written, on the very failure it was built for.*
 
-**12. If one prediction is not enough, measure the spread of several.** ⏳ The cited work measures
+**12. If one prediction is not enough, measure the spread of several.** ❌ **DROPPED permanently, 3 September.** Never finished, and it is not being finished: it feeds step 13's plot, and the whole predictability line was an attempt to find a *quality* correlate. There is no quality instrument and there will not be one ([evidence/no-human-rater.md](evidence/no-human-rater.md)), so a measure whose only purpose was to correlate against a reader has nothing to correlate against. The original text follows for the record. The cited work measures
 the *entropy of a forecasting distribution*, not the accuracy of one sample. Generate k
 predictions and measure how much they disagree with each other. A scene the model can call has low
 spread. This never needs the actual scene, so the book's shared vocabulary cannot confound it.

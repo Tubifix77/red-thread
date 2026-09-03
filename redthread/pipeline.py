@@ -89,6 +89,14 @@ REMEDIES = {
                     "the character does something else here, with an object or another person, "
                     "or the sentence goes and the scene is shorter."),
     "forbidden_phrase": "Rewrite the phrase. Any wording will do except that one.",
+    # The narrowest remedy in this table, and deliberately so: the violation names the wrong
+    # word and the right one, so there is nothing to judge and nothing else to change. Worded to
+    # forbid rewriting the sentence, because a model told a word is wrong will happily replace
+    # the whole clause and lose whatever the sentence was doing - the same failure mode
+    # `gesture_tic` is worded against, from the opposite direction.
+    "homophone": ("One word is misspelled - the violation names it and gives the correct "
+                  "spelling. Change that word only. Do not rewrite the sentence or reword "
+                  "anything around it."),
     "pov_person": ("Convert the narration to the contracted person. Dialogue keeps its own "
                    "pronouns."),
     "format": "Delete the heading, label, or commentary. Return prose only.",

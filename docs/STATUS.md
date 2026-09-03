@@ -45,6 +45,42 @@ separability unresolved.** The one thing that held across both runs is the contr
 that wrote this prose does not significantly prefer it, while two models from other labs do at
 84-89%, so self-preference is not the explanation.
 
+## Two defects closed, and everything else dropped on purpose
+
+**3 September.** Both remaining items worth doing were done, and every other open step was
+dropped as a decision with a stated reason (table in [PLAN2.md](PLAN2.md)).
+
+**The wandering mark is caught deterministically, before the model is asked.**
+`checks.mark_conflicts_against` decides that pair class in code; `judge_conflicts` emits it as a
+`checks:mark_conflict` BLOCKER and drops the pairs from the model's list, freeing slots under
+`max_pairs` — where the real palm/temple pair had been sitting at position 22 of 25.
+
+| measured across the 28 books of 20+ scenes in `runs/` | |
+|---|---|
+| books the book-level check calls wandering | **13 of 13 fire** |
+| books it calls clean | **0 of 15 fire** — zero false blockers |
+| where it fires on the shipped book | **scene 40** — the point `temple` entered the ledger |
+
+It scans the whole ledger rather than the candidate list, because routing it through candidates
+lost 3 of 13 books: by scene 60 of `var3` the latest scar row is `[s58] Mirra | has | scar`, no
+region, and the location-bearing `[s46] scar on left hand` had been displaced. That is the
+original defect wearing a different hat, and it is pinned as a regression test.
+
+*Why deterministic and not a better prompt: the model misses 65% of this pair class at a 4% false
+rate, and a prompt rewrite was pre-registered and **rejected** — recall went to 22% but the
+moved-object and held-object exemptions broke, because qualifying "Position is never a
+contradiction" cost that rule its force for cases the qualifier never mentioned
+([evidence/judge-marks.md](evidence/judge-marks.md)).*
+
+**And homophone errors are gated.** `checks.check_homophones`, MAJOR, with a `REMEDIES` line
+worded to change the one word and nothing else. Fires exactly **8 times across 1,773 scenes** —
+the 8 audited `pulled taught` errors, no others — and is silent on every correct usage tested.
+Thirteen of its fourteen patterns have never fired and say so in their own violation text,
+because the one pattern dropped from the table returned two matches that were **both false
+positives**.
+
+**Nothing on the board now needs GPU, and nothing needs a person.**
+
 ---
 
 ## Three questions, not ten steps

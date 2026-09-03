@@ -1478,6 +1478,169 @@ class TestWanderingDetails(unittest.TestCase):
             _F("Kai", "a scar on his temple", 12, kind="state"),
         ]), [])
 
+    def test_the_one_validated_homophone_fires_and_the_correct_form_does_not(self):
+        """`pulled taught` for `pulled taut` - 8 occurrences against 43 correct ones.
+
+        A 16% error rate on that homophone across 7 books, and three of the eight get it right
+        and wrong in the same sentence: "the silence stretches, taut as a string pulled taught".
+        The only entry in the table whose matches have been read, hence the only one asserted
+        positively here.
+        """
+        class Sc:
+            def __init__(self, text):
+                self.text = text
+        fires = checks.check_homophones(Sc("The silence stretched, taut as a string pulled "
+                                           "taught."))
+        self.assertEqual(len(fires), 1)
+        self.assertEqual(fires[0].kind, "homophone")
+        self.assertIs(fires[0].severity, Severity.MAJOR)
+        self.assertIn("taut", fires[0].detail)
+
+    def test_no_homophone_pattern_fires_on_correct_usage(self):
+        """The direction that would send good scenes back for repair.
+
+        `taught` is a perfectly good word and most of these sentences contain the *right* member
+        of the pair. Measured over 1,773 scenes the table returns 8 matches in total, all of them
+        the one real error, so this pins the silence rather than hoping for it.
+        """
+        class Sc:
+            def __init__(self, text):
+                self.text = text
+        for ok in ("The rope pulled taut.",
+                   "He had taught her to read.",
+                   "She taught school in the valley.",
+                   "They waited with bated breath.",
+                   "A horde of men came over the ridge.",
+                   "He pored over the records for an hour.",
+                   "She took up the reins of the horse.",
+                   "He wondered if it mattered.",
+                   "They wandered through the market.",
+                   "The path had led him to the door.",
+                   "They had passed through the gate."):
+            with self.subTest(ok):
+                self.assertEqual(checks.check_homophones(Sc(ok)), [],
+                                 "correct usage must not send a scene back")
+
+    def test_an_unvalidated_pattern_says_so_in_its_own_violation(self):
+        """Thirteen of the fourteen patterns have never fired on this corpus.
+
+        A pattern nobody has read the matches for is not yet a check - and this is not a
+        hypothetical: the fifteenth pattern audited, `borne/born`, returned two matches and
+        **both were false positives** (`born of necessity` is correct idiom). It is absent from
+        the table for that reason. The rest carry the warning in the violation text so the first
+        person to see one fire knows to read it before trusting it.
+        """
+        class Sc:
+            def __init__(self, text):
+                self.text = text
+        fires = checks.check_homophones(Sc("They waited with baited breath."))
+        self.assertEqual(len(fires), 1)
+        self.assertIn("not yet validated", fires[0].detail)
+        self.assertNotIn("not yet validated",
+                         checks.check_homophones(Sc("a string pulled taught"))[0].detail)
+
+    def test_born_of_necessity_is_not_flagged(self):
+        """The false positive that was caught by reading the matches, pinned so it cannot return.
+
+        `born of necessity` is correct English. The audit's patterns returned it as a `borne`
+        error twice, which would have published 10 errors where there are 8 - a 25% overstatement
+        behind a docstring claiming the patterns were narrow.
+        """
+        class Sc:
+            def __init__(self, text):
+                self.text = text
+        for ok in ("It was an illusion born of necessity.",
+                   "A crime born of necessity.",
+                   "He was born of the enclave."):
+            with self.subTest(ok):
+                self.assertEqual(checks.check_homophones(Sc(ok)), [])
+
+    def test_the_preflag_catches_the_shipped_defect_at_its_first_scene(self):
+        """The founding defect, caught deterministically where the model judge said no.
+
+        Scene 40 of `runs/current` is where `temple` entered the ledger and propagated to the end
+        of the book. `conflict_candidates` did offer the pair, it was inside the cap, and the
+        model answered no - measured at a 65% miss rate on this pair class
+        (docs/evidence/judge-marks.md). No model call is involved here.
+        """
+        prior = ([_F("Kai", "a scar along his palm", 15), _F("Kai", "a scar on his palm", 16)]
+                 + [_F("Kai", "scar on arm", s) for s in (31, 32)])
+        found = checks.mark_conflicts_against(
+            [_F("Kai", "a scar running along his temple", 40)], prior)
+        self.assertEqual(len(found), 1, "one finding per conflict, not per pair")
+        old, new, why = found[0]
+        self.assertEqual(new.scene, 40)
+        self.assertIn("cannot be in two places", why)
+
+    def test_a_location_free_row_cannot_hide_a_wandering_mark(self):
+        """The regression that made the pre-flag scan the ledger instead of the candidate list.
+
+        `conflict_candidates` pairs a new fact against the *latest* matching row. In `var3` the
+        latest scar row before scene 60 is `[s58] Mirra | has | scar` - no region - so the pair
+        offered to the judge was unjudgeable, and the location-bearing `[s46] scar on left hand`
+        never got compared. That is the original defect wearing a different hat: a location-free
+        fact displacing a location-bearing one. Routing the pre-flag through candidates lost 3 of
+        13 wandering books to exactly this; scanning the whole ledger recovers all three.
+        """
+        prior = [_F("Mirra", "scar on left hand", 46),
+                 _F("Mirra", "scar", 52),
+                 _F("Mirra", "a scarred hand", 54),
+                 _F("Mirra", "scar", 58)]        # latest row, and it names no region
+        found = checks.mark_conflicts_against([_F("Mirra", "a scar on her face", 60)], prior)
+        self.assertEqual(len(found), 1)
+        old, _new, _why = found[0]
+        self.assertEqual(old.scene, 46, "must compare against the last row naming a region")
+
+    def test_the_preflag_inherits_every_exclusion_the_book_check_learned(self):
+        """Plural, adjacency and spans are let through here too, or the gate halts good scenes."""
+        cases = [
+            ("plural", [_F("Kai", "a scar along his inner elbow", 12)],
+             _F("Kai", "old scars on his hands", 30)),
+            ("adjacent regions", [_F("Kai", "a scar on his wrist", 51)],
+             _F("Kai", "a scar on his forearm", 58)),
+            ("same region", [_F("Kai", "a scar on his hand", 3)],
+             _F("Kai", "a scar along his palm", 21)),
+            ("a span", [_F("Kai", "a scar from wrist to elbow", 4)],
+             _F("Kai", "a scar from wrist to elbow, pale now", 30)),
+            ("another person", [_F("Mir", "a scar on his palm", 5)],
+             _F("Kai", "a scar on his temple", 12)),
+            ("a state, not a detail", [_F("Kai", "a scar on his palm", 5, kind="state")],
+             _F("Kai", "a scar on his temple", 12, kind="state")),
+        ]
+        for label, prior, new in cases:
+            with self.subTest(label):
+                self.assertEqual(checks.mark_conflicts_against([new], prior), [],
+                                 f"{label} must not raise a blocker")
+
+    def test_a_later_row_cannot_be_the_earlier_one(self):
+        """Order matters: the established row has to precede the new fact.
+
+        Without the scene check a fact re-extracted in the same scene, or a ledger holding a
+        later row, could be reported as contradicting something that has not happened yet.
+        """
+        self.assertEqual(
+            checks.mark_conflicts_against([_F("Kai", "a scar on his palm", 10)],
+                                          [_F("Kai", "a scar on his temple", 40)]), [])
+        self.assertEqual(
+            checks.mark_conflicts_against([_F("Kai", "a scar on his palm", 10)],
+                                          [_F("Kai", "a scar on his temple", 10)]), [])
+
+    def test_the_preflag_never_fires_where_the_book_check_is_silent(self):
+        """Precision, asserted rather than hoped: it is a BLOCKER and it halts unattended runs.
+
+        Measured across the 28 books of 20+ scenes in `runs/`: the pre-flag fires in all 13 the
+        book-level check calls wandering and in none of the 15 it calls clean - 28 of 28
+        agreement, zero false blockers. This pins the direction that would break a run.
+        """
+        clean = [_F("Kai", "a scar on his hand", 3), _F("Kai", "a scar along his palm", 9),
+                 _F("Kai", "a scar across his knuckles", 20), _F("Kai", "scar", 25),
+                 _F("Vay", "a tattoo on his forearm", 7), _F("Vay", "a tattoo on his wrist", 30)]
+        for i in range(1, len(clean)):
+            with self.subTest(scene=clean[i].scene):
+                self.assertEqual(
+                    checks.mark_conflicts_against([clean[i]], clean[:i]), [],
+                    "no blocker may come from ordinary rephrasing of one mark")
+
     def test_a_dict_is_read_like_a_fact(self):
         """The signature promise, pinned — it was false and silently so.
 
